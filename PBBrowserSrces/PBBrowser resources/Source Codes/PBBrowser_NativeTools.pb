@@ -6,31 +6,31 @@
 NCommand.CommandDetails\CommandName$ = "InCatalog:InstallPBBrowserTitle"
 NCommand\Commandtype = 1
 NCommand\CommandDescription$  = "InCatalog:InstallPBBrowserEx"
-NCommand\CommandSimpleProcAdr = @InstallPBBrowserAndPrintResult()
+NCommand\CommandSimpleProcAddr = @InstallPBBrowserAndPrintResult()
 AddCommandToList(NCommand)
 ;
 NCommand\CommandName$ = "InCatalog:UninstallPBBrowserTitle"
 NCommand\Commandtype = 1
 NCommand\CommandDescription$  = "InCatalog:UnInstallPBBrowserEx"
-NCommand\CommandSimpleProcAdr = @UnInstallPBBrowserAndPrintResult()
+NCommand\CommandSimpleProcAddr = @UnInstallPBBrowserAndPrintResult()
 AddCommandToList(NCommand)
 ;
 NCommand\CommandName$ = "InCatalog:UpdateFunctionsTitle"
 NCommand\Commandtype = 1
 NCommand\CommandDontShow = 1
 NCommand\CommandDescription$  = "InCatalog:UpdateFunctionsEx"
-NCommand\CommandSimpleProcAdr = @UpDateNativeFunctionList()
+NCommand\CommandSimpleProcAddr = @UpDateNativeFunctionList()
 AddCommandToList(NCommand)
 ;
 NCommand\CommandName$ = "InCatalog:UpdatePBExeTitle"
 NCommand\Commandtype = 1
 NCommand\CommandDontShow = 1
 NCommand\CommandDescription$  = "InCatalog:UpdatePBExeEx"
-NCommand\CommandSimpleProcAdr = @ChoosePureBasicExeAdr()
+NCommand\CommandSimpleProcAddr = @ChoosePureBasicExeAdr()
 AddCommandToList(NCommand)
 ;
-; IDE Options = PureBasic 6.11 LTS (Windows - x64)
-; CursorPosition = 8
+; IDE Options = PureBasic 6.10 LTS (Windows - x86)
+; CursorPosition = 28
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb

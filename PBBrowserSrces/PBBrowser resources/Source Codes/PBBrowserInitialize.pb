@@ -1,14 +1,12 @@
-﻿; *******************************************************************************
+﻿; *****************************************************************************
 ;
-;                         Initialisation de PBBrowser
+;                         Initializing PBBrowser
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
 ;
-; *******************************************************************************
-;
-;        Stockage et récupération des images pour les images-boutons
-;           et du catalog contenant les messages de l'application.
+;        Storing and retrieving images for button images
+;      and the catalog containing the application messages.
 ;
 Procedure ExtractData(dataStart, dataEnd, outputPath$)
   ;
@@ -23,67 +21,77 @@ Procedure ExtractData(dataStart, dataEnd, outputPath$)
   EndIf
 EndProcedure
 ;
-; Le contenu du dossier des données (AppData) de PBBrowser est mis-à-jour au premier
-; lancement de l'application 'PBBrowser.exe' avec les données contenues
-; dans l'application elle-même (voir la DataSection de PBBrowserDeclaration.pb).
-; Si l'application est lancée depuis l'IDE de PureBasic ('Compiler/Exécuter')
-; les données sont systématiquement recopiées depuis le dossier 'PBBrowser resources'
-; qui accompagne le fichier-source de l'application. Ainsi, en cas de mise-à-jour des
-; fichiers de 'PBBrowser resources', l'application dispose toujours des dernières
-; versions de ces fichiers.
+Procedure UpdateAppDataFolder(Force = 0)
+  ; The contents of the PBBrowser AppData folder are updated the first time
+  ; the 'PBBrowser.exe' application is launched with the data contained
+  ; in the application itself (see the DataSection of PBBrowserDeclaration.pb).
+  ; If the application is launched from the PureBasic IDE ('Compiler/Run')
+  ; the data is always copied from the 'PBBrowser resources' folder
+  ; that accompanies the source file of the application. Thus, when updating
+  ; the 'PBBrowser resources' files, the application always has the latest
+  ; versions of these files.
+  ;
+  If FileSize(MyAppDataFolder$ + "Next.jpg") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BNext, ?BNextEnd, MyAppDataFolder$ + "Next.jpg")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Previous.jpg") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BPrevious, ?BPreviousEnd, MyAppDataFolder$ + "Previous.jpg")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "NoNext.jpg") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BNoNext, ?BNoNextEnd, MyAppDataFolder$ + "NoNext.jpg")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "NoPrevious.jpg") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BNoPrevious, ?BNoPreviousEnd, MyAppDataFolder$ + "NoPrevious.jpg")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Refresh.jpg") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BRefresh, ?BRefreshEnd, MyAppDataFolder$ + "Refresh.jpg")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\Francais\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BCatalogFR, ?BCatalogFREnd, MyAppDataFolder$ + "Catalogs\Francais\PBBrowser.catalog")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\Francais\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BIntroFR, ?BIntroFREnd, MyAppDataFolder$ + "Catalogs\Francais\IntroPBBrowser.rtf")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\English\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BCatalogEN, ?BCatalogENEnd, MyAppDataFolder$ + "Catalogs\English\PBBrowser.catalog")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\English\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BIntroEN, ?BIntroENEnd, MyAppDataFolder$ + "Catalogs\English\IntroPBBrowser.rtf")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\Italiano\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BCatalogIT, ?BCatalogITEnd, MyAppDataFolder$ + "Catalogs\Italiano\PBBrowser.catalog")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\Italiano\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BIntroIT, ?BIntroITEnd, MyAppDataFolder$ + "Catalogs\Italiano\IntroPBBrowser.rtf")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\Russian\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BCatalogRU, ?BCatalogRUEnd, MyAppDataFolder$ + "Catalogs\Russian\PBBrowser.catalog")
+  EndIf
+  If FileSize(MyAppDataFolder$ + "Catalogs\Russian\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?BIntroRU, ?BIntroRUEnd, MyAppDataFolder$ + "Catalogs\Russian\IntroPBBrowser.rtf")
+  EndIf
+  
+  If FileSize(MyAppDataFolder$ + "PBFunctionList.Data") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?PBFunction, ?PBFunctionEnd, MyAppDataFolder$ + "PBFunctionList.Data")
+  EndIf
+  
+  If FileSize(MyAppDataFolder$ + "APIFunctionListing.txt") < 2 Or #PB_Compiler_Debugger Or Force
+    ExtractData(?APIFunction, ?APIFunctionEnd, MyAppDataFolder$ + "APIFunctionListing.txt")
+  EndIf
+EndProcedure
 ;
-If FileSize(MyAppDataFolder$ + "Next.jpg") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BNext, ?BNextEnd, MyAppDataFolder$ + "Next.jpg")
-EndIf
-If FileSize(MyAppDataFolder$ + "Previous.jpg") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BPrevious, ?BPreviousEnd, MyAppDataFolder$ + "Previous.jpg")
-EndIf
-If FileSize(MyAppDataFolder$ + "NoNext.jpg") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BNoNext, ?BNoNextEnd, MyAppDataFolder$ + "NoNext.jpg")
-EndIf
-If FileSize(MyAppDataFolder$ + "NoPrevious.jpg") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BNoPrevious, ?BNoPreviousEnd, MyAppDataFolder$ + "NoPrevious.jpg")
-EndIf
-If FileSize(MyAppDataFolder$ + "Refresh.jpg") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BRefresh, ?BRefreshEnd, MyAppDataFolder$ + "Refresh.jpg")
-EndIf
-If FileSize(MyAppDataFolder$ + "Catalogs\Français\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BCatalogFR, ?BCatalogFREnd, MyAppDataFolder$ + "Catalogs\Français\PBBrowser.catalog")
-EndIf
-If FileSize(MyAppDataFolder$ + "Catalogs\Français\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BIntroFR, ?BIntroFREnd, MyAppDataFolder$ + "Catalogs\Français\IntroPBBrowser.rtf")
-EndIf
-If FileSize(MyAppDataFolder$ + "Catalogs\English\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BCatalogEN, ?BCatalogENEnd, MyAppDataFolder$ + "Catalogs\English\PBBrowser.catalog")
-EndIf
-If FileSize(MyAppDataFolder$ + "Catalogs\English\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BIntroEN, ?BIntroENEnd, MyAppDataFolder$ + "Catalogs\English\IntroPBBrowser.rtf")
-EndIf
-If FileSize(MyAppDataFolder$ + "Catalogs\Italiano\PBBrowser.catalog") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BCatalogIT, ?BCatalogITEnd, MyAppDataFolder$ + "Catalogs\Italiano\PBBrowser.catalog")
-EndIf
-If FileSize(MyAppDataFolder$ + "Catalogs\Italiano\IntroPBBrowser.rtf") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?BIntroIT, ?BIntroITEnd, MyAppDataFolder$ + "Catalogs\Italiano\IntroPBBrowser.rtf")
-EndIf
-
-If FileSize(MyAppDataFolder$ + "PBFunctionList.Data") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?PBFunction, ?PBFunctionEnd, MyAppDataFolder$ + "PBFunctionList.Data")
-EndIf
-
-If FileSize(MyAppDataFolder$ + "APIFunctionListing.txt") < 2 Or #PB_Compiler_Debugger
-  ExtractData(?APIFunction, ?APIFunctionEnd, MyAppDataFolder$ + "APIFunctionListing.txt")
-EndIf
+UpdateAppDataFolder()
 ;
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
-;           Lecture du fichier des préférences et choix de la langue
-
+;           Reading the preferences file and choosing the language
+;
 If OpenPreferencesWithPatience(PBBrowserPrefile$)
   PBBLanguageFolder$ = ReadPreferenceString("PBBLanguageFolder", "")
   ClosePreferences()
   PBBFirstLaunch = 0
-Else ; Il n'y a pas de préférences. L'application est lancée pour la première fois
+Else ; No preferences. The application is being launched for the first time
   CreatePathFolders(PBBrowserPrefile$)
   If CreatePreferences(PBBrowserPrefile$)
     ClosePreferences()
@@ -102,98 +110,143 @@ If PBBLanguageFolder$ = ""
   EndIf
 EndIf
 ;
-; *******************************************************************************
+Procedure.s GetTextFromCatalogPB(SName$)
+  ;
+  Static AllreadyForced
+  Shared PBBLanguageFolder$
+  ;
+  ; GTFCParam is equal to Not(AllreadyForced):
+  GTFCParam = Abs(AllreadyForced - 1)
+  ;    
+  NText$ = GetTextFromCatalog(SName$, "", GTFCParam)
+  ;
+  If AllreadyForced = 0 And NText$ = "MissingMention"
+    ; The first time a text is missing, try to force a copy of
+    ; catalogs from binaries included 
+    ;          to AppDataFolder.
+    ; If the missing text is due to a new version of PBBrowser
+    ; including new texts in its catalog, this is the only way to
+    ; refresh the AppDataFolder.
+    ;
+    ; Force a copy from binaries to AppDataFolder:
+    UpdateAppDataFolder(1)
+    ;
+    ; Now, force GetTextFromCatalog() to refresh its Static copy of the catalog:
+    GetTextFromCatalog("", PBBLanguageFolder$ + "PBBrowser.catalog")
+    ;
+    ; Try again to get the text:
+    NText$ = GetTextFromCatalog(SName$)
+    ;
+    ; Register that an attempt has allready been done:
+    AllreadyForced = 1
+  ElseIf NText$ = "MissingFile"
+    PBBLanguageFolder$ = ChooseLanguage(MyAppDataFolder$ + "Catalogs\")
+    If OpenPreferencesWithPatience(PBBrowserPrefile$)
+      WritePreferenceString("PBBLanguageFolder", PBBLanguageFolder$)
+      ClosePreferences()
+    EndIf
+    ;
+    ; Now, force GetTextFromCatalog() to refresh its Static copy of the catalog:
+    GetTextFromCatalog("", PBBLanguageFolder$ + "PBBrowser.catalog")
+    ;
+    ; Try again to get the text:
+    NText$ = GetTextFromCatalog(SName$)
+  EndIf
+  ;
+  ProcedureReturn NText$
+EndProcedure
 ;
-;                            Initialisation du 'Catalog'
+; *****************************************************************************
 ;
-; Tous les messages sont stockés dans le fichier 'PBBrowser.catalog' afin de pouvoir
-; être traduits dans différentes langues.
+;                            Initializing the 'Catalog'
 ;
-; La ligne ci-dessous initialise l'adresse du fichier de référence à utiliser par
-; GetTextFromCatalog().
-; Comme aucun texte n'est passé dans le premier argument, cet appel n'aura pas
-; d'autre effet :
+; All messages are stored in the 'PBBrowser.catalog' file so that they can be
+; translated into different languages.
+;
+; The line below initializes the reference file address to be used by
+; GetTextFromCatalogPB().
+; Since no text is passed in the first argument, this call will have no
+; other effect:
 GetTextFromCatalog("", PBBLanguageFolder$ + "PBBrowser.catalog")
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
-;      Récupération des arguments passés par PureBasic au moment de l'appel
-;                 de l'application à l'aide du menu "Outils"
+;      Retrieving the arguments passed by PureBasic when launching
+;                 the application using the "Tools" menu
 ;
 nl = 0
 Repeat
   SAppArgument$ = ProgramParameter()
   nl + 1
   If SAppArgument$
-    If nl = 1     ; En principe, le premier argument passé par l'appel d'outil est "%HOME"
-                  ; qui contient le chemin complet vers l'application PureBasic.
-      PureBasicProgAdr$ = SAppArgument$ + "PureBasic.exe"
-    ElseIf nl = 2 ; En principe, le deuxième argument passé par l'appel d'outil est "%WORD"
-                  ; qui contient le mot situé sous la souris dans l'éditeur de PureBasic.
+    If nl = 1     ; In principle, the first argument passed by the tool call is "%HOME"
+                  ; which contains the full path to the PureBasic application.
+      PureBasicProgAddr$ = SAppArgument$ + "PureBasic.exe"
+    ElseIf nl = 2 ; In principle, the second argument passed by the tool call is "%WORD"
+                  ; which contains the word under the cursor in the PureBasic editor.
       PBUnderCursor$ = SAppArgument$
-    ElseIf nl = 3 ; En principe, le troisième argument passé par l'appel d'outil est "%SELECTION"
-                  ; qui contient la position de la sélection dans le fichier.
+    ElseIf nl = 3 ; In principle, the third argument passed by the tool call is "%SELECTION"
+                  ; which contains the position of the selection in the file.
       PBSelection$ = SAppArgument$
-    ElseIf nl = 4 ; En principe, le cinquième argument passé par l'appel d'outil est "%CURSOR"
-                  ; qui contient la position du curseur dans le fichier actuellement ouvert
-                  ; dans l'éditeur de PureBasic.
+    ElseIf nl = 4 ; In principle, the fourth argument passed by the tool call is "%CURSOR"
+                  ; which contains the position of the cursor in the currently opened
+                  ; file in the PureBasic editor.
       PBCursor$ = SAppArgument$
-    ElseIf nl = 5 ; En principe, le cinquième argument passé par l'appel d'outil est "%FILE"
-                  ; qui contient le fichier actuellement ouvert dans l'éditeur de PureBasic.
-      FicPrincipalPB$ = SAppArgument$
+    ElseIf nl = 5 ; In principle, the fifth argument passed by the tool call is "%FILE"
+                  ; which contains the file currently opened in the PureBasic editor.
+      PBBFicPrincipalPB$ = SAppArgument$
       FicActualPB$ = SAppArgument$
-    Else          ; En principe, le sixième argument passé par l'appel d'outil est "%TEMPFILE"
-                  ; qui contient le fichier actuellement ouvert dans l'éditeur de PureBasic.
-      TempFile$ = SAppArgument$
+    Else          ; In principle, the sixth argument passed by the tool call is "%TEMPFILE"
+                  ; which contains the file currently opened in the PureBasic editor.
+      PBBTempFile$ = SAppArgument$
       If FicActualPB$ = ""
-        FicActualPB$ = TempFile$
-        FicPrincipalPB$ = TempFile$
+        FicActualPB$ = PBBTempFile$
+        PBBFicPrincipalPB$ = PBBTempFile$
       EndIf
     EndIf
   EndIf
 Until nl > 5
 ;
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
-;                             Message de présentation
+;                             Presentation Message
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
 If PBBFirstLaunch = 1
-  AlertWithTitle(GetTextFromCatalog("file:IntroPBBrowser.rtf"), GetTextFromCatalog("Introduction"))
+  AlertWithTitle(GetTextFromCatalogPB("file:IntroPBBrowser.rtf"), GetTextFromCatalogPB("Introduction"))
 EndIf
 
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
-;         Procédures diverses, utilisées dans l'ensemble du programme
+;         Various procedures, used throughout the program
 ;
-; *******************************************************************************
+; *****************************************************************************
 ;
 Procedure.s GetPureBasicPrefAdresse()
-  ; Détermine l'emplacement du fichier des préférences de PureBasic.
+  ; Determines the location of the PureBasic preferences file.
   ;
-  ; PB Browser va puiser des données dans ce fichier, telles que les
-  ; couleurs à attribuer aux mots-clés. C'est également dans ce dossier
-  ; des préférences qu'on installe PB Browser en tant qu'outil de
-  ; l'IDE PureBasic.
-  Protected  itemid, PBPrefAdr$
+  ; PB Browser will retrieve data from this file, such as the
+  ; colors to assign to keywords. It is also in this preferences folder
+  ; that PB Browser is installed as a tool for the PureBasic IDE.
+  Protected  itemid, PBPrefAddr$
   If SHGetSpecialFolderLocation_(0, #CSIDL_APPDATA, @itemid) = #NOERROR
-    PBPrefAdr$ = Space(#MAX_PATH)
-    SHGetPathFromIDList_(itemid, @PBPrefAdr$)
+    PBPrefAddr$ = Space(#MAX_PATH)
+    SHGetPathFromIDList_(itemid, @PBPrefAddr$)
   EndIf
-  PBPrefAdr$ + "\PureBasic\PureBasic.prefs"
-  If FileSize(PBPrefAdr$) < 2
-    PBPrefAdr$ = GetHomeDirectory() + "AppData\\Roaming\\PureBasic\\PureBasic.prefs"
+  PBPrefAddr$ + "\PureBasic\PureBasic.prefs"
+  If FileSize(PBPrefAddr$) < 2
+    PBPrefAddr$ = GetHomeDirectory() + "AppData\Roaming\PureBasic\PureBasic.prefs"
   EndIf
-  If FileSize(PBPrefAdr$) < 2
-    PBPrefAdr$ = GetHomeDirectory() + "AppData\\PureBasic\\PureBasic.prefs"
+  If FileSize(PBPrefAddr$) < 2
+    PBPrefAddr$ = GetHomeDirectory() + "AppData\PureBasic\PureBasic.prefs"
   EndIf
-  If FileSize(PBPrefAdr$) < 2
+  If FileSize(PBPrefAddr$) < 2
     ProcedureReturn ""
   Else
-    ProcedureReturn PBPrefAdr$
+    ProcedureReturn PBPrefAddr$
   EndIf
 EndProcedure
 ;
@@ -222,8 +275,8 @@ EndProcedure
 ;
 Procedure DisablePBBWindow()
   ;
-  ; Désactive la fenêtre principale de PBBrowser afin de donner
-  ; la priorité à une fenêtre de message ou à une fenêtre de recherche.
+  ; Disables the main PBBrowser window to give priority
+  ; to a message window or a search window.
   ;
   If IsWindow(GPBBGadgets\PBBWindow) 
     If GPBBGadgets\Disabled = 0
@@ -240,8 +293,8 @@ EndProcedure
 ;
 Procedure EnablePBBWindow()
   ;
-  ; Réactive la fenêtre principale de PBBrowser après un appel
-  ; à 'DisablePBBWindow()'
+  ; Reactivates the main PBBrowser window after a call
+  ; to 'DisablePBBWindow()'
   ;
   If IsWindow(GPBBGadgets\PBBWindow)
     GPBBGadgets\Disabled - 1
@@ -259,43 +312,43 @@ EndProcedure
 ;
 Procedure PBBInitAlertTexts()
   ;
-  ;         Initialisation des textes de boutons et du titre de fenêtre
-  ;       pour la procédure 'Alert()', utilisée tout au long du programme
+  ;         Initialization of button texts and window title
+  ;     for the 'Alert()' procedure, used throughout the program
   ;
-  Protected  AlertText.AlertWindowTitles
+  Global  AlertText.AlertWindowTitles
   ;
-  AlertText.AlertWindowTitles\WTitle$  = GetTextFromCatalog("Attention")
-  AlertText\BOK$     = GetTextFromCatalog("OK")
-  AlertText\BCancel$ = GetTextFromCatalog("Cancel")
-  AlertText\BYes$    = GetTextFromCatalog("Yes")
-  AlertText\BNo$     = GetTextFromCatalog("No")
-  AlertText\BCopy$   = GetTextFromCatalog("CopyAll")
-  AlertText\BSearch$ = GetTextFromCatalog("Search")
-  AlertText\BSave$   = GetTextFromCatalog("Save")
-  AlertText\SaveAs$  = GetTextFromCatalog("SaveAs")
-  AlertText\TextFile$ = GetTextFromCatalog("TextFile")
-  AlertText\SearchGadgets\WTitle$ =       GetTextFromCatalog("SWTitle")
-  AlertText\SearchGadgets\Search$ =       GetTextFromCatalog("SWSearch")
-  AlertText\SearchGadgets\ReplaceTitle$ = GetTextFromCatalog("SWReplaceTitle")
-  AlertText\SearchGadgets\Replace$ =      GetTextFromCatalog("SWReplace")
-  AlertText\SearchGadgets\ReplaceAll$ =   GetTextFromCatalog("SWReplaceAll")
-  AlertText\SearchGadgets\Quit$ =         GetTextFromCatalog("Quit")
-  AlertText\SearchGadgets\CaseSensitive$ = GetTextFromCatalog("SWCaseSensitive")
-  AlertText\SearchGadgets\WholeWord$ =    GetTextFromCatalog("SWWholeWord")
-  AlertText\SearchGadgets\InAllDocument$ = GetTextFromCatalog("SWInAllDocument")
-  AlertText\SearchGadgets\UnableToFind$ = GetTextFromCatalog("SWUnableToFind")
-  AlertText\SearchGadgets\ReplacementMade$ = GetTextFromCatalog("SWReplacementMade")
-  AlertText\SearchGadgets\SearchFromStart$ = GetTextFromCatalog("SWSearchFromStart")
-  AlertText\SearchGadgets\SearchFromEnd$ =   GetTextFromCatalog("SWSearchFromEnd")
+  AlertText.AlertWindowTitles\WTitle$  = GetTextFromCatalogPB("Attention")
+  AlertText\BOK$     = GetTextFromCatalogPB("OK")
+  AlertText\BCancel$ = GetTextFromCatalogPB("Cancel")
+  AlertText\BYes$    = GetTextFromCatalogPB("Yes")
+  AlertText\BNo$     = GetTextFromCatalogPB("No")
+  AlertText\BCopy$   = GetTextFromCatalogPB("CopyAll")
+  AlertText\BSearch$ = GetTextFromCatalogPB("Search")
+  AlertText\BSave$   = GetTextFromCatalogPB("Save")
+  AlertText\SaveAs$  = GetTextFromCatalogPB("SaveAs")
+  AlertText\TextFile$ = GetTextFromCatalogPB("TextFile")
+  AlertText\SearchGadgets\WTitle$ =       GetTextFromCatalogPB("SWTitle")
+  AlertText\SearchGadgets\Search$ =       GetTextFromCatalogPB("SWSearch")
+  AlertText\SearchGadgets\ReplaceTitle$ = GetTextFromCatalogPB("SWReplaceTitle")
+  AlertText\SearchGadgets\Replace$ =      GetTextFromCatalogPB("SWReplace")
+  AlertText\SearchGadgets\ReplaceAll$ =   GetTextFromCatalogPB("SWReplaceAll")
+  AlertText\SearchGadgets\Quit$ =         GetTextFromCatalogPB("Quit")
+  AlertText\SearchGadgets\CaseSensitive$ = GetTextFromCatalogPB("SWCaseSensitive")
+  AlertText\SearchGadgets\WholeWord$ =    GetTextFromCatalogPB("SWWholeWord")
+  AlertText\SearchGadgets\InAllDocument$ = GetTextFromCatalogPB("SWInAllDocument")
+  AlertText\SearchGadgets\UnableToFind$ = GetTextFromCatalogPB("SWUnableToFind")
+  AlertText\SearchGadgets\ReplacementMade$ = GetTextFromCatalogPB("SWReplacementMade")
+  AlertText\SearchGadgets\SearchFromStart$ = GetTextFromCatalogPB("SWSearchFromStart")
+  AlertText\SearchGadgets\SearchFromEnd$ =   GetTextFromCatalogPB("SWSearchFromEnd")
   ;
-  Alert("", AlertText) ; On initialise les noms à utiliser
-  ; Comme aucun texte ne figurait dans le premier argument, cet appel
-  ; n'aura pas d'autre effet.
+  Alert("", AlertText) ; We initialize the names to be used
+  ; Since no text was passed in the first argument, this call
+  ; will have no other effect.
 EndProcedure
 ;
 PBBInitAlertTexts()
 ;
-Procedure AlertInPBBWindow(AlertText$, Title$ = "", WSticky = 1, WhiteBackGround = 0, Txtleft = 0, FixedWidth = 0, TabList$ = "")
+Procedure AlertInPBBWindow(AlertText$, Title$ = "", WSticky = 1, WhiteBackGround = 0, Txtleft = 0, FixedWidth = 0, TabList$ = "", YesNoCancel = #AW_AlertOnly)
   ;
   ; Désactive la fenêtre principale de PBBrowser et affiche une fenêtre
   ; contenant un message. Puis réactive la fenêtre principale lorsque
@@ -303,20 +356,21 @@ Procedure AlertInPBBWindow(AlertText$, Title$ = "", WSticky = 1, WhiteBackGround
   ;
   DisablePBBWindow()
   If Title$ = ""
-    Alert(AlertText$)
+    Protected Ret = Alert(AlertText$, 0, WSticky, WhiteBackGround, Txtleft, FixedWidth, TabList$, YesNoCancel)
   Else
-    AlertWithTitle(AlertText$, Title$, WSticky, WhiteBackGround, Txtleft, FixedWidth, TabList$)
+    Ret = AlertWithTitle(AlertText$, Title$, WSticky, WhiteBackGround, Txtleft, FixedWidth, TabList$, YesNoCancel)
   EndIf
   EnablePBBWindow()
+  ProcedureReturn Ret
 EndProcedure
 ;
 ; *******************************************************************************
 ;
-;           Procédures dédiées à la lecture des fichiers de code
+;           Procedures dedicated to reading code files
 ;
 ; *******************************************************************************
 ;
-Structure FileListingStruct ; Structure de la liste PBB_FileListing
+Structure FileListingStruct ; Structure for the PBB_FileListing
   FileNameInList$
   FileContentInList.String
   FileLCaseContentInList.String
@@ -327,14 +381,14 @@ NewList PBB_FileListing.FileListingStruct()
 ;
 Procedure IsFileInMemory(FileName$)
   ;
-  ; Cette procédure regarde si FileName$ figure en mémoire-cache et
-  ; retourne #True ou #False selon le cas.
+  ; This procedure checks if FileName$ is in the cache memory and
+  ; returns #True or #False depending on the case.
   ;
   Shared PBB_FileListing()
   ;
   If ListSize(PBB_FileListing())
-    ; On ne parcourt la liste que si elle comporte des éléments
-    ; et si elle n'est pas déjà positionnée sur le bon élément.
+    ; We only iterate through the list if it has elements
+    ; and if it's not already positioned on the correct item.
     If ListIndex(PBB_FileListing()) = -1 Or PBB_FileListing()\FileNameInList$ <> FileName$
       ForEach PBB_FileListing()
         If PBB_FileListing()\FileNameInList$ = FileName$
@@ -351,17 +405,16 @@ EndProcedure
 ;
 Procedure.s GetCodeFromFile(FileName$)
   ;
-  ; Retourne le contenu du fichier 'FileName$' sous la forme
-  ; d'un simple chaîne.
+  ; Returns the content of the file 'FileName$' as a simple string.
   ;
   If FileSize(FileName$) = -1
-    AlertInPBBWindow(GetTextFromCatalog("ErrorWithFile") + " " + FileName$)
+    AlertInPBBWindow(GetTextFromCatalogPB("ErrorWithFile") + " " + FileName$)
   Else
-    ; On simplifie les recherches à venir en remplaçant les tabulations par un double espace
-    ; et en supprimant les éventuels Chr(10) (LineFeed).
+    ; Simplifies future searches by replacing tabs with double spaces
+    ; and removing any Chr(10) (LineFeed) characters.
     Protected Content$ = ReplaceString(ReplaceString(FileToText(FileName$, #PB_UTF8, 1), Chr(9), "  "), Chr(10), "")
     If Len(Content$) = 0 And FileSize(FileName$) > 2
-      AlertInPBBWindow(GetTextFromCatalog("ErrorWithFile") + " " + FileName$)
+      AlertInPBBWindow(GetTextFromCatalogPB("ErrorWithFile") + " " + FileName$)
     EndIf
     ProcedureReturn Content$
   EndIf
@@ -369,18 +422,18 @@ EndProcedure
 ;
 Procedure GetPointedCodeFromFile(FileName$, ReturnLCase = #False)
   ;
-  ; Cette procédure va stocker chaque fichier lu en mémoire, afin d'éviter de relire
-  ; un fichier déjà lu. Quand un contenu est demandé une deuxième fois, c'est
-  ; le contenu en mémoire qui est délivré.
+  ; This procedure will store each read file in memory, to avoid re-reading
+  ; a file that has already been read. When the content is requested a second time,
+  ; the content in memory is returned.
   ;
-  ; Quand le paramètre 'ReturnLCase' vaut '#True', c'est une version en minuscules (LCase()) du fichier
-  ; qui est retournée. Cela permettra de faire des recherches sans tenir compte de la casse
-  ; sur le contenu du fichier.
+  ; When the 'ReturnLCase' parameter is '#True', a lowercase version (LCase()) of the file
+  ; will be returned. This allows case-insensitive searches
+  ; on the content of the file.
   ;
-  ; La valeur de retour est un pointeur vers une chaîne String et ce pointeur
-  ; demeure valide hors de la procédure parce que le 'String' est conservée en 'Shared' dans la liste PBB_FileListing().
-  ; Cette façon de procéder évite de dupliquer en mémoire la chaîne retournée, ce qui permet de gagner
-  ; du temps et de la mémoire.
+  ; The return value is a pointer to a String, and this pointer
+  ; remains valid outside the procedure because the 'String' is kept 'Shared' in the PBB_FileListing() list.
+  ; This approach avoids duplicating the returned string in memory, which saves
+  ; both time and memory.
   ;
   ;
   Shared PBB_FileListing()
@@ -410,37 +463,73 @@ Procedure GetPointedCodeFromFile(FileName$, ReturnLCase = #False)
 EndProcedure
 ;
 Procedure.s GetStringCodeFromFile(FileName$, ReturnLCase = #False)
-  ; Cette version de GetCodeFromFile() retourne une chaîne
-  ; au lieu de retourner un pointeur vers une structure 'String'.
+  ; This version of GetCodeFromFile() returns a string
+  ; instead of returning a pointer to a 'String' structure.
   Protected *SPointer.String = GetPointedCodeFromFile(FileName$, ReturnLCase)
   ProcedureReturn *SPointer\s
 EndProcedure
 ;
-;
 ; *******************************************************************************
 ;
-;   Mise à jour des paramètres passés par l'éditeur de PureBasic, dans le cas
-;                où PBBrowser est lancé depuis l'éditeur.
+;   Updating the parameters passed by the PureBasic editor, in case
+;   PBBrowser is launched from the editor.
 ;
+Procedure RecognizePointer(LineOfCode$, VarPos)
+  ;
+  ; When parsing the code, the "*" character poses a particular problem due to its dual function:
+  ; it can represent the multiplication operator,
+  ; or indicate that a variable is a pointer.
+  ; We will try to identify its function by looking at what comes before it.
+  ;
+  Protected pTest, PreceedingWord$, dTest
+  ;
+  If VarPos > 1 And FastMid(LineOfCode$, VarPos - 1, 1) = "*"
+    ; Skip "*" and move to the previous character:
+    pTest = VarPos - 2
+    ; Skip any spaces that may precede:
+    While pTest And PeekC(@LineOfCode$ + (pTest - 1) * SizeOf(CHARACTER)) = 32
+      pTest - 1
+    Wend
+    ;
+    ; Look at the word that precedes:
+    PreceedingWord$ = ""
+    If pTest
+      dTest = pTest
+      While dTest And PeekC(@LineOfCode$ + (dTest - 1) * SizeOf(CHARACTER)) <> 32
+        dTest - 1
+      Wend
+      dTest + 1
+      PreceedingWord$ = "," + LCase(Fastmid(LineOfCode$, dTest, pTest - dTest + 1)) + ","
+    EndIf
+    ;
+    If pTest = 0 Or FindString("(,@+-/*=&:~<>|[" + Chr(13), Chr(PeekC(@LineOfCode$ + (pTest - 1) * SizeOf(CHARACTER)))) Or (PreceedingWord$ And FindString(LCase(#OperatorAsWord$), PreceedingWord$))
+      ; There is another operator before, or a separator indicating that the "*" sign
+      ; should be considered as a pointer indicator. Thus integrate "*" into the variable name.
+      ProcedureReturn #True
+    EndIf
+  EndIf
+  ;
+  ProcedureReturn #False
+EndProcedure
 ;
-If PBSelection$ And PBUnderCursor$ = "" ; Curieusement, quand une portion de texte est sélectionnée dans l'éditeur
-                                        ; de PureBasic (même un simple mot), l'éditeur ne renvoie pas son contenu
-                                        ; dans l'argument %Word. On va donc l'extraire à partir des positions
-                                        ; de la sélection founies par l'argument %SELECTION.
+If PBSelection$ And PBUnderCursor$ = "" ; Strangely, when a portion of text is selected in the editor
+                                        ; of PureBasic (even a simple word), the editor doesn't return its content
+                                        ; in the argument %Word. So, we will extract it from the positions
+                                        ; of the selection provided by the %SELECTION argument.
   c1 = Val(StringField(PBSelection$, 2, "x"))
   c2 = Val(StringField(PBSelection$, 4, "x"))
   l1 = Val(StringField(PBSelection$, 1, "x"))
   l2 = Val(StringField(PBSelection$, 3, "x"))
-  If l1 = l2 And c1 <> c2 And FicActualPB$    ; Cela ne fonctionnera pas si la sélection englobe plusieurs lignes
-    *FileContent.String = GetPointedCodeFromFile(FicActualPB$)  ; mais c'est un cas de figure qui ne nous intéresse pas.
+  If l1 = l2 And c1 <> c2 And FicActualPB$    ; This will not work if the selection spans multiple lines
+    *FileContent.String = GetPointedCodeFromFile(FicActualPB$)  ; but this is a scenario we are not interested in.
     Line$ = StringField(*FileContent\s, l2, Chr(13))
     PBUnderCursor$ = Mid(Line$, c1, c2 - c1)
   EndIf
 EndIf
-If PBCursor$                            ; Quand le curseur se trouve au-dessus d'un nom de constante,
-                                        ; l'éditeur de PureBasic renvoie le nom de constante sans le '#'
-                                        ; qui précède. C'est une information pourtant utile, que nous
-                                        ; allons récupérer.
+If PBCursor$                            ; When the cursor is over a constant name,
+                                        ; the PureBasic editor returns the constant name without the '#'
+                                        ; that precedes it. This is useful information that we
+                                        ; will retrieve.
   l1 = Val(StringField(PBSelection$, 1, "x"))
   c1 = Val(StringField(PBSelection$, 2, "x"))
   If l1 And FicActualPB$
@@ -450,81 +539,79 @@ If PBCursor$                            ; Quand le curseur se trouve au-dessus d
     If p And Mid(Line$, p - 1, 1) = "#"
       PBUnderCursor$ = "#" + PBUnderCursor$
     EndIf
+    If RecognizePointer(Line$, p)
+      PBUnderCursor$ = "*" + PBUnderCursor$
+    EndIf
   EndIf
 EndIf
 ;
 ; *******************************************************************************
 ;
-;      Quand PBBrowser.exe est lancé depuis l'éditeur à de multiples reprises,
-;      on ne veut pas que cela ouvre plusieurs instances de l'application.
-;      On veut qu'une seule instance récupère les paramètres fournis par
-;      par l'éditeur et réagisse par rapport à ces paramètres.
-;      Pour obtenir ce résultat, quand une nouvelle instance est crée, elle
-;      récupère les paramètres de lancement, les communique à l'instance
-;      précédante, puis met fin à son fonctionnement.
-;      Il faut donc être en mesure de détecter si une instance de l'application
-;      est déjà en cours de fonctionnemment, puis être en mesure de communiquer
-;      avec elle. Tout cela se fait à travers la gestion d'un 'Pipe', un procédé
-;      faisant partie de l'API Windows et dont le but est de permettre un dialogue
-;      entre plusieurs threads d'une application ou entre plusieurs applications
-;      différentes.
+;      When PBBrowser.exe is launched from the editor multiple times,
+;      we do not want it to open several instances of the application.
+;      We want a single instance to retrieve the parameters provided by
+;      the editor and react to those parameters.
+;      To achieve this, when a new instance is created, it retrieves the launch parameters,
+;      communicates them to the previous instance, and then terminates its operation.
+;      Therefore, we need to be able to detect if an instance of the application
+;      is already running, and then communicate with it. This is done through the management
+;      of a 'Pipe', a process part of the Windows API that allows dialogue
+;      between multiple threads of an application or between different applications.
 ;
 ;
-If CheckForOtherInstance(PureBasicProgAdr$ + Chr(13) + PBUnderCursor$ + Chr(13) + FicActualPB$ + Chr(13) + TempFile$ + Chr(13))
-  ; Si une autre instance de cette application est déjà ouverte,
-  ; on lui transmet les arguments que l'on vient de recevoir
-  ; et on met fin au programme.
+If CheckForOtherInstance(PureBasicProgAddr$ + Chr(13) + PBUnderCursor$ + Chr(13) + FicActualPB$ + Chr(13) + PBBTempFile$ + Chr(13))
+  ; If another instance of this application is already open,
+  ; we pass the arguments we just received to it
+  ; and terminate the program.
   If #PB_Compiler_Debugger
-    ; Si nous sommes en mode 'Compilé', on signale à l'utilisateur
-    ; l'éventuelle existence d'une instance précédente en mode
-    ; 'StandAlone' (.exe).
+    ; If we are in 'Compiled' mode, alert the user
+    ; about the possible existence of a previous instance in 'StandAlone' (.exe) mode.
     PlaySound_("SystemExclamation", 0, #SND_ALIAS | #SND_ASYNC)
-    Debug "PBBrowser is allready launched as 'StandAlone'."
+    Debug "PBBrowser is already launched as 'StandAlone'."
   EndIf
-  End ; Une autre instance a été détectée. On met fin au programme.
+  End ; Another instance was detected. We terminate the program.
   ;
-Else ; Nous sommes dans la première instance.
-  ; On bloque tout de suite les autres instances en initialisant le Pipe.
+Else ; We are in the first instance.
+  ; Block all other instances by initializing the Pipe.
   ListenForPipeMessages()
 EndIf
 ;
 ;
 ; *******************************************************************************
-;                         Mise à jour des préférences
+;                         Update preferences
 ;
-If PureBasicProgAdr$ = "" ; Apparemment, aucun argument n'a été reçu.
-  ; On cherche l'adresse de l'application PureBasic dans les préférences.
+If PureBasicProgAddr$ = "" ; Apparently, no argument was received.
+  ; We search for the address of the PureBasic application in the preferences.
   If OpenPreferencesWithPatience(PBBrowserPrefile$)
-    FicPrincipalPB$ = ReadPreferenceString("FicPrincipalPB", "")
-    PureBasicProgAdr$ = ReadPreferenceString("PureBasicProgAdr", "")
+    PBBFicPrincipalPB$ = ReadPreferenceString("FicPrincipalPB", "")
+    PureBasicProgAddr$ = ReadPreferenceString("PureBasicProgAdr", "")
     ClosePreferences()
   EndIf
 EndIf
 ;
-; Et on enregistre l'adresse du fichier à examiner
+; And we save the address of the file to be examined
 If OpenPreferencesWithPatience(PBBrowserPrefile$)
-  WritePreferenceString("FicPrincipalPB", FicPrincipalPB$)
+  WritePreferenceString("FicPrincipalPB", PBBFicPrincipalPB$)
   ClosePreferences()
 EndIf
 ;
 ;
 ; *******************************************************************************
 ;
-;          Vérification de l'adresse de l'application PureBasic.exe
-;
+;          Verification of the address of the PureBasic.exe application
 ;
 Procedure.s FindInDirectory(directory.s, FindWhat$, Filters$ = "", Excluded$ = "")
+  ; 
+  ; Searches for a specific file in a given directory
+  ; as well as in its subdirectories.
   ;
-  ; Recherche un fichier précis dans un répertoire donné
-  ; ainsi que dans ses sous-répertoires.
+  ; This procedure is recursive (it calls itself).
   ;
-  ; Cette procédure est récursive (elle s'appelle elle-même).
+  ; Excluded$ can contain a list of names to exclude from the search, in order
+  ; to avoid an overly long exploration.
   ;
-  ; Excluded$ peut contenir une liste de noms à exclure de la recherche, afin
-  ; d'éviter une exploration trop longue.
-  ;
-  ; Filters$ peut contenir une liste de noms, auquel cas seuls les dossiers
-  ; dont l'adresse comporte un de ces noms seront retenus.
+  ; Filters$ can contain a list of names, in which case only the folders
+  ; whose address contains one of these names will be considered.
   ;
   Protected PBFileListing$
   Protected directoryid, cont, DirType, file.s
@@ -596,30 +683,30 @@ EndProcedure
 Procedure.s ChoosePBVersion(noms$)
   ;
   Protected.i SWindow, BList, nbNoms, button, event, i
-  Protected.s choice$ ; Valeur de retour
+  Protected.s choice$ ; Return Value
   ;
-  SWindow = OpenWindow(#PB_Any, 0, 0, 500, 280, GetTextFromCatalog("UpdatePBExeTitle"), #PB_Window_SystemMenu | #PB_Window_ScreenCentered)
+  SWindow = OpenWindow(#PB_Any, 0, 0, 500, 280, GetTextFromCatalogPB("UpdatePBExeTitle"), #PB_Window_SystemMenu | #PB_Window_ScreenCentered)
   If SWindow
     StickyWindow(SWindow, 1)
-    TextGadget(#PB_Any, 10, 10, WindowWidth(SWindow) - 20, 80, GetTextFromCatalog("ManyVersionsOfPB"), #PB_Text_Center)
+    TextGadget(#PB_Any, 10, 10, WindowWidth(SWindow) - 20, 80, GetTextFromCatalogPB("ManyVersionsOfPB"), #PB_Text_Center)
     BList = ListViewGadget(#PB_Any, 10, 90, WindowWidth(SWindow) - 20, WindowHeight(SWindow) - 140)
-    button = ButtonGadget(#PB_Any, WindowWidth(SWindow) / 2 - 50, WindowHeight(SWindow) - 35, 100, 25, GetTextFromCatalog("Choose"))
-
-    ; Séparer les noms et ajouter à la BListe
+    button = ButtonGadget(#PB_Any, WindowWidth(SWindow) / 2 - 50, WindowHeight(SWindow) - 35, 100, 25, GetTextFromCatalogPB("Choose"))
+    ;
+    ; Separate the names and add to the BList
     nbNoms = CountString(noms$, Chr(13)) + 1
     For i = 1 To nbNoms
       AddGadgetItem(BList, -1, StringField(noms$, i, Chr(13)))
     Next
-
-    ; Sélectionner la dernière ligne par défaut
+    
+    ; Select the last line by default
     SetGadgetState(BList, nbNoms - 1)
-
-    ; Activer le bouton "Choisir" par défaut
+    
+    ; Activate the "Choose" button by default
     AddKeyboardShortcut(SWindow, #PB_Shortcut_Return, 1)
     ;
-    ; On donne le focus à la liste
+    ; Give focus to the list
     SetActiveGadget(BList)
-
+    ;
     Repeat
       event = WaitWindowEvent()
       If EventWindow() <> SWindow
@@ -640,29 +727,28 @@ EndProcedure
 ;
 Procedure UpDatePureBasicExeAdr(Choose = 0)
   ;
-  ; Recherche l'adresse du programme PureBasic.exe dans les dossiers "Program" de l'ordinateur
-  ; PureBasicProgAdr$ doit avoir été précédemment déclarée comme une variable globale.
+  ; Searches for the address of the PureBasic.exe program in the "Program" folders of the computer
+  ; PureBasicProgAddr$ must have been previously declared as a global variable.
   ;
   Protected ProgFolder$, Excluded$, Filters$, PBFileListing$, ListSize, i, p
   ;
   ProgFolder$ = GetSystemFolder(#CSIDL_PROGRAM_FILES)
-  ; Pour gagner du temps dans l'examen des répertoires des programmes, on exclut certains noms de dossier
+  ; To save time in checking the program directories, we exclude certain folder names
   Excluded$ = "Adobe,OpenOffice,Explorer,Windows,Microsoft,Intel,Google,Chrome,DropBox,System,Languages,Catalogs,\SDK,\res\,Example,resources,Common"
-  ; Seuls les dossiers comportant les mentions ci-dessous seront examinés
+  ; Only directories containing the following terms will be checked
   Filters$ = "PB,Pure,Basic,Fantaisie,Dev,Soft,pers,home,vers"
   PBFileListing$ = FindInDirectory(ProgFolder$ + "\" , "PureBasic.exe", Filters$, Excluded$)
-  If FindString(ProgFolder$, "(") ; #CSIDL_PROGRAM_FILES peut retourner "Program (x86)" alors que le ou les applications
-                                 ; PureBasic se trouvent dans "Program".
-                                 ; On cherche donc dans les deux dossiers.
+  If FindString(ProgFolder$, "(") ; #CSIDL_PROGRAM_FILES may return "Program (x86)" while the PureBasic applications
+                                 ; are in "Program". So we check both folders.
     ProgFolder$ = Trim(Left(ProgFolder$, FindString(ProgFolder$, "(") - 1))
-  Else                           ; Inversement.
+  Else                           ; Otherwise, we check the "Program (x86)" folder.
     ProgFolder$ + " (x86)"
   EndIf
   PBFileListing$ + FindInDirectory(ProgFolder$ + "\" , "PureBasic.exe", Filters$, Excluded$)
-
+  ;
   If CountString(PBFileListing$, Chr(13)) > 1
-    ; On a trouvé plusieurs version de PureBasic dans les dossiers 'Program'.
-    ; On va les trier par dates.
+    ; We found multiple versions of PureBasic in the 'Program' folders.
+    ; We will sort them by date.
     Structure PBFilesAndDates
       ExeFName$
       ExeDate.q
@@ -674,9 +760,9 @@ Procedure UpDatePureBasicExeAdr(Choose = 0)
     For i = 1 To ListSize
       AddElement(PBFiles())
       PBFiles()\ExeFName$ = StringField(PBFileListing$, i, Chr(13))
-      ; On soustrait le longeur de l'adresse du fichier à sa date de modification
-      ; Ainsi, les adresses le plus courtes seront considérées comme plus récentes
-      ; et seront placées en dernier dans la liste.
+      ; We subtract the length of the file path from its modification date
+      ; This way, shorter file paths are considered more recent
+      ; and will be placed last in the list.
       PBFiles()\ExeDate = GetFileDate(PBFiles()\ExeFName$, #PB_Date_Modified) - Len(PBFiles()\ExeFName$)
     Next
     ;
@@ -685,23 +771,23 @@ Procedure UpDatePureBasicExeAdr(Choose = 0)
     ForEach(PBFiles())
       PBFileListing$ + PBFiles()\ExeFName$ + Chr(13)
     Next
-    ; On enlève le dernier retour-chariot
+    ; Remove the last carriage return
     PBFileListing$ = Left(PBFileListing$, Len(PBFileListing$) - 1)
     ;
     If Choose
-      ; On demande à l'utilisateur de choisir la version de PureBasic.exe à utiliser.
-      PureBasicProgAdr$ = ChoosePBVersion(PBFileListing$)
+      ; Ask the user to choose the version of PureBasic.exe to use.
+      PureBasicProgAddr$ = ChoosePBVersion(PBFileListing$)
     Else
-      ; On prend la version la plus récente.
+      ; Take the most recent version.
       p = ReverseFindString(PBFileListing$, Chr(13))
-      PureBasicProgAdr$ = Mid(PBFileListing$, p + 1)
+      PureBasicProgAddr$ = Mid(PBFileListing$, p + 1)
     EndIf
   Else
-    PureBasicProgAdr$ = PBFileListing$
+    PureBasicProgAddr$ = PBFileListing$
   EndIf
   ;
-  If PureBasicProgAdr$ And OpenPreferencesWithPatience(PBBrowserPrefile$)
-    WritePreferenceString("PureBasicProgAdr", PureBasicProgAdr$)
+  If PureBasicProgAddr$ And OpenPreferencesWithPatience(PBBrowserPrefile$)
+    WritePreferenceString("PureBasicProgAdr", PureBasicProgAddr$)
     ClosePreferences()
   EndIf
 EndProcedure
@@ -710,28 +796,28 @@ Procedure ChoosePureBasicExeAdr()
   UpDatePureBasicExeAdr(1)
 EndProcedure
 ;
-If FileSize(PureBasicProgAdr$) < 2
+If FileSize(PureBasicProgAddr$) < 2
   UpDatePureBasicExeAdr()
 EndIf
 ;
-If FileSize(PureBasicProgAdr$) < 2
-  ; Si PBBrowser a été lancé depuis le fichier source (avec 'Compiler/Exécuter'),
-  ; on peut récupérer l'adresse de 'PureBasic.exe' avec #PB_Compiler_Home.
-  PureBasicProgAdr$ = #PB_Compiler_Home + "PureBasic.exe"
+If FileSize(PureBasicProgAddr$) < 2
+  ; If PBBrowser was launched from the source file (using 'Compiler/Run'),
+  ; we can get the address of 'PureBasic.exe' using #PB_Compiler_Home.
+  PureBasicProgAddr$ = #PB_Compiler_Home + "PureBasic.exe"
 EndIf
 ;
-If FileSize(PureBasicProgAdr$) < 2
-  ; Si aucune de nos tentatives pour récupérer l'adresse de 'PureBasic.exe' n'a
-  ; fonctionné, on demande à l'utilisateur de nous désigner l'adresse de l'application.
-  Alert(GetTextFromCatalog("UnableToFindPB"), 1)
-  PureBasicProgAdr$ = OpenFileRequester(GetTextFromCatalog("ShowPBPath"), GetSystemFolder(#CSIDL_PROGRAM_FILES) + "\PureBasic.exe", "PureBasic.exe", 0)
+If FileSize(PureBasicProgAddr$) < 2
+  ; If none of our attempts to get the address of 'PureBasic.exe' has
+  ; worked, we ask the user to manually select the application address.
+  Alert(GetTextFromCatalogPB("UnableToFindPB"), 1)
+  PureBasicProgAddr$ = OpenFileRequester(GetTextFromCatalogPB("ShowPBPath"), GetSystemFolder(#CSIDL_PROGRAM_FILES) + "\PureBasic.exe", "PureBasic.exe", 0)
 EndIf
 ;
-If FileSize(PureBasicProgAdr$) > 2 And OpenPreferencesWithPatience(PBBrowserPrefile$)
-  ; Si 'PureBasicProgAdr' n'existe pas encore dans les préférences, on l'enregistre.
-  PrefPureBasicProgAdr$ = ReadPreferenceString("PureBasicProgAdr", "")
-  If PrefPureBasicProgAdr$ = ""
-    WritePreferenceString("PureBasicProgAdr", ReplaceString(PureBasicProgAdr$, Chr(34), ""))
+If FileSize(PureBasicProgAddr$) > 2 And OpenPreferencesWithPatience(PBBrowserPrefile$)
+  ; If 'PureBasicProgAdr' doesn't already exist in the preferences, we save it.
+  PrefPureBasicProgAddr$ = ReadPreferenceString("PureBasicProgAdr", "")
+  If PrefPureBasicProgAddr$ = ""
+    WritePreferenceString("PureBasicProgAdr", ReplaceString(PureBasicProgAddr$, Chr(34), ""))  ; Removes quotes from the path before saving.
   EndIf
   ClosePreferences()
 EndIf
@@ -739,9 +825,9 @@ EndIf
 ;
 ; *******************************************************************************
 ;
-;             Récupération des mots clés du langage Basic de PureBasic
+;             Retrieving PureBasic language keywords
 ;
-; Mots clé principaux (If, Endif, While, Wend, etc.
+; Main keywords (If, Endif, While, Wend, etc.)
 Global Dim PBBasicKeyword$(150), Dim PBBasicKeywordLCase$(150)
 Restore PBBasicKeyWords
 ne = 0
@@ -754,25 +840,25 @@ Repeat
   EndIf
 Until PBBasicKeyword$ = "EndPBBasicKeyWords"
 ;
-; Liste des fonctions natives (FindString, Int, Mid, etc.)
+; List of native functions (FindString, Int, Mid, etc.)
 ;
 Procedure UpDateNativeFunctionList(Confirm = 1)
   ;
-  ; Met à jour la liste des fonctions du langage PureBasic à partir
-  ; de l'index de "PureBasic.chm"
+  ; Updates the list of functions in the PureBasic language from
+  ; the index of "PureBasic.chm"
   ;
-  ; MyAppDataFolder$ doit avoir été déclarée comme une variable globale
-  ; et doit contenir le chemin (path) vers le dossier des données de la présente application (dans #CSIDL_COMMON_APPDATA)
+  ; MyAppDataFolder$ must have been declared as a global variable
+  ; and must contain the path to the data folder of the current application (in #CSIDL_COMMON_APPDATA)
   ;
-  ; PureBasicProgAdr$ doit avoir été déclarée comme variable globale et contiendra l'adresse du programme PureBasic.exe
+  ; PureBasicProgAddr$ must have been declared as a global variable and will contain the address of the PureBasic.exe program
   ;
-  ; PBFunctionList$ et PBFunctionListLCase$ sont des variables globales destinées à contenir la liste des fonctions
-  ; natives de PureBasic.
+  ; PBFunctionList$ and PBFunctionListLCase$ are global variables intended to hold the list of
+  ; native functions in PureBasic.
   ;
   Protected FtKWSrce$, Line$, posf, posd, Entry$, FirstLetter$
-  Protected PBFunctionListAdr$, Function$, noFile
+  Protected PBFunctionListAddr$, Function$, noFile
   ;
-  FtKWSrce$ = GetPathPart(PureBasicProgAdr$) + "PureBasic.chm" ; On va lire "PureBasic.chm" pour en extraire les noms des fonctions
+  FtKWSrce$ = GetPathPart(PureBasicProgAddr$) + "PureBasic.chm" ; "PureBasic.chm" will read to extract function names
 
   ;
   If FileSize(FtKWSrce$) > 2
@@ -792,9 +878,9 @@ Procedure UpDateNativeFunctionList(Confirm = 1)
               FirstLetter$ = Left(Entry$, 1)
               If FindString(Entry$, ".") = 0 And FindString(Entry$, "_") = 0 And LCase(FirstLetter$) <> FirstLetter$
                 Posd - 1
-                While Posd > 1 And Mid(Line$, Posd - 1, 1) <> "/" : Posd - 1 : Wend ; On cherche le dossier dans lequel se trouve la page
+                While Posd > 1 And Mid(Line$, Posd - 1, 1) <> "/" : Posd - 1 : Wend ; Looking for the folder in which the page is located
                 Function$ = FastMid(Line$, Posd, Posf - Posd) + Chr(13)
-                ; Si la fonction n'existe pas déjà dans PBFunctionList$, on l'ajoute :
+                ; If the function doesn't already exist in PBFunctionList$, add it:
                 If FindString(PBFunctionList$, Function$ + Chr(13)) = 0
                   PBFunctionList$ + Function$ + Chr(13)
                 EndIf
@@ -806,58 +892,57 @@ Procedure UpDateNativeFunctionList(Confirm = 1)
       CloseFile(0)
       ;
       If OpenPreferencesWithPatience(PBBrowserPrefile$)
-        PBFunctionListAdr$ = ReadPreferenceString("PBFunctionListAdr", MyAppDataFolder$ + "PBFunctionList.Data")
+        PBFunctionListAddr$ = ReadPreferenceString("PBFunctionListAdr", MyAppDataFolder$ + "PBFunctionList.Data")
         ClosePreferences()
-        TexteDansFichier(PBFunctionListAdr$, PBFunctionList$)
+        TexteDansFichier(PBFunctionListAddr$, PBFunctionList$)
       EndIf
       PBFunctionListLCase$ = LCase(PBFunctionList$)
       ;
       If Confirm <> 0
-        Alert(GetTextFromCatalog("FunctionsUpdateDone"))
+        Alert(GetTextFromCatalogPB("FunctionsUpdateDone"))
       EndIf
     EndIf
   EndIf
 EndProcedure
 ;
 If OpenPreferencesWithPatience(PBBrowserPrefile$)
-  ; Si la valeur "PBFunctionListAdr" n'existe pas déjà dans le fichier des préférences,
-  ; on attribue par défaut la valeur MyAppDataFolder$ + "PBFunctionList.Data" à la
-  ; variable globale 'PBFunctionListAdr$'.
-  PBFunctionListAdr$ = ReadPreferenceString("PBFunctionListAdr", MyAppDataFolder$ + "PBFunctionList.Data")
-  ; Et on l'enregistre dans le fichier des préférences.
-  WritePreferenceString("PBFunctionListAdr", PBFunctionListAdr$)
+  ; If the value "PBFunctionListAdr" does not already exist in the preferences file,
+  ; assign the default value MyAppDataFolder$ + "PBFunctionList.Data" to the
+  ; global variable 'PBFunctionListAddr$'.
+  PBFunctionListAddr$ = ReadPreferenceString("PBFunctionListAdr", MyAppDataFolder$ + "PBFunctionList.Data")
+  ; And save it in the preferences file.
+  WritePreferenceString("PBFunctionListAdr", PBFunctionListAddr$)
   ClosePreferences()
 Else
-  ; Si on n'a pas réussi à ouvrir le fichier des préférences, on renseigne quand même
-  ; la variable PBFunctionListAdr$.
-  PBFunctionListAdr$ = MyAppDataFolder$ + "PBFunctionList.Data"
+  ; If failed to open the preferences file, still set the
+  ; PBFunctionListAddr$ variable.
+  PBFunctionListAddr$ = MyAppDataFolder$ + "PBFunctionList.Data"
 EndIf
 ;
-If FileSize(PBFunctionListAdr$) > 2
-  PBFunctionList$ = FileToText(PBFunctionListAdr$)
+If FileSize(PBFunctionListAddr$) > 2
+  PBFunctionList$ = FileToText(PBFunctionListAddr$)
   PBFunctionListLCase$ = LCase(PBFunctionList$)
 EndIf
 ;
 Procedure UpDateAPIFunctionList()
   ;
-  ; Met à jour la liste des fonctions de l'API Windows à partir
-  ; du fichier "APIFunctionListing.txt" qui est normalement situé
-  ; dans le dossier du compilateur de PureBasic.
+  ; Updates the list of Windows API functions from
+  ; the "APIFunctionListing.txt" file, which is normally located
+  ; in the PureBasic compiler folder.
   ;
-  ; PureBasicProgAdr$ doit avoir été déclarée comme variable globale et contiendra l'adresse de "PureBasic.exe"
+  ; PureBasicProgAddr$ must have been declared as a global variable and will contain the address of "PureBasic.exe"
   ;
   ;
-  Protected FtKWSrce$ = GetPathPart(PureBasicProgAdr$) + "Compilers\APIFunctionListing.txt"
+  Protected FtKWSrce$ = GetPathPart(PureBasicProgAddr$) + "Compilers\APIFunctionListing.txt"
   ;
   If FileSize(FtKWSrce$) > 2 And GetFileDate(FtKWSrce$, #PB_Date_Modified) > GetFileDate(MyAppDataFolder$ + "APIFunctionListing.txt", #PB_Date_Modified)
-    ; Au début de 'PBBrowserInitialize.pb, nous avons déjà créé un fichier 'APIFunctionListing.txt'
-    ; dans le dossier des données de PBBrowser. Cette version du fichier provient des données
-    ; enregistrées dans le dossier 'PBBrowser resources', qui accompagne le fichier-source de
-    ; 'PBBrowser'. Dans le cas où l'application fonctionne en mode 'StandAlone' (.exe), elle
-    ; comporte dans son propre code une copie de 'APIFunctionListing.txt' qui lui servira de source.
-    ; Cependant, si la version de 'APIFunctionListing.txt' contenue dans le dossier de PureBasic.exe est plus
-    ; récente que celle que nous avions intégrée dans PBBrowser.exe, on la recopie dans le dossier
-    ; des données.
+    ; At the beginning of 'PBBrowserInitialize.pb, we have already created an 'APIFunctionListing.txt' file
+    ; in the PBBrowser data folder. This version of the file comes from data
+    ; saved in the 'PBBrowser resources' folder, which accompanies the source file of
+    ; 'PBBrowser'. In the case where the application is running in 'StandAlone' (.exe) mode, it
+    ; includes a copy of 'APIFunctionListing.txt' within its own code to serve as its source.
+    ; However, if the version of 'APIFunctionListing.txt' contained in the PureBasic.exe folder is more
+    ; recent than the one we had integrated into PBBrowser.exe, it is copied into the data folder.
     CopyFile(FtKWSrce$, MyAppDataFolder$ + "APIFunctionListing.txt")
   EndIf
 EndProcedure
@@ -866,10 +951,10 @@ UpDateAPIFunctionList()
 ;
 ; *******************************************************************************
 ;
-;    Récupération de certaines valeurs (les couleurs à utiliser dans le code)
-;               dans le fichier des préférences de PureBasic,
-;         ou dans une liste de secours, si le programme PureBasic.exe
-;                        n'a pas pu être localisé.
+;    Retrieval of certain values (the colors to use in the code)
+;               from PureBasic's preferences file,
+;         or from a backup list, if the PureBasic.exe program
+;                        could not be located.
 ;
 Procedure GetValueFromBPPrefFile(ValueName$)
   ;
@@ -878,13 +963,13 @@ Procedure GetValueFromBPPrefFile(ValueName$)
   ;
   Static PBPrefile$
   ;
-  Protected PosInText, pf, PBPrefAdr$
+  Protected PosInText, pf, PBPrefAddr$
   ;
   If PBPrefile$ = ""
     ; On lit le fichier des préférences de PureBasic pour y récupérer des données
-    PBPrefAdr$ = GetPureBasicPrefAdresse()
-    If FileSize(PBPrefAdr$) > 2
-      PBPrefile$ = FileToText(PBPRefAdr$, #PB_UTF8, 1)
+    PBPrefAddr$ = GetPureBasicPrefAdresse()
+    If FileSize(PBPrefAddr$) > 2
+      PBPrefile$ = FileToText(PBPRefAddr$, #PB_UTF8, 1)
     EndIf
     If PBPrefile$ = ""
       ; Impossible de lire le fichier préférence de PureBasic !!
@@ -902,10 +987,22 @@ Procedure GetValueFromBPPrefFile(ValueName$)
   EndIf
 EndProcedure
 ;
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 476
-; FirstLine = 241
-; Folding = AAA-
+ListOfAllElementsColor(#PBBProcedure)       = GetValueFromBPPrefFile("PureKeywordColor")
+ListOfAllElementsColor(#PBBStructure)       = GetValueFromBPPrefFile("StructureColor")
+ListOfAllElementsColor(#PBBMacro)           = GetValueFromBPPrefFile("PureKeywordColor")
+ListOfAllElementsColor(#PBBEnumeration)     = GetValueFromBPPrefFile("PureKeywordColor")
+ListOfAllElementsColor(#PBBInterface)       = GetValueFromBPPrefFile("PureKeywordColor")
+ListOfAllElementsColor(#PBBLabel)           = GetValueFromBPPrefFile("LabelColor")
+ListOfAllElementsColor(#PBBConstante)       = GetValueFromBPPrefFile("ConstantColor")
+ListOfAllElementsColor(#PBBVariable)        = GetValueFromBPPrefFile("NormalTextColor")
+
+ListOfAllElementsColor(#PBBNativeFunction)  = GetValueFromBPPrefFile("PureKeywordColor")
+ListOfAllElementsColor(#PBBBasicKeyword)    = GetValueFromBPPrefFile("BasicKeywordColor")
+;
+; IDE Options = PureBasic 6.10 LTS (Windows - x86)
+; CursorPosition = 480
+; FirstLine = 375
+; Folding = uWY-
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb

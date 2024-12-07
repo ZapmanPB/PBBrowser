@@ -1,14 +1,21 @@
 ﻿;***********************************************************
 ;
 ;                      TOM Library
-;             v1.1 - By Zapman - Sept 2024
+;             v1.3 - By Zapman - Nov. 2024
 ;
 ;        For text formatting or Image inserting
 ;                   in EditorGadgets.
 ;
+;          Needs IDataObject.pb as included file.
+;
 ;            Pour la mise en forme de textes
 ;                et l'insertion d'images
 ;                 dans un EditorGadget.
+;
+;                 The work from XCoder
+; (https://www.purebasic.fr/english/viewtopic.php?t=76203)
+;      has been partially used for some functions.
+;  Your may read this tutorial if you're discovering TOM.
 ;
 ;***********************************************************
 ;
@@ -71,8 +78,8 @@
 ;
 ;
 ; Le fichier include "IDataObject.pb" est nécessaire
-; pour les procédures TOM_InsertImage() et  TOM_InsertText()
-XIncludeFile("IDataObject.pb")
+; pour les procédures TOM_InsertImage(), TOM_InsertText() et TOM_Copy()
+XIncludeFile "IDataObject.pb"
 ;
 ;
 #TomTrue      = -1
@@ -125,78 +132,163 @@ Enumeration Tom_SpaceLineRules
   #TomLineSpacePercent
 EndEnumeration
 ;
-Enumeration Tom_Animations
-  #TomNoAnimation
-  #TomLasVegasLights
-  #TomBlinkingBackground
-  #TomSparkleText
-  #TomMarchingBlackAnts
-  #TomMarchingRedAnts
-  #TomShimmer
-  #TomWipeDown
-  #TomWipeRight
+Enumeration Tom_Case
+  #TomLowerCase
+  #TomUpperCase
+  #TomTitleCase
+  #TomReserved
+  #TomSentenceCase
+  #TomToggleCase
 EndEnumeration
 ;
+Enumeration Tom_ExtendRange
+  #TomCharacter = 1 ;Character
+  #TomWord
+  #TomSentence
+  #TomParagraph
+  #TomLine
+  #TomStory
+EndEnumeration
+;
+#TomSuspend = $FF676985
+#TomResume  = $FF676986
+;
+Enumeration bullets
+  #TomListNone
+  #TomListBullet
+  #TomListNumberAsArabic              ; Normal numbering (0, 1, 2,...)followed by a round bracket 
+  #TomListNumberAsLCLetter            ; Lower case 'numbering' followed by a round bracket 
+  #TomListNumberAsUCLetter            ; Upper case 'numbering' followed by a round bracket
+  #TomListNumberAsLCRoman             ; Lower case Roman numbering followed by a round bracket
+  #TomListNumberAsUCRoman             ; Upper case Roman numbering followed by a round bracket
+  #TomListNumberAsSequence
+  #TomListNumberedCircle              ; Number placed in plain circle
+  #TomListNumberedBlackCircleWingding	; Number placed in black circle
+  #TomListNumberedWhiteCircleWingding	; Seems to be the same as #TomListNumberedCircle
+  #TomListNumberedArabicWide			    ; Normal numbering with larger line spacing
+EndEnumeration
+;
+#TomListParentheses = $10000 ; Puts round brackets around the number
+#TomListPeriod = $20000      ; Puts a full stop after the number
+#TomListPlain = $30000       ; Uses plain numbering without brackets of full stops
+#TomListMinus = $80000       ; Puts a hyphen after the number
+;
 ; The resident Interface of ITextFont has bad parameters with
-; version 6.11 (and olders) of PureBasic.
+; version 6.12 (and olders) of PureBasic.
 ; So, a fixed interface must be set. Thanks to Justin (PB Forum)
 ; for the fixed interface:
-Interface ITextFont_Fixed Extends IDispatch
-  GetDuplicate(prop.i)
-  SetDuplicate(Duplicate.i)
-  CanChange(prop.i)
-  IsEqual(pFont.i, prop.i)
-  Reset(Value.l)
-  GetStyle(prop.i)
-  SetStyle(Style.l)
-  GetAllCaps(prop.i)
-  SetAllCaps(AllCaps.l)
-  GetAnimation(prop.i)
-  SetAnimation(Animation.l)
-  GetBackColor(prop.i)
-  SetBackColor(BackColor.l)
-  GetBold(prop.i)
-  SetBold(Bold.l)
-  GetEmboss(prop.i)
-  SetEmboss(Emboss.l)
-  GetForeColor(prop.i)
-  SetForeColor(ForeColor.l)
-  GetHidden(prop.i)
-  SetHidden(Hidden.l)
-  GetEngrave(prop.i)
-  SetEngrave(Engrave.l)
-  GetItalic(prop.i)
-  SetItalic(Italic.l)
-  GetKerning(prop.i)
-  SetKerning(Kerning.f)
-  GetLanguageID(prop.i)
-  SetLanguageID(LanguageID.l)
-  GetName(prop.i)
-  SetName(Name.p - bstr)
-  GetOutline(prop.i)
-  SetOutline(Outline.l)
-  GetPosition(prop.i)
-  SetPosition(Position.f)
-  GetProtected(prop.i)
-  SetProtected(Protected.l)
-  GetShadow(prop.i)
-  SetShadow(Shadow.l)
-  GetSize(prop.i)
-  SetSize(Size.f)
-  GetSmallCaps(prop.i)
-  SetSmallCaps(SmallCaps.l)
-  GetSpacing(prop.i)
-  SetSpacing(Spacing.f)
-  GetStrikeThrough(prop.i)
-  SetStrikeThrough(StrikeThrough.l)
-  GetSubscript(prop.i)
-  SetSubscript(Subscript.l)
-  GetSuperscript(prop.i)
-  SetSuperscript(Superscript.l)
-  GetUnderline(prop.i)
-  SetUnderline(Underline.l)
-  GetWeight(prop.i)
-  SetWeight(Weight.l)
+;
+;- ITextFont2
+;
+DataSection
+	IID_ITextFont2: 
+	Data.l $C241F5E3
+	Data.w $7206, $11D8
+	Data.b $A2, $C7, $0, $A0, $D1, $D6, $C6, $B3
+EndDataSection
+;
+Interface ITextFont2 Extends IDispatch
+	GetDuplicate(prop.i)
+	SetDuplicate(Duplicate.i)
+	CanChange(prop.i)
+	IsEqual(pFont.i, prop.i)
+	Reset(Value.l)
+	GetStyle(prop.i)
+	SetStyle(Style.l)
+	GetAllCaps(prop.i)
+	SetAllCaps(AllCaps.l)
+	GetAnimation(prop.i)
+	SetAnimation(Animation.l)
+	GetBackColor(prop.i)
+	SetBackColor(BackColor.l)
+	GetBold(prop.i)
+	SetBold(Bold.l)
+	GetEmboss(prop.i)
+	SetEmboss(Emboss.l)
+	GetForeColor(prop.i)
+	SetForeColor(ForeColor.l)
+	GetHidden(prop.i)
+	SetHidden(Hidden.l)
+	GetEngrave(prop.i)
+	SetEngrave(Engrave.l)
+	GetItalic(prop.i)
+	SetItalic(Italic.l)
+	GetKerning(prop.i)
+	SetKerning(Kerning.f)
+	GetLanguageID(prop.i)
+	SetLanguageID(LanguageID.l)
+	GetName(prop.i)
+	SetName(Name.p - bstr)
+	GetOutline(prop.i)
+	SetOutline(Outline.l)
+	GetPosition(prop.i)
+	SetPosition(Position.f)
+	GetProtected(prop.i)
+	SetProtected(Protected.l)
+	GetShadow(prop.i)
+	SetShadow(Shadow.l)
+	GetSize(prop.i)
+	SetSize(Size.f)
+	GetSmallCaps(prop.i)
+	SetSmallCaps(SmallCaps.l)
+	GetSpacing(prop.i)
+	SetSpacing(Spacing.f)
+	GetStrikeThrough(prop.i)
+	SetStrikeThrough(StrikeThrough.l)
+	GetSubscript(prop.i)
+	SetSubscript(Subscript.l)
+	GetSuperscript(prop.i)
+	SetSuperscript(Superscript.l)
+	GetUnderline(prop.i)
+	SetUnderline(Underline.l)
+	GetWeight(prop.i)
+	SetWeight(Weight.l)
+	GetCount(prop.i)
+	GetAutoLigatures(prop.i)
+	SetAutoLigatures(AutoLigatures.l)
+	GetAutospaceAlpha(prop.i)
+	SetAutospaceAlpha(AutospaceAlpha.l)
+	GetAutospaceNumeric(prop.i)
+	SetAutospaceNumeric(AutospaceNumeric.l)
+	GetAutospaceParens(prop.i)
+	SetAutospaceParens(AutospaceParens.l)
+	GetCharRep(prop.i)
+	SetCharRep(CharRep.l)
+	GetCompressionMode(prop.i)
+	SetCompressionMode(CompressionMode.l)
+	GetCookie(prop.i)
+	SetCookie(Cookie.l)
+	GetDoubleStrike(prop.i)
+	SetDoubleStrike(DoubleStrike.l)
+	GetDuplicate2(prop.i)
+	SetDuplicate2(Duplicate2.i)
+	GetLinkType(prop.i)
+	GetMathZone(prop.i)
+	SetMathZone(MathZone.l)
+	GetModWidthPairs(prop.i)
+	SetModWidthPairs(ModWidthPairs.l)
+	GetModWidthSpace(prop.i)
+	SetModWidthSpace(ModWidthSpace.l)
+	GetOldNumbers(prop.i)
+	SetOldNumbers(OldNumbers.l)
+	GetOverlapping(prop.i)
+	SetOverlapping(Overlapping.l)
+	GetPositionSubSuper(prop.i)
+	SetPositionSubSuper(PositionSubSuper.l)
+	GetScaling(prop.i)
+	SetScaling(Scaling.l)
+	GetSpaceExtension(prop.i)
+	SetSpaceExtension(SpaceExtension.f)
+	GetUnderlinePositionMode(prop.i)
+	SetUnderlinePositionMode(UnderlinePositionMode.l)
+	GetEffects(pValue.i, pMask.i)
+	GetEffects2(pValue.i, pMask.i)
+	GetProperty(Type.l, prop.i)
+	GetPropertyInfo(Index.l, pType.i, pValue.i)
+	IsEqual2(pFont.i, prop.i)
+	SetEffects(Value.l, Mask.l)
+	SetEffects2(Value.l, Mask.l)
+	SetProperty(Type.l, Value.l)
 EndInterface 
 ;
 ; The resident Interface of ITextPara has bad parameters with
@@ -352,25 +444,312 @@ Interface ITextRange2 Extends IDispatch ; Thanks to Justin (PB Forum)
   SetActiveSubrange(cpAnchor.l, cpActive.l)
   SetDropCap(cLine.l, Position.l)
   SetProperty(Type.l, Value.l)
-  SetText2(Flags.l, bstr.p - bstr)
+  SetText2(Flags.l, *pStream)
   UnicodeToHex()
   SetInlineObject(Type.l, Align.l, Char.l, Char1.l, Char2.l, Count.l, TeXStyle.l, cCol.l)
   GetMathFunctionType(bstr.p - bstr, pValue.i)
   InsertImage(width.l, Height.l, ascent.l, Type.l, bstrAltText.p - bstr, *pStream)
 EndInterface
 ;
+Interface ITextDocument2_Fixed Extends IDispatch
+	GetName(prop.i)
+	GetSelection(prop.i)
+	GetStoryCount(prop.i)
+	GetStoryRanges(prop.i)
+	GetSaved(prop.i)
+	SetSaved(Saved.l)
+	GetDefaultTabStop(prop.i)
+	SetDefaultTabStop(DefaultTabStop.f)
+	New()
+	Open(pVar.i, Flags.l, CodePage.l)
+	Save(pVar.i, Flags.l, CodePage.l)
+	Freeze(prop.i)
+	Unfreeze(prop.i)
+	BeginEditCollection()
+	EndEditCollection()
+	Undo(Count.l, prop.i)
+	Redo(Count.l, prop.i)
+	Range(cpActive.l, cpAnchor.l, prop.i)
+	RangeFromPoint(x.l, y.l, prop.i)
+	GetCaretType(prop.i)
+	SetCaretType(CaretType.l)
+	GetDisplays(prop.i)
+	GetDocumentFont(prop.i)
+	SetDocumentFont(DocumentFont.i)
+	GetDocumentPara(prop.i)
+	SetDocumentPara(DocumentPara.i)
+	GetEastAsianFlags(prop.i)
+	GetGenerator(prop.i)
+	SetIMEInProgress(IMEInProgress.l)
+	GetNotificationMode(prop.i)
+	SetNotificationMode(NotificationMode.l)
+	GetSelection2(prop.i)
+	GetStoryRanges2(prop.i)
+	GetTypographyOptions(prop.i)
+	GetVersion(prop.i)
+	GetWindow(prop.i)
+	AttachMsgFilter(pFilter.i)
+	CheckTextLimit(Cch.l, pcch.i)
+	GetCallManager(prop.i)
+	GetClientRect(Type.l, pLeft.i, pTop.i, pRight.i, pBottom.i)
+	GetEffectColor(Index.l, pValue.i)
+	GetImmContext(prop.i)
+	GetPreferredFont(cp.l, CharRep.l, Options.l, curCharRep.l, curFontSize.l, pbstr.i, pPitchAndFamily.i, pNewFontSize.i)
+	GetProperty(Type.l, pValue.i)
+	GetStrings(ppStrs.i)
+	Notify(Notify.l)
+	Range2(cpActive.l, cpAnchor.l, prop.i)
+	RangeFromPoint2(x.l, y.l, Type.l, prop.i)
+	ReleaseCallManager(pVoid.i)
+	ReleaseImmContext(Context.q)
+	SetEffectColor(Index.l, Value.l)
+	SetProperty(Type.l, Value.l)
+	SetTypographyOptions(Options.l, Mask.l)
+	SysBeep()
+	Update(Value.l)
+	UpdateWindow()
+	GetMathProperties(pOptions.i)
+	SetMathProperties(Options.l, Mask.l)
+	GetActiveStory(prop.i)
+	SetActiveStory(ActiveStory.i)
+	GetMainStory(prop.i)
+	GetNewStory(prop.i)
+	GetStory(Index.l, prop.i)
+EndInterface
+;
+CompilerIf Not Defined(GetDIBHandleFromImage, #PB_Procedure)
+  ; Cette procédure est également définie dans IDataObject_Helper.pb
+  ;
+  Procedure GetDIBHandleFromImage(HBitmap)
+    ;
+    ; This procedure works with a PureBasic image ID
+    ; or with a handle to the image.
+    ; It encapsulates the Bitmap data into a DIB, which is
+    ; a format handled by many Windows functions, 
+    ; especially the GDI API functions.
+    ;
+    If IsImage(HBitmap)
+      HBitmap = ImageID(HBitmap)
+    EndIf
+    ;
+    Protected TemporaryDC.L, TemporaryBitmap.BITMAP, TemporaryBitmapInfo.BITMAPINFO
+    Protected hDib, *Buffer
+    Protected BitmapSize
+    
+    ; Create a temporary device context (DC):
+    TemporaryDC = CreateDC_("DISPLAY", #Null, #Null, #Null)
+    
+    ; Retrieve information about the bitmap (HBitmap):
+    GetObject_(HBitmap, SizeOf(BITMAP), @TemporaryBitmap)
+    
+    ; Initialize the BITMAPINFOHEADER information:
+    TemporaryBitmapInfo\bmiHeader\biSize        = SizeOf(BITMAPINFOHEADER)
+    TemporaryBitmapInfo\bmiHeader\biWidth       = TemporaryBitmap\bmWidth
+    TemporaryBitmapInfo\bmiHeader\biHeight      = TemporaryBitmap\bmHeight
+    TemporaryBitmapInfo\bmiHeader\biPlanes      = 1
+    TemporaryBitmapInfo\bmiHeader\biBitCount    = 32                         ; 32 bits / pixel
+    TemporaryBitmapInfo\bmiHeader\biCompression = #BI_RGB
+    
+    ; Calculate the required size for the DIB:
+    BitmapSize = TemporaryBitmap\bmWidth * TemporaryBitmap\bmHeight * (TemporaryBitmapInfo\bmiHeader\biBitCount / 8)
+    
+    ; Allocate memory for the DIB (Device Independent Bitmap)
+    hDib = GlobalAlloc_(#GMEM_MOVEABLE, BitmapSize + SizeOf(BITMAPINFOHEADER))
+    
+    If hDib
+      *Buffer = GlobalLock_(hDib)
+      If *Buffer
+        ; Copy the BITMAPINFOHEADER header into memory
+        CopyMemory(@TemporaryBitmapInfo\bmiHeader, *Buffer, SizeOf(BITMAPINFOHEADER))
+        
+        ; Copy the bitmap bits into memory after the header
+        GetDIBits_(TemporaryDC, HBITMAP, 0, TemporaryBitmap\bmHeight, *Buffer + SizeOf(BITMAPINFOHEADER), TemporaryBitmapInfo, #DIB_RGB_COLORS)
+        
+        GlobalUnlock_(hDib)
+      Else
+        ; Lock failed, free the memory
+        GlobalFree_(hDib)
+        hDib = 0
+      EndIf
+    EndIf
+    
+    ; Free and delete the device context (DC)
+    DeleteDC_(TemporaryDC)
+    ;
+    ProcedureReturn hDib
+    ;
+  EndProcedure
+CompilerEndIf
+;
+Procedure SetIDataObjectImage(*MyDataObject.IDataObject, Image)
+  ;
+  ; Feed an IDataObject with a DIB version of an image.
+  ;
+  Protected MyFormatEtc.FormatEtc, MyStgMed.StgMedium
+  Protected hBitmap, hDib, SC
+  ;
+  If *MyDataObject = 0 Or Image = 0
+    ProcedureReturn #False
+  EndIf
+  ; ________________________________________________
+  ;             Set Values for FORMATETC
+  ;
+  MyFormatEtc\tymed = #TYMED_HGLOBAL
+  MyFormatEtc\cfFormat = #CF_DIB            ; Set the format
+  MyFormatEtc\ptd = #Null                   ; Target Device = Screen
+  MyFormatEtc\dwAspect = #DVASPECT_CONTENT  ; Level of detail = Full content
+  MyFormatEtc\lindex = -1                   ; Index = Not applicable
+  ; ________________________________________________
+  ;             Set Values for STGMEDIUM
+  ;
+  MyStgMed\pUnkForRelease = #Null        ; Use ReleaseStgMedium_() APIFunction
+  MyStgMed\tymed = MyFormatEtc\tymed     ; MyStgMed and MyFormatEtc must have the same value
+                                         ;   in their respective 'tymed' fields.
+  ; ________________________________________________
+  ;             Handle Data
+  ;
+  If IsImage(Image)
+    Image = ImageID(Image)
+  EndIf
+  hBitmap = CopyImage_(Image, #IMAGE_BITMAP, 0, 0, #LR_COPYRETURNORG)
+  If hBitmap = 0
+    ProcedureReturn #False
+  EndIf
+  ;
+  hDib = GetDIBHandleFromImage(hBitmap)
+  MyStgMed\hGlobal = hDib
+  DeleteObject_(hBitmap)
+  If MyStgMed\hGlobal = 0
+    ProcedureReturn #False
+  EndIf
+  ; _________________________________________________________________
+  ;
+  ;             Finally, call SetData on the IDataObject
+  ;
+  SC = *MyDataObject\SetData(@MyFormatEtc, @MyStgMed, #True)
+  ; The IDataObject make a copy of the given data and clean the original ones, because
+  ; last parametre is set to '#True'
+  ;
+  If SC <> #S_OK
+    ProcedureReturn #False
+  EndIf
+  ;
+  ProcedureReturn #True
+EndProcedure
+;
+Procedure SetIDataObjectText(*MyDataObject.IDataObject, StringData$)
+  ;
+  ; Feed an IDataObject with Text or RTF content
+  ;
+  Protected MyFormatEtc.FormatEtc, MyStgMed.StgMedium, ASCIIEncoded
+  Protected formatName$, formatValue, StringSize, hGlobal, *DataBuffer
+  Protected SC
+  ;
+  If *MyDataObject = 0
+    ProcedureReturn #False
+  EndIf
+  ;
+  ; ________________________________________________
+  ;             Set Values for FORMATETC
+  ;
+  MyFormatEtc\tymed = #TYMED_HGLOBAL
+  If PeekB(@StringData$) = Asc("{") And PeekB(@StringData$ + 1) = Asc("\")
+    ASCIIEncoded = 1
+  EndIf
+  If Left(StringData$, 5) = "{\rtf" Or Left(StringData$, 6) = "{\urtf" Or ASCIIEncoded
+    formatName$ = "RTF in UTF8"
+    formatValue = RegisterClipboardFormat_(@formatName$)
+    If formatValue = 0
+      ProcedureReturn #False
+    EndIf
+    MyFormatEtc\cfFormat = formatValue      ; Set the format
+    StringSize = Len(StringData$) + 1
+  Else
+    MyFormatEtc\cfFormat = #CF_UNICODETEXT  ; Set the format
+    StringSize = (Len(StringData$) + 1) * 2 ; Each Unicode Char is 2 bytes long
+  EndIf
+  MyFormatEtc\ptd = #Null                   ; Target Device = Screen
+  MyFormatEtc\dwAspect = #DVASPECT_CONTENT  ; Level of detail = Full content
+  MyFormatEtc\lindex = -1                   ; Index = Not applicable
+  ; ________________________________________________
+  ;             Set Values for STGMEDIUM
+  ;
+  MyStgMed\pUnkForRelease = #Null        ; Use ReleaseStgMedium_() APIFunction
+  MyStgMed\tymed = MyFormatEtc\tymed     ; MyStgMed and MyFormatEtc must have the same value
+                                         ;   in their respective 'tymed' fields.
+  ; ________________________________________________
+  ;             Handle Data
+  ;
+  hGlobal = GlobalAlloc_(#GMEM_MOVEABLE, StringSize)
+  If hGlobal = 0
+    ProcedureReturn #False
+  Else
+    *DataBuffer = GlobalLock_(hGlobal)
+    If *DataBuffer
+      If MyFormatEtc\cfFormat = #CF_UNICODETEXT
+        PokeS(*DataBuffer, StringData$)
+      ElseIf ASCIIEncoded
+        CopyMemory(@StringData$, *DataBuffer, StringSize)
+      Else
+        PokeS(*DataBuffer, StringData$, -1, #PB_UTF8)
+      EndIf
+      GlobalUnlock_(hGlobal)
+      MyStgMed\hGlobal = hGlobal
+    Else
+      GlobalFree_(hGlobal)
+      ProcedureReturn #False
+    EndIf
+  EndIf
+  ; _________________________________________________________________
+  ;
+  ;             Finally, call SetData on the IDataObject
+  ;
+  SC = *MyDataObject\SetData(@MyFormatEtc, @MyStgMed, #True)
+  ; The IDataObject make a copy of the given data and clean the original ones, because
+  ; last parametre is set to '#True'
+  ;
+  If SC <> #S_OK
+    ProcedureReturn #False
+  EndIf
+  ;
+  ProcedureReturn #True
+EndProcedure
+;
 Procedure TOM_PrintErrorMessage(result)
   If result <> #S_OK
     Select Result
-      Case #E_INVALIDARG: Debug("E_INVALIDARG- Invalid argument")
-      Case #E_ACCESSDENIED:  Debug("E_ACCESSDENIED - write access denied")
-      Case #E_OUTOFMEMORY:   Debug("E_OUTOFMEMORY - out of memory")
-      Case #CO_E_RELEASED:   Debug("CO_E_RELEASED - The paragraph formatting object is attached to a range that has been deleted.")
-      Default: Debug "Some other error occurred"
+      Case #E_INVALIDARG: Debug("TOM Error : E_INVALIDARG- Invalid argument")
+      Case #E_ACCESSDENIED:  Debug("TOM Error : E_ACCESSDENIED - write access denied")
+      Case #E_OUTOFMEMORY:   Debug("TOM Error : E_OUTOFMEMORY - out of memory")
+      Case #CO_E_RELEASED:   Debug("TOM Error : CO_E_RELEASED - The paragraph formatting object is attached to a range that has been deleted.")
+      Default: Debug "TOM Error : Some other error occurred"
     EndSelect
   Else
     Debug "No error"
   EndIf
+EndProcedure
+;
+Procedure TOM_GetTextDocumentObj(GadgetID)
+  ;
+  ; After usage, the ITextDocument object obtained must be free
+  ; like this : *pTextDocument\Release()
+  ;
+  Protected RichEditOleObject.IRichEditOle
+  Protected    *pTextDocument.ITextDocument2_Fixed
+  Protected               SC = #S_OK
+  ;
+  If GadgetID 
+    If IsGadget(GadgetID) : GadgetID = GadgetID(GadgetID) : EndIf
+    ; Get the RichOLEInterface on our EditorGadget:
+    SendMessage_(GadgetID, #EM_GETOLEINTERFACE, 0, @RichEditOleObject)
+    ; Get the ITextDocument interface:
+    SC = RichEditOleObject\QueryInterface(?IID_ITextDocument2, @*pTextDocument)
+    RichEditOleObject\Release()
+    If SC <>  #S_OK
+      Debug "Unable to create ITextDocument: " + Str(SC)
+    EndIf
+  EndIf
+  ProcedureReturn *pTextDocument
 EndProcedure
 ;
 Procedure TOM_GetTextRangeObj(GadgetID, StartPos = -2, EndPos = -2)
@@ -383,36 +762,26 @@ Procedure TOM_GetTextRangeObj(GadgetID, StartPos = -2, EndPos = -2)
   ; After usage, the ITextRange object obtained must be free
   ; like this : *pTextRange\Release()
   ;
-  Protected RichEditOleObject.IRichEditOle
-  Protected    *pTextDocument.ITextDocument2
+  Protected    *pTextDocument.ITextDocument2_Fixed
   Protected       *pTextRange.ITextRange2
   Protected               SC = #S_OK
   ;
   If StartPos   = -1   : StartPos = #MAXLONG : EndIf
   If EndPos     = -1   :   EndPos = #MAXLONG : EndIf
   If StartPos > EndPos :   EndPos = StartPos : EndIf
-  ;
-  If GadgetID 
-    If IsGadget(GadgetID) : GadgetID = GadgetID(GadgetID) : EndIf
-    ; Get the RichOLEInterface on our EditorGadget:
-    SendMessage_(GadgetID, #EM_GETOLEINTERFACE, 0, @RichEditOleObject)
-    ; Get the ITextDocument interface:
-    SC = RichEditOleObject\QueryInterface(?IID_ITextDocument2, @*pTextDocument)
-    RichEditOleObject\Release()
-    If SC <>  #S_OK
-      Debug "Unable to create ITextDocument: " + Str(SC)
+  ; 
+  *pTextDocument = TOM_GetTextDocumentObj(GadgetID)
+  If *pTextDocument
+    ; Get the ITextRange interface:
+    If StartPos = -2
+      SC = *pTextDocument\GetSelection(@*pTextRange)
     Else
-      ; Get the ITextRange interface:
-      If StartPos = -2
-        SC = *pTextDocument\GetSelection(@*pTextRange)
-      Else
-        SC = *pTextDocument\Range(StartPos, EndPos, @*pTextRange)
-      EndIf
-      *pTextDocument\Release()
-      If SC <> #S_OK
-        Debug "Unable to get the ITextRange interface. Error : " + Str(SC)
-        *pTextRange = 0
-      EndIf
+      SC = *pTextDocument\Range(StartPos, EndPos, @*pTextRange)
+    EndIf
+    *pTextDocument\Release()
+    If SC <> #S_OK
+      Debug "Unable to get the ITextRange interface. Error : " + Str(SC)
+      *pTextRange = 0
     EndIf
   EndIf
   ProcedureReturn *pTextRange
@@ -426,7 +795,7 @@ Procedure TOM_GetSelectionPos(GadgetID, *Selrange.CHARRANGE)
     *pTextRange\GetStart(@*Selrange\cpMin)
     *pTextRange\GetEnd(@*Selrange\cpMax)
     *pTextRange\Release()
-    ProcedureReturn #True
+    ProcedureReturn #Tomtrue
   EndIf
 EndProcedure
 ;
@@ -442,11 +811,11 @@ Procedure TOM_SetSelectionPos(GadgetID, StartPos, EndPos)
   If *pTextRange
     *pTextRange\Select()
     *pTextRange\Release()
-    ProcedureReturn #True
+    ProcedureReturn #Tomtrue
   EndIf
 EndProcedure
 ;
-Procedure TOM_GetStartPos(GadgetID, StartPos = -2)
+Procedure TOM_GetRealPos(GadgetID, StartPos = -2)
   ;
   ; If StartPos is omitted or StartPos = -2, return value is the start of the current selection.
   ; If StartPos = -1, return value is the end of GadgetID content.
@@ -461,22 +830,7 @@ Procedure TOM_GetStartPos(GadgetID, StartPos = -2)
   EndIf
 EndProcedure
 ;
-Procedure TOM_GetEndPos(GadgetID, EndPos = -2)
-   ;
-  ; If EndPos is omitted or EndPos = -2, return value is the end of the current selection.
-  ; IF EndPos = -1, return value is the end of GadgetID content.
-  ;
-  Protected *pTextRange.ITextRange2 = TOM_GetTextRangeObj(GadgetID, EndPos)
-  Protected RetValue
-  ;
-  If *pTextRange
-    *pTextRange\GetEnd(@RetValue)
-    *pTextRange\Release()
-    ProcedureReturn RetValue
-  EndIf
-EndProcedure
-;
-Procedure TOM_Copy(GadgetID, StartPos = -2, EndPos = -2)
+Procedure TOM_Copy(GadgetID, StartPos = -2, EndPos = -2, Cut = 0)
   ;
   ; If StartPos is omitted or StartPos = -2, the range is the current selection.
   ; If EndPos is omitted or EndPos = -2 or EndPos < StartPos, --> EndPos = StartPos.
@@ -484,12 +838,68 @@ Procedure TOM_Copy(GadgetID, StartPos = -2, EndPos = -2)
   ; If EndPos = -1, the range is set from StatPos to the end of GadgetID content.
   ;
   Protected *pTextRange.ITextRange2 = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
+  Protected *Buffer, SimpleText$, SrcDataObj.IDataObject, *mDataObj.IDataObject
+  ;
+  ; NOTE : a simple *pTextRange\Copy(0) should do the job.
+  ; Unfortunatelly, when the gadget contains one or more images,
+  ; only an RTF version of the content is returned by *pTextRange\Copy(0).
+  ; So, *pTextRange\GetText() will be used to get a simple text version
+  ; of the content and this will be added to an IDataObject yet filled
+  ; with the RTF version of the content. Then, this IDataObject will
+  ; be copied to the clipboard.
   ;
   If *pTextRange
-    *pTextRange\Copy(0)
+    ;
+    ; Get a simple text version of the content:
+    If *pTextRange\GetText(@*Buffer) <> #S_OK
+      *pTextRange\Release()
+      ProcedureReturn #TomFalse
+    EndIf
+    SimpleText$ = PeekS(*Buffer)
+    SysFreeString_(*Buffer)
+    ;
+    ; Create a VARIANT with a pointer to an empty IDataObject:
+    var.VARIANT
+    var\vt = #VT_UNKNOWN | #VT_BYREF
+    var\ppunkVal = @SrcDataObj.IDataObject
+    ;
+    ; Copy TextRange content into this IDataObject:
+    If Cut
+      If *pTextRange\Cut(var) <> #S_OK
+        ProcedureReturn #TomFalse
+      EndIf
+    Else
+      If *pTextRange\Copy(var) <> #S_OK
+        ProcedureReturn #TomFalse
+      EndIf
+    EndIf
+    ;
     *pTextRange\Release()
-    ProcedureReturn #True
+    If SrcDataObj = 0
+      ProcedureReturn #TomFalse
+    EndIf
+    ;
+    ; Create another IDataObject and clone data into it:
+    *mDataObj = CreateIDataObject()
+    If *mDataObj = 0
+      ProcedureReturn #TomFalse
+    EndIf
+    CloneIDataObject(SrcDataObj, *mDataObj)
+    SrcDataObj\Release()
+    ;
+    ; Add the text to *mDataObj:
+    SetIDataObjectText(*mDataObj, SimpleText$)
+    ;
+    ; Set clipboard with *mDataObj:
+    OleSetClipboard_(*mDataObj)
+    ;
+    ; Flush clipboard to be sure that all data will
+    ; remain in it, even if our application is closed:
+    OleFlushClipboard_()
+    ;
+    ProcedureReturn #Tomtrue
   EndIf
+  ProcedureReturn #TomFalse
 EndProcedure
 ;
 Procedure TOM_Cut(GadgetID, StartPos = -2, EndPos = -2)
@@ -499,13 +909,7 @@ Procedure TOM_Cut(GadgetID, StartPos = -2, EndPos = -2)
   ; If StartPos = -1, nothing will be cut.
   ; If EndPos = -1, the range is set from StatPos to the end of GadgetID content.
   ;
-  Protected *pTextRange.ITextRange2 = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
-  ;
-  If *pTextRange
-    *pTextRange\Cut(0)
-    *pTextRange\Release()
-    ProcedureReturn #True
-  EndIf
+  ProcedureReturn TOM_Copy(GadgetID, StartPos, EndPos, 1)
 EndProcedure
 ;
 Procedure TOM_Paste(GadgetID, StartPos = -2, EndPos = -2)
@@ -520,7 +924,7 @@ Procedure TOM_Paste(GadgetID, StartPos = -2, EndPos = -2)
   If *pTextRange
     *pTextRange\Paste(0, 0)
     *pTextRange\Release()
-    ProcedureReturn #True
+    ProcedureReturn #Tomtrue
   EndIf
 EndProcedure
 ;
@@ -562,9 +966,9 @@ Procedure TOM_GetTextFontObj(GadgetID, StartPos = -2, EndPos = -2, Duplicate = #
   ; styles to any character range.
   ;
   Protected *pTextRange.ITextRange
-  Protected *pTextFont.ITextFont_Fixed
-  Protected *DTextFont.ITextFont_Fixed
-  Protected Result = #S_FALSE ; Valeur de retour.
+  Protected *pTextFont.ITextFont2
+  Protected *DTextFont.ITextFont2
+  Protected Result
                                  ;
   *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
   If *pTextRange
@@ -613,8 +1017,8 @@ Procedure TOM_GetTextParaObj(GadgetID, StartPos = -2, EndPos = -2, Duplicate = #
   Protected *pTextRange.ITextRange
   Protected *pTextPara.ITextPara_Fixed
   Protected *DTextPara.ITextPara_Fixed
-  Protected Result = #S_FALSE ; Valeur de retour.
-                                 ;
+  Protected Result
+  ;
   *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
   If *pTextRange
     ; Get the ITextPara:
@@ -626,13 +1030,15 @@ Procedure TOM_GetTextParaObj(GadgetID, StartPos = -2, EndPos = -2, Duplicate = #
       Else
         Result = *pTextPara
       EndIf
+    Else
+      Debug "Unable to get para"
     EndIf
     *pTextRange\Release()
   EndIf
   ProcedureReturn Result
 EndProcedure
-;
-Procedure TOM_ApplyTextFont(GadgetID, *pTextFont.ITextFont_Fixed, StartPos = -2, EndPos = -2)
+
+Procedure TOM_ApplyTextFont(GadgetID, *pTextFont.ITextFont2, StartPos = -2, EndPos = -2)
   ;
   ; This procedure applies to a text range defined by StartPos->EndPos
   ; the set of styles contained in the '*pTextFont' object.
@@ -645,7 +1051,7 @@ Procedure TOM_ApplyTextFont(GadgetID, *pTextFont.ITextFont_Fixed, StartPos = -2,
   ; Example of usage:
   ;
   ; We will copy the styles from the tenth character contained in the 'GadgetID' GadgetID:
-  ; *TextFontObjet.ITextFont_Fixed = TOM_GetTextFontObj(EGadget, 10, 11, #TomTrue)
+  ; *TextFontObjet.ITextFont2 = TOM_GetTextFontObj(EGadget, 10, 11, #TomTrue)
   ; We apply the same styles to the character range from 20 to 26:
   ; TOM_ApplyTextFont(EGadget, *TextFontObjet, 20, 27)
   ; 
@@ -696,6 +1102,211 @@ Procedure TOM_ApplyTextPara(GadgetID, *pTextPara.ITextPara_Fixed, StartPos = -2,
   ProcedureReturn Result
 EndProcedure
 ;
+Procedure TOM_Find(GadgetID, ToFind$, StartPos = -2, Flags = 0, Limit = 0)
+  ;
+  ;
+  Protected *pTextRange.ITextRange
+  Protected Result, Length
+  ;
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, -1)
+  If *pTextRange
+    ; Get the ITextPara:
+    SC = *pTextRange\FindTextStart(ToFind$, Limit, Flags, @Length)
+    If SC = #S_OK
+      *pTextRange\GetStart(@Result)
+    EndIf
+    *pTextRange\Release()
+  Else
+    ProcedureReturn 1
+  EndIf
+  ProcedureReturn Result
+EndProcedure
+;
+Procedure TOM_SetCase(GadgetID, Style$, StartPos = -2, EndPos = -2)
+  ;
+  Protected *pTextRange.ITextRange, Result, TCase
+  ;
+  Style$ = LCase(Style$)
+  ;
+  If FindString(LCase(Style$), "lower")
+    TCase = #TomLowerCase
+  ElseIf FindString(LCase(Style$), "upper")
+    TCase = #TomUpperCase
+  ElseIf FindString(LCase(Style$), "title")
+    TCase = #TomTitleCase
+  ElseIf FindString(LCase(Style$), "sentence")
+    TCase = #TomSentenceCase
+  ElseIf FindString(LCase(Style$), "toggle")
+    TCase = #TomToggleCase
+  Else
+    ProcedureReturn #E_INVALIDARG
+  EndIf
+  ;
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
+  If *pTextRange
+    Result = *pTextRange\ChangeCase(TCase)
+    *pTextRange\Release()
+  Else
+    ProcedureReturn 1
+  EndIf
+  ;
+  ProcedureReturn Result
+EndProcedure
+;
+Procedure TOM_ExpandRange(GadgetID, Style$, *pTextRange.ITextRange)
+  ;
+  ; Expand the range to entire char/word/sentence/paragraph/line or story
+  ; depending on how the parameter 'Style$' is set (it must contain one of these words).
+  ;
+  Protected Result, RExpand
+  ;
+  Style$ = LCase(Style$)
+  ;
+  If FindString(LCase(Style$), "char")
+    RExpand = #TomCharacter
+  ElseIf FindString(LCase(Style$), "word")
+    RExpand = #TomWord
+  ElseIf FindString(LCase(Style$), "sentence")
+    RExpand = #TomSentence
+  ElseIf FindString(LCase(Style$), "para")
+    RExpand = #TomParagraph
+  ElseIf FindString(LCase(Style$), "line")
+    RExpand = #TomLine
+  ElseIf FindString(LCase(Style$), "story")
+    RExpand = #TomStory
+  Else
+    ProcedureReturn #E_INVALIDARG
+  EndIf
+  ;
+  If *pTextRange
+    Result = *pTextRange\Expand(RExpand, 0)
+  Else
+    ProcedureReturn #E_INVALIDARG
+  EndIf
+  ;
+  ProcedureReturn Result
+EndProcedure
+;
+Procedure TOM_ExpandSelection(GadgetID, Style$ = "Word")
+  ;
+  ; Expand the current selection to entire char/word/sentence/paragraph/line or story
+  ; depending on how the parameter 'Style$' is set (it must contain one of these words).
+  ;
+  Protected *pTextRange.ITextRange
+  ;
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, -2)
+  If *pTextRange
+    Result = TOM_ExpandRange(GadgetID, Style$, *pTextRange)
+    *pTextRange\Select()
+    *pTextRange\Release()
+  Else
+    ProcedureReturn 1
+  EndIf
+  ;
+  ProcedureReturn Result
+EndProcedure
+;
+Procedure TOM_StopUndoRedo(GadgetID)
+  ;
+  ; By default, the rich text control facilitates redo/undo actions.
+  ; The TOM contains methods that can disable/enable this facility.
+  ;
+  Protected *pTextDocument.ITextDocument2_Fixed = TOM_GetTextDocumentObj(GadgetID)
+  ;
+  *pTextDocument\Undo(#TomSuspend, 0) ; Suspends undo recording
+  *pTextDocument\Release()
+EndProcedure
+;
+Procedure TOM_EnableUndoRedo(GadgetID)
+  ;
+  ; By default, the rich text control facilitates redo/undo actions.
+  ; The TOM contains methods that can disable/enable this facility.
+  ;
+  Protected *pTextDocument.ITextDocument2_Fixed = TOM_GetTextDocumentObj(GadgetID)
+  ;
+  *pTextDocument\Undo(#TomResume, 0) ; Enable undo recording
+  *pTextDocument\Release()
+EndProcedure
+;
+Procedure TOM_Freeze(GadgetID)
+  ;
+  ; It is possible to freeze the displayed text in the rich text control so that its contents
+  ; may be updated by the program without the user seeing any flickering and without loss of
+  ; performance. Key presses sent to the rich text control while the display is frozen will
+  ; be processed when the display is released from its frozen state.
+  ;
+  ; Note that when the EditorGadget is frozen, no text selection is possible.
+  ; Then, the gadget looks like not editable.
+  ;
+  Protected *pTextDocument.ITextDocument2_Fixed = TOM_GetTextDocumentObj(GadgetID)
+  ;
+  *pTextDocument\Freeze(0) ; Freeze the display
+  *pTextDocument\Release()
+EndProcedure
+;
+Procedure TOM_Unfreeze(GadgetID, ApplyModifications = 0)
+  ;
+  ; It is possible to freeze the displayed text in the rich text control so that its contents
+  ; may be updated by the program without the user seeing any flickering and without loss of
+  ; performance. Key presses sent to the rich text control while the display is frozen will
+  ; be processed when the display is released from its frozen state.
+  ;
+  ; If the 'ApplyModifications' parameter is not null, all modifications done between TOM_Freeze() and TOM_UnFreeze(1)
+  ; will be applied when TOM_UnFreeze(1) is called
+  ; If the 'ApplyModifications' parameter is null, all modifications done between TOM_Freeze() and TOM_UnFreeze()
+  ; will be lost.
+  ;
+  Protected *pTextDocument.ITextDocument2_Fixed = TOM_GetTextDocumentObj(GadgetID)
+  ;
+  If ApplyModifications = 0
+    *pTextDocument\BeginEditCollection()
+  EndIf
+  *pTextDocument\Unfreeze(0) ; Unfreeze the display
+  If ApplyModifications = 0
+    *pTextDocument\EndEditCollection()
+  EndIf
+  *pTextDocument\Release()
+EndProcedure
+;
+Procedure TOM_GetIndex(GadgetID, StartPos = -2, IndexType$ = "Line")
+  ;
+  ; Gets the index of the char/word/sentence/line including StartPos.
+  ; If StartPos is ommited or equal to -2, the start of the current selection
+  ; is used as position.
+  ; If StartPos = -1, then end of the gadget content is used as position.
+  ;
+  ; IndexType$ defines which type of index is required (char/word/sentence/line)
+  ;
+  Protected *pTextRange.ITEXTRANGE, IType, valIndex, Result
+  ;
+  IndexType$ = LCase(IndexType$)
+  ;
+  If FindString(LCase(IndexType$), "char")
+    IType = #TomCharacter
+  ElseIf FindString(LCase(IndexType$), "word")
+    IType = #TomWord
+  ElseIf FindString(LCase(IndexType$), "sentence")
+    IType = #TomSentence
+  ElseIf FindString(LCase(IndexType$), "para")
+    IType = #TomParagraph
+  Else                                ; line
+    IType = #TomLine
+  EndIf
+  ;
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos)
+  If *pTextRange
+    Result = *pTextRange\GetIndex(IType, @valIndex)
+    *pTextRange\Release()
+    If result <> #S_OK
+      valIndex = -1
+    EndIf
+  Else
+    ProcedureReturn - 1
+  EndIf
+  ;
+  ProcedureReturn valIndex
+EndProcedure
+;
 Procedure.s ExtractParameterForTOM(Style$, ParameterName$)
   ;
   ; This procedure, used by 'TOM_SetFontStyles()'
@@ -729,13 +1340,16 @@ EndProcedure
 Macro FontSetUnset(StyleName, GetName, SetName)
   If FindString(Style$, StyleName)
     parameter$ = ExtractParameterForTOM(Style$, StyleName)
-    If parameter$ And LCase(parameter$) <> "default"
-      *pTextFont\SetName(Val(parameter$))
-    ElseIf SetUnset = #TomDefault Or parameter$ = "default"
+    If parameter$ And FindString(parameter$, "default") = 0
+      If parameter$ = "1" Or FindString(parameter$, "true")
+        *pTextFont\SetName(#TomTrue)
+      ElseIf parameter$ = "0" Or FindString(parameter$, "false") Or FindString(parameter$, "none")
+        *pTextFont\SetName(#TomFalse)
+      Else
+        *pTextFont\SetName(Val(parameter$))
+      EndIf
+    ElseIf SetUnset = #TomDefault Or FindString(parameter$, "default")
       *pFontDefault\GetName(@pl)
-      If pl
-        pl = #TomTrue
-      endif
       *pTextFont\SetName(pl)
     Else 
       *pTextFont\SetName(SetUnset)
@@ -746,11 +1360,16 @@ EndMacro
 Macro FontSetValue(StyleName, GetName, SetName)
   If FindString(Style$, StyleName)
     parameter$ = ExtractParameterForTOM(Style$, StyleName)
-    If SetUnset = #TomTrue And parameter$ <> "default"
-      *pTextFont\SetName(ValF(parameter$))
+    If SetUnset = #TomTrue
+      pf = ValF(parameter$)
+      If pf = 0
+        *pTextFont\SetName(Val(parameter$))
+      Else
+        *pTextFont\SetName(pf)
+      EndIf
     Else
       *pTextFont\GetName(@pf)
-      If pf = ValF(parameter$) Or parameter$ = "default" Or SetUnset = #TomFalse
+      If pf = ValF(parameter$) Or SetUnset = #TomFalse
         *pFontDefault\GetName(@pf)
         *pTextFont\SetName(pf)
       EndIf
@@ -820,8 +1439,8 @@ Procedure TOM_SetFontStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
   ; Underline(ThickDotted)
   ; Underline(ThickLongDash)
   ;  
-  Protected *pTextFont.ITextFont_Fixed
-  Protected *pFontDefault.ITextFont_Fixed
+  Protected *pTextFont.ITextFont2
+  Protected *pFontDefault.ITextFont2
   Protected pl.l = 0, gpl.l = 0
   Protected pf.f = 0
   Protected ps.s = "", *BSTRString = 0
@@ -829,14 +1448,21 @@ Procedure TOM_SetFontStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
   ;
   ; To simplify the parsing of the parameter string,
   ; the spaces it contains are removed.
-  While FindString(Style$, " ", 1)
-    Style$ = ReplaceString(Style$, " ", "")
-  Wend
+  Repeat
+    mStyle$ = Style$
+    Style$ = ReplaceString(Style$, " ,", ",")
+    Style$ = ReplaceString(Style$, ", ", ",")
+    Style$ = ReplaceString(Style$, " (", "(")
+    Style$ = ReplaceString(Style$, "( ", "(")
+    Style$ = ReplaceString(Style$, ") ", ")")
+    Style$ = ReplaceString(Style$, " )", ")")
+  Until mStyle$ = Style$
   Style$ = LCase(Style$)
+  Style$ = ReplaceString(Style$,"font(", "name(")
   ;
   ; Get an active TextFontObj for the range:
   *pTextFont = TOM_GetTextFontObj(GadgetID, StartPos, EndPos)
-  If *pTextFont <> #S_FALSE
+  If *pTextFont
     ; Get a TextFontObj copy for the range:
     *pTextFont\GetDuplicate(@*pFontDefault)
     ; Set the copy's styles to default:
@@ -919,6 +1545,9 @@ Procedure TOM_SetFontStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
     FontSetValue("forecolor(", GetForecolor, SetForecolor)
     FontSetValue("weight(", GetWeight, SetWeight)
     FontSetValue("style(", GetStyle, SetStyle)
+    If OSVersion() > #PB_OS_Windows_Server_2008_R2
+      FontSetValue("scaling(", GetScaling, SetScaling)
+    EndIf
 
     If FindString(Style$, "name(")
       parameter$ = ExtractParameterForTOM(Style$, "name(")
@@ -938,6 +1567,20 @@ Procedure TOM_SetFontStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
         EndIf
       EndIf
     EndIf
+    *pTextFont\Release()
+  EndIf
+EndProcedure
+;
+Procedure TOM_ResetFontStyles(GadgetID, StartPos = -2, EndPos = -2)
+  ;
+  ; Apply default style on the range
+  ;  
+  Protected *pTextFont.ITextFont2
+  ;
+  ; Get an active TextFontObj for the range:
+  *pTextFont = TOM_GetTextFontObj(GadgetID, StartPos, EndPos)
+  If *pTextFont
+    *pTextFont\Reset(#TomDefault)
     *pTextFont\Release()
   EndIf
 EndProcedure
@@ -978,11 +1621,16 @@ Procedure TOM_SetParaStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
   ; 'Style$' can contain some of the following commands (separated by comma):
   ; Align(value), SpaceBefore(Value.f), SpaceAfter(Value.f)
   ; RightIndent(value.f), LeftIndent(value.f), FirstLineIndent(value.f)
-  ; Style(value), LineSpacing(SpacingRule, value.f)
+  ; Style(value), LineSpacing(SpacingRule, value.f), List(type, option)
   ;
-  ; For LineSpacing, the SpacingRule value can contain:
+  ; For LineSpacing(), the SpacingRule value can contain:
   ; "Single", "1pt5", "Double", "AtLeast", "Exactly", "Multiple" or "Percent"
   ; The second parameter is unused with "Single", "1pt5" and "Double".
+  ;
+  ; For List(), the 'option' parameter is optionnal.
+  ;             the 'type' parameter can be "Bullet", "Number", "LCLetter", "UCLetter",
+  ;                 "LCRoman", "UCRoman", "Circle", "BlackCircle", "WhiteCircle" or "Wide".
+  ;             the 'option' parameter can be "Parentheses", "Period", "Plain" or "Minus".
   
   Protected *pTextPara.ITextPara_Fixed
   Protected *pParaDefault.ITextPara_Fixed
@@ -999,11 +1647,66 @@ Procedure TOM_SetParaStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
   ;
   ; Get an active TextParaObj for the range:
   *pTextPara = TOM_GetTextParaObj(GadgetID, StartPos, EndPos)
-  If *pTextPara <> #TomFalse
+  If *pTextPara
     ; Get a TextParaObj copy for the range:
     *pTextPara\GetDuplicate(@*pParaDefault)
     ; Set the copy's styles to default:
     *pParaDefault\Reset(#TomDefault)
+    ;
+    If FindString(Style$, "list")
+      parameter$ = ExtractParameterForTOM(Style$, "list")
+      If parameter$ <> "none"
+        param1$ = StringField(parameter$, 1, ",")
+        param2$ = StringField(parameter$, 2, ",")
+      EndIf
+      If param1$ = "" Or param1$ = "bullet"
+        pl = #TomListBullet
+      ElseIf FindString(param1$, "lcletter")
+        pl = #TomListNumberAsLCLetter
+      ElseIf FindString(param1$, "ucletter")
+        pl = #TomListNumberAsUCLetter
+      ElseIf FindString(param1$, "lcroman")
+        pl = #TomListNumberAsLCRoman
+      ElseIf FindString(param1$, "ucroman")
+        pl = #TomListNumberAsUCRoman
+      ElseIf FindString(param1$, "number")
+        pl = #TomListNumberAsArabic
+      ElseIf FindString(param1$, "blackcircle")
+        pl = #TomListNumberedBlackCircleWingding
+      ElseIf FindString(param1$, "whitecircle")
+        pl = #TomListNumberedWhiteCircleWingding
+      ElseIf FindString(param1$, "wide")
+        pl = #TomListNumberedArabicWide
+      ElseIf FindString(param1$, "circle")
+        pl = #TomListNumberedCircle
+      Else
+        pl = #TomListNone
+      EndIf
+      ;
+      If FindString(param2$, "parenth")
+        pl2 = #TomListParentheses
+      ElseIf FindString(param2$, "period") Or FindString(param2$, "stop")
+        pl2 = #TomListPeriod
+      ElseIf FindString(param2$, "plain")
+        pl2 = #TomListPlain
+      ElseIf FindString(param2$, "minus") Or FindString(param2$, "hyphen")
+        pl2 = #TomListMinus
+      ElseIf param2$
+        pl2 = Asc(param2$)
+      Else
+        pl2 = 0
+      EndIf
+      ;
+      If SetUnset = #TomTrue
+        *pTextPara\SetListType(pl | pl2)
+      Else
+        *pTextPara\GetListType(@gpl)
+        If gpl = pl Or SetUnset = #TomDefault
+          *pParaDefault\GetListType(@pl)
+          *pTextPara\SetListType(pl)
+        EndIf
+      EndIf
+    EndIf
     ;
     If FindString(Style$, "align(")
       If FindString(Style$, "align(left")
@@ -1114,6 +1817,20 @@ Procedure TOM_SetParaStyles(GadgetID, Style$, StartPos = -2, EndPos = -2, SetUns
   EndIf
 EndProcedure
 ;
+Procedure TOM_ResetParaStyles(GadgetID, StartPos = -2, EndPos = -2)
+  ;
+  ; Apply default style on the range
+  ;  
+  Protected *pTextPara.ITextPara_Fixed
+  ;
+  ; Get an active TextParaObj for the range:
+  *pTextPara = TOM_GetTextParaObj(GadgetID, StartPos, EndPos)
+  If *pTextPara
+    *pTextPara\Reset(#TomDefault)
+    *pTextPara\Release()
+  EndIf
+EndProcedure
+;
 Procedure.s TOM_GetFontStyles(GadgetID, StartPos = -2, EndPos = -2)
   ;
   ; GadgetID must be the number of an EditorGadget.
@@ -1126,7 +1843,7 @@ Procedure.s TOM_GetFontStyles(GadgetID, StartPos = -2, EndPos = -2)
   ; IF StartPos = -1, the range is set as an insertion point at the end of GadgetID content.
   ; IF   EndPos = -1, the range is set from StatPos to the end of GadgetID content.
   ;  
-  Protected *pTextFont.ITextFont_Fixed
+  Protected *pTextFont.ITextFont2
   ;
   Protected pl.l = 0
   Protected pf.f = 0
@@ -1258,6 +1975,12 @@ Procedure.s TOM_GetFontStyles(GadgetID, StartPos = -2, EndPos = -2)
     If pl
       Style$ + "Style(" + Str(pl) + "), "
     EndIf
+    If OSVersion() > #PB_OS_Windows_Server_2008_R2
+      *pTextFont\GetScaling(@pl)
+      If pl > 0
+        Style$ + "Scaling(" + Str(pl) + "), "
+      EndIf
+    EndIf
     *pTextFont\GetName(@*BSTRString)
     ps = PeekS(*BSTRString, -1, #PB_Unicode)
     SysFreeString_(*BSTRString)
@@ -1363,200 +2086,7 @@ Procedure.s TOM_GetParaStyles(GadgetID, StartPos = -2, EndPos = -2)
   ProcedureReturn Style$
 EndProcedure
 ;
-CompilerIf Not Defined(GetDIBHandleFromImage, #PB_Procedure)
-  ; Cette procédure est également définie dans IDataObject_Helper.pb
-  ;
-  Procedure GetDIBHandleFromImage(HBitmap)
-    ;
-    ; This procedure works with a PureBasic image ID
-    ; or with a handle to the image.
-    ; It encapsulates the Bitmap data into a DIB, which is
-    ; a format handled by many Windows functions, 
-    ; especially the GDI API functions.
-    ;
-    If IsImage(HBitmap)
-      HBitmap = ImageID(HBitmap)
-    EndIf
-    ;
-    Protected TemporaryDC.L, TemporaryBitmap.BITMAP, TemporaryBitmapInfo.BITMAPINFO
-    Protected hDib, *Buffer
-    Protected BitmapSize
-    
-    ; Create a temporary device context (DC):
-    TemporaryDC = CreateDC_("DISPLAY", #Null, #Null, #Null)
-    
-    ; Retrieve information about the bitmap (HBitmap):
-    GetObject_(HBitmap, SizeOf(BITMAP), @TemporaryBitmap)
-    
-    ; Initialize the BITMAPINFOHEADER information:
-    TemporaryBitmapInfo\bmiHeader\biSize        = SizeOf(BITMAPINFOHEADER)
-    TemporaryBitmapInfo\bmiHeader\biWidth       = TemporaryBitmap\bmWidth
-    TemporaryBitmapInfo\bmiHeader\biHeight      = TemporaryBitmap\bmHeight
-    TemporaryBitmapInfo\bmiHeader\biPlanes      = 1
-    TemporaryBitmapInfo\bmiHeader\biBitCount    = 32                         ; 32 bits / pixel
-    TemporaryBitmapInfo\bmiHeader\biCompression = #BI_RGB
-    
-    ; Calculate the required size for the DIB:
-    BitmapSize = TemporaryBitmap\bmWidth * TemporaryBitmap\bmHeight * (TemporaryBitmapInfo\bmiHeader\biBitCount / 8)
-    
-    ; Allocate memory for the DIB (Device Independent Bitmap)
-    hDib = GlobalAlloc_(#GMEM_MOVEABLE, BitmapSize + SizeOf(BITMAPINFOHEADER))
-    
-    If hDib
-      *Buffer = GlobalLock_(hDib)
-      If *Buffer
-        ; Copy the BITMAPINFOHEADER header into memory
-        CopyMemory(@TemporaryBitmapInfo\bmiHeader, *Buffer, SizeOf(BITMAPINFOHEADER))
-        
-        ; Copy the bitmap bits into memory after the header
-        GetDIBits_(TemporaryDC, HBITMAP, 0, TemporaryBitmap\bmHeight, *Buffer + SizeOf(BITMAPINFOHEADER), TemporaryBitmapInfo, #DIB_RGB_COLORS)
-        
-        GlobalUnlock_(hDib)
-      Else
-        ; Lock failed, free the memory
-        GlobalFree_(hDib)
-        hDib = 0
-      EndIf
-    EndIf
-    
-    ; Free and delete the device context (DC)
-    DeleteDC_(TemporaryDC)
-    ;
-    ProcedureReturn hDib
-    ;
-  EndProcedure
-CompilerEndIf
-;
-Procedure SetIDataObjectImage(*MyDataObject.IDataObject, Image)
-  ;
-  ; Feed an IDataObject with a DIB version of an image.
-  ;
-  Protected MyFormatEtc.FormatEtc, MyStgMed.StgMedium
-  Protected hBitmap, hDib, SC
-  ;
-  If *MyDataObject = 0 Or Image = 0
-    ProcedureReturn #False
-  EndIf
-  ; ________________________________________________
-  ;             Set Values for FORMATETC
-  ;
-  MyFormatEtc\tymed = #TYMED_HGLOBAL
-  MyFormatEtc\cfFormat = #CF_DIB            ; Set the format
-  MyFormatEtc\ptd = #Null                   ; Target Device = Screen
-  MyFormatEtc\dwAspect = #DVASPECT_CONTENT  ; Level of detail = Full content
-  MyFormatEtc\lindex = -1                   ; Index = Not applicable
-  ; ________________________________________________
-  ;             Set Values for STGMEDIUM
-  ;
-  MyStgMed\pUnkForRelease = #Null        ; Use ReleaseStgMedium_() APIFunction
-  MyStgMed\tymed = MyFormatEtc\tymed     ; MyStgMed and MyFormatEtc must have the same value
-                                         ;   in their respective 'tymed' fields.
-  ; ________________________________________________
-  ;             Handle Data
-  ;
-  If IsImage(Image)
-    Image = ImageID(Image)
-  EndIf
-  hBitmap = CopyImage_(Image, #IMAGE_BITMAP, 0, 0, #LR_COPYRETURNORG)
-  If hBitmap = 0
-    ProcedureReturn #False
-  EndIf
-  ;
-  hDib = GetDIBHandleFromImage(hBitmap)
-  MyStgMed\hGlobal = hDib
-  DeleteObject_(hBitmap)
-  If MyStgMed\hGlobal = 0
-    ProcedureReturn #False
-  EndIf
-  ; _________________________________________________________________
-  ;
-  ;             Finally, call SetData on the IDataObject
-  ;
-  SC = *MyDataObject\SetData(@MyFormatEtc, @MyStgMed, #True)
-  ; The IDataObject make a copy of the given data and clean the original ones, because
-  ; last parametre is set to '#True'
-  ;
-  If SC <> #S_OK
-    ProcedureReturn #False
-  EndIf
-  ;
-  ProcedureReturn #True
-EndProcedure
-;
-Procedure SetIDataObjectText(*MyDataObject.IDataObject, StringData$)
-  ;
-  ; Feed an IDataObject with Text or RTF content
-  ;
-  Protected MyFormatEtc.FormatEtc, MyStgMed.StgMedium
-  Protected formatName$, formatValue, StringSize, hGlobal, *DataBuffer
-  Protected SC
-  ;
-  If *MyDataObject = 0
-    ProcedureReturn #False
-  EndIf
-  ;
-  ; ________________________________________________
-  ;             Set Values for FORMATETC
-  ;
-  MyFormatEtc\tymed = #TYMED_HGLOBAL
-  If Left(StringData$, 5) = "{\rtf" Or Left(StringData$, 6) = "{\urtf"
-    formatName$ = "RTF in UTF8"
-    formatValue = RegisterClipboardFormat_(@formatName$)
-    If formatValue = 0
-      ProcedureReturn #False
-    EndIf
-    MyFormatEtc\cfFormat = formatValue      ; Set the format
-    StringSize = Len(StringData$) + 1
-  Else
-    MyFormatEtc\cfFormat = #CF_UNICODETEXT  ; Set the format
-    StringSize = (Len(StringData$) + 1) * 2 ; Each Unicode Char is 2 bytes long
-  EndIf
-  MyFormatEtc\ptd = #Null                   ; Target Device = Screen
-  MyFormatEtc\dwAspect = #DVASPECT_CONTENT  ; Level of detail = Full content
-  MyFormatEtc\lindex = -1                   ; Index = Not applicable
-  ; ________________________________________________
-  ;             Set Values for STGMEDIUM
-  ;
-  MyStgMed\pUnkForRelease = #Null        ; Use ReleaseStgMedium_() APIFunction
-  MyStgMed\tymed = MyFormatEtc\tymed     ; MyStgMed and MyFormatEtc must have the same value
-                                         ;   in their respective 'tymed' fields.
-  ; ________________________________________________
-  ;             Handle Data
-  ;
-  hGlobal = GlobalAlloc_(#GMEM_MOVEABLE, StringSize)
-  If hGlobal = 0
-    ProcedureReturn #False
-  Else
-    *DataBuffer = GlobalLock_(hGlobal)
-    If *DataBuffer
-      If MyFormatEtc\cfFormat = #CF_UNICODETEXT
-        PokeS(*DataBuffer, StringData$)
-      Else
-        PokeS(*DataBuffer, StringData$, -1, #PB_UTF8)
-      EndIf
-      GlobalUnlock_(hGlobal)
-      MyStgMed\hGlobal = hGlobal
-    Else
-      GlobalFree_(hGlobal)
-      ProcedureReturn #False
-    EndIf
-  EndIf
-  ; _________________________________________________________________
-  ;
-  ;             Finally, call SetData on the IDataObject
-  ;
-  SC = *MyDataObject\SetData(@MyFormatEtc, @MyStgMed, #True)
-  ; The IDataObject make a copy of the given data and clean the original ones, because
-  ; last parametre is set to '#True'
-  ;
-  If SC <> #S_OK
-    ProcedureReturn #False
-  EndIf
-  ;
-  ProcedureReturn #True
-EndProcedure
-;
-Procedure TOM_InsertImage(GadgetID, Image, StartPos = -2, PosEnd = -2)
+Procedure TOM_InsertImage(GadgetID, Image, StartPos = -2, EndPos = -2)
   ; 'GadgetID' must be an EditorGadget number or a handle (pointer) to a RichEdit Control.
   ; 'Image' can be a PureBasic image number or a handle to it.
   ;
@@ -1573,7 +2103,7 @@ Procedure TOM_InsertImage(GadgetID, Image, StartPos = -2, PosEnd = -2)
   ;
   If Image
     ;
-    *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, PosEnd)
+    *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
     ;
     If *pTextRange
       ; Create an IDataObject:
@@ -1602,7 +2132,7 @@ Procedure TOM_InsertImage(GadgetID, Image, StartPos = -2, PosEnd = -2)
   ProcedureReturn SC
 EndProcedure
 ;
-Procedure TOM_InsertText(GadgetID, Text$, StartPos = -2, PosEnd = -2)
+Procedure TOM_InsertText(GadgetID, Text$, StartPos = -2, EndPos = -2)
   ; 'GadgetID' must be an EditorGadget number or a handle (pointer) to a RichEdit Control.
   ; 'Text$' can contain simple texte or RTF text or RTF UTF8 Text.
   ;
@@ -1611,12 +2141,12 @@ Procedure TOM_InsertText(GadgetID, Text$, StartPos = -2, PosEnd = -2)
   ; IF StartPos = -1, the range is set as an insertion point at the end of GadgetID content.
   ; IF   EndPos = -1, the range is set from StatPos to the end of GadgetID content.
   ;
-  Protected       *pTextRange.ITextRange
+  Protected       *pTextRange.ITextRange2
   Protected               var.VARIANT
   Protected         *mDataObj.IDataObject
   Protected                SC
   ;
-  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, PosEnd)
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
   ;
   If *pTextRange
     ; Create an IDataObject:
@@ -1632,6 +2162,9 @@ Procedure TOM_InsertText(GadgetID, Text$, StartPos = -2, PosEnd = -2)
       ; Paste the IDataObject into the range:
       ; Clipboard in NOT used. The paste operation is done from the IDataobject.
       SC = *pTextRange\Paste(@var, 0)
+      If SC <> #S_OK
+        Debug TOM_PrintErrorMessage(SC)
+      EndIf
       ; Because a IDataObject\Release is asked by ITextRange just after Paste,
       ; the IDataObject is destroyed during this operation. It's not necessary
       ; to clean it.
@@ -1642,7 +2175,7 @@ Procedure TOM_InsertText(GadgetID, Text$, StartPos = -2, PosEnd = -2)
   ProcedureReturn SC
 EndProcedure
 ;
-Procedure.s TOM_GetAvailableFormats(GadgetID, StartPos = -2, PosEnd = -2)
+Procedure.s TOM_GetAvailableFormats(GadgetID, StartPos = -2, EndPos = -2)
   ;
   ; 'GadgetID' must be an EditorGadget number or a handle (pointer) to a RichEdit Control.
   ;
@@ -1659,7 +2192,7 @@ Procedure.s TOM_GetAvailableFormats(GadgetID, StartPos = -2, PosEnd = -2)
   Protected       enumFormat.IEnumFORMATETC
   Protected         Formats$
   ;
-  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, PosEnd)
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
   ;
   If *pTextRange
     ; Create a VARIANT with a pointer to an empty IDataObject
@@ -1690,7 +2223,7 @@ Procedure.s TOM_GetAvailableFormats(GadgetID, StartPos = -2, PosEnd = -2)
   ProcedureReturn Formats$
 EndProcedure
 ;
-Procedure.s TOM_GetText(GadgetID, Format$ = "", StartPos = -2, PosEnd = -2)
+Procedure.s TOM_GetText(GadgetID, Format$ = "", StartPos = -2, EndPos = -2)
   ;
   ; 'GadgetID' must be an EditorGadget number or a handle (pointer) to a RichEdit Control.
   ; 'Format$' can be null or can contain:
@@ -1720,7 +2253,7 @@ Procedure.s TOM_GetText(GadgetID, Format$ = "", StartPos = -2, PosEnd = -2)
     Format$ = "Rich Text Format"
   EndIf
   ;
-  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, PosEnd)
+  *pTextRange = TOM_GetTextRangeObj(GadgetID, StartPos, EndPos)
   ;
   If *pTextRange
     ; Create a VARIANT with a pointer to an empty IDataObject
@@ -1791,7 +2324,7 @@ Procedure TOM_InsertTaggedJPGImageFromFile(GadgetID, FileAdr$, marker$ = "", Sta
   UseJPEGImageDecoder()
   Img = LoadImage(#PB_Any, FileAdr$)
   If Img
-    StartPos = TOM_GetStartPos(GadgetID, StartPos)
+    StartPos = TOM_GetRealPos(GadgetID, StartPos)
     TOM_InsertImage(GadgetID, Img, StartPos, EndPos)
     FreeImage(Img)
     If marker$
@@ -1803,51 +2336,53 @@ Procedure TOM_InsertTaggedJPGImageFromFile(GadgetID, FileAdr$, marker$ = "", Sta
   EndIf
 EndProcedure
 ;
-Procedure TOM_ComputeWordPosition(GadgetID, MyWord$, StartPos = 0)
-  ; Look for the position of 'MyWord$' inside the GadgetID's content.
-  ;
-  Protected EditorText$, Result
-  ;
-  ; Get the GadgetID's content
-  EditorText$ = GetGadgetText(GadgetID)
-  ; An ajustment is necessary to be able to compute position from the text obtained,
-  ; because The TOM system, as all other RichEdit interfaces, count only one
-  ; character for the EndOfLine (Carriage return). But the text we have now has
-  ; two characters for the EndOfLine: Chr(10) + Chr(13)    (CRLF).
-  ; So, we delete Chr(10) to keep only the carriage return (one sole character).
-  EditorText$ = ReplaceString(EditorText$, Chr(10), "")
-  ; Now, the positions which we'll get from FindString will be compatible with
-  ; our needs.
-  Result = FindString(EditorText$, MyWord$, StartPos)
-  ;
-  ; The returned value is Result less one, because PureBasic attribute position '1' 
-  ; to the first character, while Windows's functions attribute position '0' to it.
-  ;
-  ; We set the result to Windows needs:
-  ProcedureReturn Result - 1
-EndProcedure
-;
 Procedure TOM_SetGadgetAsRichEdit(GadgetID)
-  SendMessage_(GadgetID(GadgetID), #EM_SETTEXTMODE, #TM_RICHTEXT, 0)
-  SendMessage_(GadgetID(GadgetID), #EM_SETTARGETDEVICE, #Null, 0);<<--- Automatic carriage return.
-  SendMessage_(GadgetID(GadgetID), #EM_LIMITTEXT, -1, 0)             ; Set unlimited content size.
+  If IsGadget(GadgetID)
+    GadgetID = GadgetID(GadgetID)
+  EndIf
+  SendMessage_(GadgetID, #EM_SETTEXTMODE, #TM_RICHTEXT, 0)
+  SendMessage_(GadgetID, #EM_SETTARGETDEVICE, #Null, 0);<<--- Automatic carriage return.
+  SendMessage_(GadgetID, #EM_LIMITTEXT, -1, 0)             ; Set unlimited content size.
 EndProcedure
 ;
 CompilerIf #PB_Compiler_IsMainFile
   ; The following won't run when this file is used as 'Included'.
   ;
-  If OpenWindow(0, 200, 200, 600, 400, "TOM Example")
+  If LoadLibrary_("RichEd20.dll") = 0
+    MessageRequester("Erreur", "Impossible de charger RichEd20.dll")
+    End
+  EndIf
+
+  If OpenWindow(0, 200, 200, 600, 440, "TOM Example")
+    ;
+    ; EGadget can be a simple EditorGadget created by:
     EGadget = EditorGadget(#PB_Any, 10, 10, 580, 300)
-    TGadget = TextGadget(#PB_Any, 10, 320, 580, 70, "")
-    ; TOM_SetFontStyles() works on any
-    ; EditorGadget without any special configuration.
-    ; However, TOM_SetParamStyles() requires that the
-    ; GadgetID be set up as a RichEdit GadgetID:
     TOM_SetGadgetAsRichEdit(EGadget)
     ;
+    ; or it can be a window created as follow:
+;     flags = #WS_CHILD | #WS_VISIBLE | #WS_VSCROLL | #ES_MULTILINE | #ES_AUTOVSCROLL
+;     OpenLibrary(0, "MSFTEDIT.dll")
+;     EGadget = CreateWindowEx_(#WS_EX_CLIENTEDGE,"RichEdit50W","",flags, 10, 10, 580, 300, WindowID(0), 0, GetModuleHandle_(0), 0)
+;     SendMessage_(EGadget, #EM_LIMITTEXT, -1, 0)             ; Set unlimited content size.
+;
+    BFreeze = ButtonGadget(#PB_Any, 10, 315, 130, 22, "Freeze (set uneditable)")
+    BUnFreeze = ButtonGadget(#PB_Any, 142, 315, 130, 22, "UnFreeze (set editable)")
+    BWordExpand = ButtonGadget(#PB_Any, 278, 315, 90, 22, "Word expand")
+    BSentanceExpand = ButtonGadget(#PB_Any, 370, 315, 100, 22, "Sentence expand")
+    BFindPossibilities = ButtonGadget(#PB_Any, 477, 315, 113, 22, "Find 'possibilities'")
+    ;
+    BUCase = ButtonGadget(#PB_Any, 10, 340, 70, 22, "UCase")
+    BLCase = ButtonGadget(#PB_Any, 82, 340, 70, 22, "LCase")
+    BTitle = ButtonGadget(#PB_Any, 154, 340, 70, 22, "Title")
+    BStopUndoRedo = ButtonGadget(#PB_Any, 252, 340, 106, 22, "Stop Undo/Redo")
+    BEnableUndoRedo = ButtonGadget(#PB_Any, 360, 340, 110, 22, "Enable Undo/Redo")
+    BExamStyle = ButtonGadget(#PB_Any, 480, 340, 110, 22, "Selection style")
+    ;
+    TGadget = TextGadget(#PB_Any, 10, 380, 580, 70, "")    
+    ;
     ; Note that the TOM library can't be used with TextGadgets or StringGadgets.
-    
-    AddGadgetItem(EGadget, -1, "This is a sample text with image:")
+    ;
+    TOM_InsertText(EGadget, "This is a sample text with image:", -1)
     ;
     MyImage = CreateImage(#PB_Any, 80, 80)
     StartDrawing(ImageOutput(MyImage))
@@ -1857,7 +2392,10 @@ CompilerIf #PB_Compiler_IsMainFile
     DrawText(18, 40, "Image")
     StopDrawing()
     TOM_InsertImage(EGadget, MyImage, 33)
-  
+    
+    ; Apply styles Arial bold to characters from 0 to 3
+    TOM_SetFontStyles(EGadget, "Name(Arial), Size(14.5), Bold", 0, 4)
+    ;
     ; Apply styles (bold, italic, underline, size: 15, position on line: 4, Times font) to characters from 10 to 15
     TOM_SetFontStyles(EGadget, "Size(15), Bold, Italic, Underline(), Name(Times), position(4)", 10, 16)
     ;
@@ -1873,48 +2411,87 @@ CompilerIf #PB_Compiler_IsMainFile
     Info$ + "Character 3: " + TOM_GetFontStyles(EGadget, 3, 4) + Chr(13)
     ;
     ; Copy style from character 10:
-    *TextFontObjet.ITextFont_Fixed = TOM_GetTextFontObj(EGadget, 10, 11, #TomTrue)
+    *TextFontObjet.ITextFont2 = TOM_GetTextFontObj(EGadget, 10, 11, #TomTrue)
     ; Apply this style to characters from 18 to 19:
     TOM_ApplyTextFont(EGadget, *TextFontObjet, 18, 20)
     ; Free memory:
     *TextFontObjet\Release()
     ;
-    ; Unset styles applied to character 18:
+    ; Unset styles applied to character 16 (letter "e" of word "sample"):
     TOM_SetFontStyles(EGadget, "Size(15), Bold, Italic, Underline(), Name(Times), position(4)", 15, 16, #TomFalse)
     
-    AddGadgetItem(EGadget, -1, "")
-    AddGadgetItem(EGadget, -1, "This is another sample text with more words to see other possibilities of setting for paragraphe, including FirstLineIndent for this one.")
+    TOM_InsertText(EGadget, Chr(13) + Chr(13) + "This is another sample text with more words to see other possibilities of setting for paragraphe, including FirstLineIndent for this one.", -1)
     TOM_SetFontStyles(EGadget, "ForeColor($0000D0), Bold", 143, 159)
     TOM_SetParaStyles(EGadget, "Align(Left), FirstLineIndent(10)", 143, 159)
     ;
-    AddGadgetItem(EGadget, -1, "")
-    AddGadgetItem(EGadget, -1, "This is another sample text with more words to see other possibilities of setting for paragraphe, including LeftIndent for this one.")
+    TOM_InsertText(EGadget, Chr(13) + Chr(13) + "This is another sample text with more words to see other possibilities of setting for paragraphe, including LeftIndent for this one.", -1)
     TOM_SetFontStyles(EGadget, "ForeColor($0000D0), Bold", 282, 293)
     TOM_SetParaStyles(EGadget, "FirstLineIndent(0), LeftIndent(10)", 282, 293)
     ;
-    AddGadgetItem(EGadget, -1, "This is another sample text with more words to see other possibilities of setting for paragraphe, including RightIndent, Justify, LineSpacing and SpaceBefore for this one. Qui sommes-nous ? Quelle est notre essence, notre véritable identité ? Ces questions nous préoccupent depuis toujours.")
-    TOM_SetFontStyles(EGadget, "ForeColor($DE7723), Bold", 415, 428)
-    TOM_SetParaStyles(EGadget, "LeftIndent(0), RightIndent(40), Align(Justify), LineSpacing(exactly,16), SpaceBefore(3)", 415, 428)
+    TOM_InsertText(EGadget, Chr(13) + Chr(13) + "This is another sample text with more words to see other possibilities of setting for paragraphe, including RightIndent, Justify, LineSpacing and SpaceBefore for this one. Qui sommes-nous ? Quelle est notre essence, notre véritable identité ? Ces questions nous préoccupent depuis toujours.", -1)
+    TOM_SetFontStyles(EGadget, "ForeColor($DE7723), Bold", 417, 430)
+    TOM_SetParaStyles(EGadget, "LeftIndent(0), RightIndent(40), Align(Justify), LineSpacing(exactly,16), SpaceBefore(3)", 417, 430)
     ;
       ; Describe styles of paragraphe including character 411:
     Info$ + "Character 411: " + TOM_GetParaStyles(EGadget, 411, 412) + Chr(13)
     ;
     ; If you’re as bored as I am, calculating the character positions to determine which range to apply styles to,
     ; you can do it this way:
-    StartPos = TOM_ComputeWordPosition(EGadget, "Justify")
+    StartPos = TOM_Find(EGadget, "Justify", 0)
     EndPos = StartPos + Len("justify")
     TOM_SetFontStyles(EGadget, "BackColor($00D0D0), Bold", StartPos, EndPos)
-    StartPos = TOM_ComputeWordPosition(EGadget, "LineSpacing", StartPos)
+    StartPos = TOM_Find(EGadget, "LineSpacing", StartPos)
     EndPos = StartPos + Len("LineSpacing")
     TOM_SetFontStyles(EGadget, "ForeColor($0000D0), Bold", StartPos, EndPos)
-    StartPos = TOM_ComputeWordPosition(EGadget, "SpaceBefore", StartPos)
+    StartPos = TOM_Find(EGadget, "SpaceBefore", StartPos)
     EndPos = StartPos + Len("SpaceBefore")
     TOM_SetFontStyles(EGadget, "ForeColor($0000D0), Bold", StartPos, EndPos)
     ;
     SetGadgetText(TGadget, Info$)
     ;
     Repeat
-    Until WaitWindowEvent() = #PB_Event_CloseWindow
+      Event = WaitWindowEvent()
+      Select EventGadget()
+        Case BFreeze
+          TOM_Freeze(EGadget)
+        Case BUnFreeze
+          TOM_UnFreeze(EGadget)
+        Case BWordExpand
+          ; parameter can be 'char', 'word', 'sentence', 'paragraph' or 'line'
+          TOM_ExpandSelection(EGadget, "Word")
+        Case BSentanceExpand
+          TOM_ExpandSelection(EGadget, "Sentence")
+        Case BFindPossibilities
+          Pos = TOM_GetRealPos(EGadget)
+          If TOM_GetText(EGadget) = "possibilities"
+            Pos + 1
+          EndIf
+          Pos = TOM_Find(EGadget, "possibilities", Pos)
+          If Pos > 0
+            TOM_SetSelectionPos(EGadget, Pos, Pos + Len("possibilities"))
+          EndIf
+        Case BUCase
+          ; parameter can be 'Lower', 'Upper', 'Title', 'Sentence' or 'Toggle'
+          TOM_SetCase(EGadget, "Upper")
+        Case BLCase
+          TOM_SetCase(EGadget, "Lower")
+        Case BTitle
+          TOM_SetCase(EGadget, "Title")
+        Case BStopUndoRedo
+          TOM_StopUndoRedo(EGadget)
+        Case BEnableUndoRedo
+          TOM_EnableUndoRedo(EGadget)
+        Case BExamStyle
+          MessageRequester("Styles", TOM_GetFontStyles(EGadget))
+      EndSelect
+    Until Event = #PB_Event_CloseWindow
+    ;
+    If Not (IsGadget(EGadget))
+      ; If EGadget has been created with EditorGadget(#PB_Any, 10, 10, 580, 300),
+      ; the following is not necessary:
+      DestroyWindow_(EGadget)
+      CloseLibrary(0)
+    EndIf
   EndIf
 CompilerEndIf
 
@@ -1931,9 +2508,9 @@ DataSection
     Data.b $98, $73, $26, $AE, $7C, $0B, $56, $8F
 EndDataSection
 
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 737
-; FirstLine = 724
-; Folding = ------
+; IDE Options = PureBasic 6.10 LTS (Windows - x86)
+; CursorPosition = 2378
+; FirstLine = 1117
+; Folding = CAgnpQA-
 ; EnableXP
 ; DPIAware

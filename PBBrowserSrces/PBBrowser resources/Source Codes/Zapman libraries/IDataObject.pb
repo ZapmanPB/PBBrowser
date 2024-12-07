@@ -349,25 +349,45 @@ EndProcedure
 ; these four procedures.
 ;
 CompilerIf Not Defined(GetWinErrorMessage, #PB_Procedure)
-  Procedure.s GetWinErrorMessage(errorCode)
+  Procedure.s GetWinErrorMessage(errorCode = 0)
     ;
     ; Retourne un texte qui explicite l'erreur dont le numéro
     ; est passé dans le paramètre 'errorCode'.
     : 
-    Protected messageBuffer$ = Space(256) ; Buffer pour le message
-    Protected messageLength
-  
-    messageLength = FormatMessage_(#FORMAT_MESSAGE_FROM_SYSTEM | #FORMAT_MESSAGE_IGNORE_INSERTS, #Null, errorCode, 0, @messageBuffer$, 256, #Null)
-    
-    If messageLength > 0
-      ; Supprime les retours à la ligne à la fin du message
+    Protected messageBuffer$ ; Buffer pour le message
+    Protected MLength, length, ErrorN, MHandle
+    ;
+    If errorCode = 0
+      errorCode = GetLastError_()
+    EndIf
+    If errorCode
+      MLength = 500
+      messageBuffer$ = Space((MLength + 1) * 2)
+      length = FormatMessage_(#FORMAT_MESSAGE_FROM_SYSTEM, #Null, errorCode, 0, @messageBuffer$, MLength, #Null)
+      If length < 1
+        #ERROR_INTERNET_EXTENDED_ERROR = 12003
+        If errorCode = #ERROR_INTERNET_EXTENDED_ERROR
+          ErrorN = 0
+          length = InternetGetLastResponseInfo_(@ErrorN, @messageBuffer$, @MLength)
+          If length = 0
+            length = FormatMessage_(#FORMAT_MESSAGE_FROM_SYSTEM, #Null, GetLastError_(), 0, @messageBuffer$, MLength, #Null)
+          EndIf 
+        Else
+          If errorCode > 11999 And errorCode < 13000
+            #FORMAT_MESSAGE_FROM_HMODULE = $00000800
+            MHandle = GetModuleHandle_("wininet.dll")
+            length = FormatMessage_(#FORMAT_MESSAGE_FROM_HMODULE, MHandle, errorCode, 0, @messageBuffer$, MLength, #Null)
+          EndIf
+        EndIf 
+      EndIf
       messageBuffer$ = ReplaceString(messageBuffer$, Chr(10), "")
       messageBuffer$ = ReplaceString(messageBuffer$, Chr(13), "")
       messageBuffer$ = Trim(messageBuffer$)
-    Else
-      messageBuffer$ = "Unknown error code:"
+      If messageBuffer$ = ""
+        messageBuffer$ = "Unknown error"
+      EndIf
+      ProcedureReturn messageBuffer$ + "  ($" + Hex(errorCode) + ")"
     EndIf
-    ProcedureReturn messageBuffer$ + "  ($" + Hex(errorCode) + ")"
   EndProcedure
 CompilerEndIf
 ;
@@ -475,6 +495,34 @@ Procedure.s StringFromCLSID(MyCLSID)
     Ret$ = "Error while converting CLSID to String."
   EndIf
   ProcedureReturn Ret$
+EndProcedure
+;
+Procedure CloneIDataObject(*IDOSource.IDataObject, *IDODest.IDataObject)
+  ;
+  Protected *enumFormat.IEnumFORMATETC, SC
+  Protected formatEtc.FormatEtc, stgm.StgMedium
+  ;
+  SC = *IDOSource\EnumFormatEtc(#DATADIR_GET, @*enumFormat)
+  If SC = #S_OK And *enumFormat
+    ;
+    ; Parcourir tous les formats disponibles
+    While *enumFormat\Next(1, @formatEtc.FormatEtc, #Null) = #S_OK
+      SC = *IDOSource\getData(formatEtc, @stgm.StgMedium)
+      If SC = #S_OK
+        SC = *IDODest\SetData(formatEtc, stgm, #True)
+        If SC <> #S_OK
+          Debug "Error while setting data: " + GetWinErrorMessage(SC)
+        EndIf
+      Else
+        Debug "Error while getting data: " + GetWinErrorMessage(SC)
+      EndIf
+    Wend
+    ;
+    ; Libérer l'énumérateur
+    *enumFormat\Release()
+  Else
+    Debug "Error : Unable to open format enumerator."
+  EndIf
 EndProcedure
 ;
 ; *******************************************************************
@@ -1398,9 +1446,9 @@ DataSection
     Data.b $C0, $00, $00, $00, $00, $00, $00, $46
     ;
 EndDataSection
-; IDE Options = PureBasic 6.00 LTS (Windows - x86)
-; CursorPosition = 958
-; FirstLine = 965
-; Folding = --HI+
+; IDE Options = PureBasic 6.10 LTS (Windows - x86)
+; CursorPosition = 499
+; FirstLine = 343
+; Folding = v5PQ-
 ; EnableXP
 ; DPIAware

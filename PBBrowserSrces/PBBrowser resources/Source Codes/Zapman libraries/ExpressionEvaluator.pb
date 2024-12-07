@@ -4,16 +4,17 @@
 ;              By Zapman - July 2024
 ;
 ;***************************************************
-; Ce jeu de procédures permet d'évaluer des fonctions
-; simples telles que "3 + 2 * (5 + 7)".
+; This set of procedures evaluates simple functions
+; such as "3 + 2 * (5 + 7)".
 ;
-; La fonction principale est EvaluateExpression(expression$)
+; The main function is EvaluateExpression(expression$)
 ;
-; L'ensemble ne fonctionne que pour des nombres entiers (integer)
-; mais tolère l'emploi de valeur hexadécimales ou binaires.
-; Les opérateurs admis sont : */+-~|&!
+; The set only works for integer numbers,
+; but allows the use of hexadecimal or binary values.
+; The allowed operators are: */+-~|&!
 ;
-
+Global EvError
+;
 Procedure.i ApplyOperator(VLeft.i, op.s, VRight.i)
   Select op
     Case "+"
@@ -23,7 +24,12 @@ Procedure.i ApplyOperator(VLeft.i, op.s, VRight.i)
     Case "*"
       ProcedureReturn VLeft * VRight
     Case "/"
-      ProcedureReturn VLeft / VRight
+      If VRight
+        ProcedureReturn VLeft / VRight
+      Else
+        EvError = 1
+        ProcedureReturn 0
+      EndIf
     Case "|"
       ProcedureReturn VLeft | VRight
     Case "&"
@@ -44,7 +50,7 @@ EndProcedure
 ;
 Procedure.s EvaluateSimpleExpression(expression$)
   ;
-  ; Évalue (calcule) une expression dépourvue de parenthèses.
+  ; Evaluates (calculates) an expression without parentheses.
   ;
   Protected Ops$ = "*/+-~|&!", occ$, op$
   Protected p, l, ps, pe, mpe, sfind
@@ -59,7 +65,7 @@ Procedure.s EvaluateSimpleExpression(expression$)
         p = sfind
         ps = p
         pe = p + 1
-        ; On gère les doublets d'opérateurs tels que '&~'
+        ; Handles operator pairs such as '&~'
         While FindString(Ops$, Mid(expression$, pe, 1)) : pe + 1 : Wend
         mpe = pe
         Break
@@ -76,14 +82,19 @@ Procedure.s EvaluateSimpleExpression(expression$)
       expression$ = Mid(expression$, 1, ps - 1) + Str(ApplyOperator(VLeft, op$, VRight)) + Mid(expression$, pe)
     EndIf
   Until p = 0 Or ps = 1 Or pe >= Len(expression$)
-  ProcedureReturn expression$
+  If EvError
+    ProcedureReturn ""
+  Else
+    ProcedureReturn expression$
+  EndIf
 EndProcedure
 ;
 Procedure EvaluateExpression(expression$)
-  ; Comme son nom l'indique, cette procédure tente
-  ; d'évaluer l'expression passée en paramètre,
-  ; c'est-à-dire de calculer sa valeur.
+  ; As its name indicates, this procedure attempts
+  ; to evaluate the expression passed as a parameter,
+  ; i.e., to calculate its value.
   Protected pe, ps, r$
+  EvError = 0
   ;
   expression$ = UCase(ReplaceString(expression$, " ", ""))
   Repeat
@@ -97,8 +108,24 @@ Procedure EvaluateExpression(expression$)
       expression$ = EvaluateSimpleExpression(ReplaceString(expression$, "(", ""))
     EndIf
   Until pe = 0
-  ProcedureReturn Val(EvaluateSimpleExpression(expression$))
+  If EvError
+    ProcedureReturn 0
+  Else
+    ProcedureReturn Val(EvaluateSimpleExpression(expression$))
+  EndIf
 EndProcedure
+;
+; Example of usage:
+;
+;  expression$ = "$FFF8&%1001"
+;  result  = EvaluateExpression(expression$)
+;  Debug "The expression " + expression$ + " is equal to " + Str(result)
+;  Debug "Verification: " + Str($FFF8&%1001)
+;  Debug "_____________________________________________"
+;  expression$ = "(45/2)+3*4"
+;  result  = EvaluateExpression(expression$)
+;  Debug "The expression " + expression$ + " is equal to " + Str(result)
+;  Debug "Verification: " + Str((45/2)+3*4)
 ;
 ; Exemple d'utilisation :
 ;
@@ -112,9 +139,9 @@ EndProcedure
 ;  Debug "L'expression " + expression$ + " est égale à " + Str(result)
 ;  Debug "Vérification : " + Str((45/2)+3*4)
 
-; IDE Options = PureBasic 6.11 LTS (Windows - x64)
-; CursorPosition = 102
-; FirstLine = 9
-; Folding = 5
+; IDE Options = PureBasic 6.10 LTS (Windows - x86)
+; CursorPosition = 91
+; FirstLine = 87
+; Folding = -
 ; EnableXP
 ; DPIAware

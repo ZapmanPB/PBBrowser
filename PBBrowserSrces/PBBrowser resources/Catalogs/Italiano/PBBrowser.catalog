@@ -33,6 +33,8 @@ SearchInProgress = Ricerca in corso...
 Erase            = Cancella
 Assign           = Assegna
 ErrorWithFile    = Errore durante l'apertura di
+Lines            = righe
+Copy             = Copia
 
 [Initialization]
 
@@ -41,6 +43,7 @@ ShowPBPath          = Specifica la posizione di 'PureBasic.exe':
 FunctionsUpdateDone = L'aggiornamento è completato.
 ManyVersionsOfPB    = Sono state trovate più versioni di PureBasic sul tuo computer.%newline%%newline%Quale utilizzi più spesso ?
 ShouldInstall       = Vuoi installare PB Browser negli strumenti di PureBasic?
+WantToSeeHelp       = Vuoi vedere la guida di PBBrowser?
 
 [SearchWindow]
 
@@ -114,7 +117,7 @@ SearchLimitsTitle      = Contornare i limiti delle ricerche.
 SearchLimitsEx         = PBBrowser è progettato per lavorare sul codice dei programmi. Per impostazione predefinita, cerca solo parole intere presenti nel codice stesso, cioè situate al di fuori delle stringhe di caratteri e al di fuori dei commenti.%newline%Tuttavia, in alcuni casi, è possibile aggirare questi limiti:%newline%•%nonbreakingspace%È possibile cercare una stringa nella sua interezza digitando ''Stringa completa'' (con le virgolette aperte e chiuse) nel campo ''Espressione:''.%newline%•%nonbreakingspace%È possibile cercare un'espressione che inizia con qualcosa digitando quella cosa nel campo ''Espressione:''. La prima espressione trovata che inizia con quella cosa sarà considerata come quella che volevi cercare. Tuttavia, se digiti la lettera 'A' e una delle tue variabili si chiama 'A', otterrai risultati solo per 'A'.%newline%•%nonbreakingspace%È possibile cercare un commento che inizia con una parola o una sequenza di parole specifiche: digita ; Inizio del commento (con il punto e virgola all'inizio), nel campo ''Espressione:'' e troverai tutti i commenti che iniziano per ''Inizio del commento''.
 
 CreateToolsTitle      = Crea i tuoi strumenti in PBBrowser.
-CreateToolsEx         = Poiché PBBrowser è progettato per programmatori, non sarebbe sorprendente che tu volessi mettere le mani sul suo codice che è liberamente scaricabile. Ma con più di duecento procedure da analizzare, il compito potrebbe sembrarti arduo, anche se il suo codice è ampiamente commentato (solo in francese, sfortunatamente per i programmatori che non parlano questa lingua, ma Google Translate dovrebbe poter aiutarti).%newline%Se il suo funzionamento attuale ti soddisfa e desideri solo aggiungere funzionalità sfruttando l'esistenza di alcune delle procedure che contiene, puoi aggiungere funzioni senza toccare quelle esistenti.%newline%•%nonbreakingspace%1-Esegui il comando ''Recupera il codice sorgente di PBBrowser'' che figura nell'elenco in basso a sinistra di questa finestra.%newline%•%nonbreakingspace%2-Apri il file ''PBBrowser_CustomTools.pb'' in ''PBBrowser resources/Source Codes''. Troverai tutte le spiegazioni necessarie per integrare una delle tue procedure nel menu "Strumenti" che si trova in basso a sinistra di questa finestra..%newline%•%nonbreakingspace%3-Ricompila l'applicazione con PureBasic.
+CreateToolsEx         = Poiché PBBrowser è progettato per programmatori, non sarebbe sorprendente che tu volessi mettere le mani sul suo codice che è liberamente scaricabile. Ma con più di duecento procedure da analizzare, il compito potrebbe sembrarti arduo, anche se il suo codice è ampiamente commentato (solo in inglese, sfortunatamente per i programmatori che non parlano questa lingua, ma Google Translate dovrebbe poter aiutarti).%newline%Se il suo funzionamento attuale ti soddisfa e desideri solo aggiungere funzionalità sfruttando l'esistenza di alcune delle procedure che contiene, puoi aggiungere funzioni senza toccare quelle esistenti.%newline%•%nonbreakingspace%1-Esegui il comando ''Recupera il codice sorgente di PBBrowser'' che figura nell'elenco in basso a sinistra di questa finestra.%newline%•%nonbreakingspace%2-Apri il file ''PBBrowser_CustomTools.pb'' in ''PBBrowser resources/Source Codes''. Troverai tutte le spiegazioni necessarie per integrare una delle tue procedure nel menu "Strumenti" che si trova in basso a sinistra di questa finestra..%newline%•%nonbreakingspace%3-Ricompila l'applicazione con PureBasic.
 
 MainFileTitle         = File principale e file inclusi
 MainFileEx            = PBBrowser è essenzialmente progettato per essere chiamato dall'editor di PureBasic. Quando si verifica questa chiamata, PBBrowser esaminerà naturalmente il codice del file da cui è avvenuta la chiamata, ma estenderà anche il suo esame a tutti i file che considera 'collegati' a questo file:%newline%•%nonbreakingspace%Se l'utente ha aperto un file principale che contiene menzioni 'IncludeFile' o 'XIncludeFile', i file inclusi verranno aggiunti all'elenco dei file da esaminare.%newline%•%nonbreakingspace%Se il file esaminato è stato impostato nell'editor di PureBasic tramite il menu 'Opzione del compilatore', e designato come 'File principale', allora questo 'File principale' diventa il File principale di PBBrowser e tutti i file che dichiara come 'IncludeFile' o 'XIncludeFile' vengono aggiunti all'elenco dei file da esaminare.%newline%•%nonbreakingspace%In sintesi, l'elenco dei file sarà completato a monte o a valle del file esaminato, a seconda delle informazioni che PBBrowser potrà estrarre.
@@ -146,6 +149,20 @@ UpdatePBExeEx         = Quando fai clic su un nome di file o di procedura, PBBro
 ProcVariablesTitle     = Verifica le dichiarazioni delle procedure
 ProcVariablesEx        = Questa funzione esamina il codice di tutte le procedure del file attualmente selezionato come ''File sorgente'', così come tutti i suoi file ''Inclusi''.%newline%Quando rileva l'uso di variabili che non sono di tipo 'Global' o 'Shared' e che non sono dichiarate come 'Static' o 'Protected', questa funzione aggiunge una menzione 'Protected' seguita dall'elenco delle variabili interessate.%newline%Questo permette di avere una visione generale dell'uso delle variabili in ogni procedura, ma anche di evitare che una variabile locale possa accidentalmente condividere il suo contenuto con un'altra procedura o con il programma principale, se il suo nome viene successivamente utilizzato per denominare una variabile globale.
 
+CreateUpdateProjectTitle = Crea o aggiorna un 'progetto' PureBasic
+CreateUpdateProjectEx    = Come puoi fare manualmente utilizzando il menu 'Progetto' dell'editor di PureBasic, questa funzione crea o aggiorna un progetto PureBasic a partire dall'elenco dei file compilato da PBBrowser. I progetti ti permettono di:%newline%•%nonbreakingspace%Mantenere un elenco completo dei file necessari al funzionamento dei tuoi programmi%nonbreakingspace%;%newline%•%nonbreakingspace%Abilitare il completamento automatico dell'editor di PureBasic per nomi di procedure, variabili e costanti che non sono inclusi nel tuo file principale%nonbreakingspace%;%newline%•%nonbreakingspace%Aggiungere commenti, numeri di versione, ecc., per descrivere il tuo progetto%nonbreakingspace%;%newline%•%nonbreakingspace%Caricare in una sola volta i file di codice utili da visualizzare durante una specifica fase dello sviluppo%nonbreakingspace%;%newline%•%nonbreakingspace%ecc.%newline%%newline%Se il progetto esiste già, questa funzione si limiterà ad aggiungere i file non ancora elencati ma referenziati da dichiarazioni 'Include', 'XInclude' o 'IncludeBinary'.%newline%%newline%Se il progetto non esiste ancora, questa funzione lo creerà e raggrupperà tutti i file referenziati nel codice. Potrai poi regolare le informazioni del progetto creato utilizzando il menu 'Progetto' dell'editor di PureBasic, come per qualsiasi altro progetto.
+
+DefaultTarget            = Obiettivo predefinito
+NoProjectFound           = Nessun progetto trovato per il codice esaminato.%newline%Cosa desideri fare? 
+LookForProjectManually   = Seleziona manualmente il progetto
+CreateNewProject         = Crea un nuovo progetto
+WouldYouAdd              = I seguenti file sono presenti nel codice del tuo programma ma non nel progetto.%newline%Vuoi aggiungerli al progetto?
+WouldYouDel              = I seguenti file sono presenti nel progetto ma non sono citati nel codice del tuo programma.%newline%Vuoi rimuoverli dal progetto?
+FilesToDelete            = File che potrebbero essere rimossi dal progetto:
+ProjectNotModified       = Il progetto era aggiornato. Non è stato modificato.
+WouldYouOpenProject      = Vuoi aprire il progetto nell'editor di PureBasic?
+NotForTempFile           = Mi dispiace! Questa funzione non può essere eseguita su un file non salvato.%newline%Salva prima il tuo file di codice prima di eseguire questa funzione.
+
 CosmeticFileTransformerTitle  = Miglioratore cosmetico
 CosmeticFileTransformerEx     = Questa funzione modifica il codice di un file per migliorarne la presentazione aggiungendo spazi attorno ai caratteri +-*/><=(&|,. Gestisce anche gli spazi attorno ai caratteri '(', ')' e ':'.%newline%Esempio di modifica : %newline%•%nonbreakingspace%Mid (CodeContent\s, dTest, PosInCode - dTest)%newline%  sarà trasformato in%newline%•%nonbreakingspace%Mid(CodeContent\s, dTest, PosInCode - dTest)
 
@@ -162,7 +179,9 @@ CreateFolderError      = Impossibile creare la cartella
 CodeMismatchAlert      = Codice non conforme !!%newline%Ho trovato un ''%EndString$%'' senza ''%StartString$%'' corrispondente, in %nFile$%%newline%Linea: 
 ElementMissingError    = 'Element' senza 'EndElement' !%newline%File: 
 UnclosedQuoteError     = Virgolato di apertura e non chiuso.
-ErrorWhileReadingFile  = Uno o più file dichiarati come 'Include' o 'XInclude' sono vuoti o non esistono all'indirizzo indicato.%newline%L'elenco dei file sarà incompleto.%newline%File(i) vuoto(i) o mancante(i):
+ErrorWhileReadingFile  = Uno o più file dichiarati come 'Include' o 'XInclude' sono vuoti o non esistono all'indirizzo indicato. PBBrowser non può continuare la sua analisi.%newline%%newline%File(i) vuoto(i) o mancante(i):
+IncludedFileError      = Errore nei file inclusi
+ConstantNameError      = Errore di analisi in una dichiarazione 'Include' (costante non trovata):
 
 [ProgErrors]
 
@@ -184,7 +203,6 @@ OpenTHATWindow         = Mostra l'aiuto e configura gli strumenti
 SelectMainFile         = Seleziona il file principale di PureBasic da esaminare:
 SaveFilePrompt         = Devi salvare il file affinché PBBrowser possa navigare al suo interno.
 ShouldSearchForSomething = Cerca un'espressione (un nome di procedura, di struttura, di variabile, o di funzione) per vedere in quali file figura.
-IncludedFilesIntro     = File inclusi (XIncludeFile e IncludeFile):
 NoDetailFound          = Mi dispiace, nessun dettaglio disponibile per %SExpression$%.%newline%Se si tratta di una variabile locale, il pannello 'Trovato in...' ti indicherà dove figura.%newline%Nota che nessun dettaglio è disponibile per quanto riguarda ciò che è fuori codice (in una %quote%stringa%quote% o in un commento).
 NoDetailNoExpression   = Cerca un'espressione o un elemento per vedere i dettagli.
 HelpClickInstruction   = Fai clic sui numeri tra parentesi affinché l'editor di PureBasic apra il file e ti posizioni sulla riga corrispondente.%newline%Attenzione: potrebbe esserci un disallineamento tra il numero di riga visualizzato e il numero di riga reale, nei file in fase di modifica e non registrati.%newline%%newline%•%nonbreakingspace%La menzione ''Set'' indica che una variabile ha ricevuto un valore nella posizione corrispondente.%newline%•%nonbreakingspace%''Param'' indica che è usata come parametro di una procedura o di una macro.%newline%•%nonbreakingspace%''Test'' significa che appare in un test (If o While, ad esempio).%newline%•%nonbreakingspace%''Arg'' significa che è usata come argomento in una chiamata di funzione.%newline%•%nonbreakingspace%Le menzioni ''Global'', ''Shared'', ''Static'' e ''Protected'' indicano che una variabile è dichiarata come tale nella posizione corrispondente.%newline%%newline%La lista è organizzata come segue:%newline%- Nome del file (sottolineato) dove è stata trovata l'espressione cercata.%newline%- •%nonbreakingspace%Procedura ▷ o •%nonbreakingspace%Struttura ▷ o •%nonbreakingspace%Macro ▷ indica le dichiarazioni/definizioni corrispondenti.%newline%- •%nonbreakingspace%In ElementName: 'ElementName' indica il nome dell'elemento in cui è stata trovata l'espressione cercata. ''OutOfElements'' indica che la posizione si trova fuori procedura.%newline%%newline%    Se il nome di un elemento è in grigio chiaro, significa che la procedura non è utilizzata dal file principale. Questa distinzione di colore avverrà solo una volta che l'esplorazione dei file sarà completamente terminata.%newline%- (xxx) (xxx) (xxx)... numeri di riga dove è stata trovata l'espressione.
@@ -224,6 +242,8 @@ variable               = Variabile
 Details                = Dettagli
 FoundIn                = Trovato in...
 in                     = in
+IncludedFilesIntro     = File inclusi (XIncludeFile e IncludeFile):
+IncludedBinaries       = Altri file inclusi (IncludeBinary):
 mainFile               = file principale
 includedBy             = incluso da
 AboutNativeFunction    = è una funzione nativa PureBasic.%newline%Fai clic sul suo nome per accedere all'aiuto.
@@ -232,7 +252,7 @@ LookingForPBExe        = Ricerca del programma PureBasic.exe
 used                   = utilizzato(e)
 usedBy                 = utilizzato da
 Unused                 = Non utilizzato(e)
-OutOfElements          = corpo principale del programma
+OutOfElements          = corpo del programma
 CalledMacros           = Macro(i) che figurano nella procedura:
 Exploration            = Esplorazione
 SeeVariablesList       = Vedi l'elenco completo delle variabili

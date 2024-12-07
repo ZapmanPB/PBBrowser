@@ -1,180 +1,198 @@
 ﻿; *******************************************************************************
 ;
-;  Fichier des déclarations de constantes et de variables globales de PBBrowser
+;  File for declarations of constants and global variables for PBBrowser
 ;
 ; *******************************************************************************
-XIncludeFile "Zapman libraries\ZapmanCommon.pb"
-XIncludeFile "Zapman libraries\RichEdit_Library.pb"
-XIncludeFile "Zapman libraries\TOM_Functions.pb"
-XIncludeFile "Zapman libraries\Pipe.pb"
-XIncludeFile "Zapman libraries\FastStringFunctions.pb"
-XIncludeFile "Zapman libraries\ExpressionEvaluator.pb"
-XIncludeFile "Zapman libraries\ChooseLanguage.pb"
+IncludePath  "Zapman libraries"
+XIncludeFile "ZapmanCommon.pb"
+XIncludeFile "Alert.pb"
+XIncludeFile "TOM_Functions.pb"
+XIncludeFile "Pipe.pb"
+XIncludeFile "FastStringFunctions.pb"
+XIncludeFile "ExpressionEvaluator.pb"
+XIncludeFile "ChooseLanguage.pb"
 ;
-Global MyAppDataFolder$ = GetSystemFolder(#CSIDL_COMMON_APPDATA) + "\" + #NomProg + "\" ; Adresse du dossier des données.
-Global PBBrowserPrefile$ = MyAppDataFolder$ + #NomProg + ".prefs" ; Adresse du fichier des préférences.
-Global BOM ; Contiendra le BOM trouvé à la lecture des fichiers.
-Global PBBListOfFiles$ = "" ; Contiendra la liste des fichiers liés au fichier principal.
-Global PBBFirstLaunch ; Signale le premier lancement de l'application.
-Global OutOfElementContent.String\s = ""  ; Contiendra une compilation du code hors procédure, pour l'ensemble des fichiers.
-Global PureBasicProgAdr$, PBUnderCursor$, FicPrincipalPB$, FicActualPB$, TempFile$ ; Contiendra les arguments envoyés par l'éditeur de PureBasic.
-                                                                               ;
+Global MyAppDataFolder$ = GetSystemFolder(#CSIDL_COMMON_APPDATA) + "\" + #NomProg + "\" ; Address of the data folder.
+Global PBBrowserPrefile$ = MyAppDataFolder$ + #NomProg + ".prefs" ; Address of the preferences file.
+Global BOM ; Will contain the BOM found when reading the files.
+Global PBBListOfFiles$ = "" ; Will contain the list of files linked to the main file.
+Global PBBListOfBinaries$ = "" ; Will contain the list of Binary files linked to the main file.
+Global PBBFirstLaunch ; Indicates the first launch of the application.
+Global PureBasicProgAddr$, PBUnderCursor$, PBBFicPrincipalPB$, FicActualPB$, PBBTempFile$ ; Will contain the arguments sent by the PureBasic editor.
+;
+; ****************************************************************************** 
+;
+Global PBFunctionList$       ; Will contain the list of native functions.
+Global PBFunctionListLCase$  ; Same list in LCase() version.
+;
+; ****************************************************************************** 
+;
+;           Variables intended to be modified by the user
+;
+Global PBBDefaultCursor = LoadCursor_(0, #IDC_ARROW) ; Standard arrow cursor to be displayed over RichEdit gadgets.
+Global PBBGreyColor = RGB(120, 120, 120)                ; Color used in the "Details" panel to display everything following the element name.
+Global PBBpcolorNotUsed = RGB(130, 140, 140)            ; Light gray for elements not used by the code.
+Global PBBDarkRedColor = RGB(180, 0, 0)                 ; For coloring the element name in the 'Details' and 'Found in...' panels.
+Global PBBSetValueColor = RGB(150, 90, 0)               ; For coloring 'Set', 'Read', 'Ret', 'Param' and 'Poke' mentions in 'Found in...'.
+Global PBBTitleColor = RGB(150, 150, 150)            ; Color applied to "Source" and "Expression" in the main panel, as well as "Included Files" in the "Files" panel.
+Global PBBTitleFont = LoadFont(100, "Segoe UI", 9, #PB_Font_Bold | #PB_Font_HighQuality) ; Same for the font.
+Global PBBProgressLegendFont = LoadFont(101, "Segoe UI", 7, #PB_Font_HighQuality)           ; Font used for the text above the progress bar.
+Global ZapmanGadgetsFont = LoadFont(#PB_Any, "Segoe UI", 9)                                  ; Font used for all gadgets
+;
+Global PBB_Bullet$ = "○ "                            ; Bullet character used in 'Details' and 'Found in...'.
+Global PBB_LineBreak$ = Chr(13) + PBB_Bullet$
+;
+; The code is displayed in 'Consolas', size 10.
+; The 'Consolas' font is a variant of 'Courier', but it has
+; the advantage of displaying a more extended character set
+; that fully exploits the possibilities of UTF-8.
+Global PBBCodeFontStyle$ = "Name(Consolas),Bold(0),Italic(0),Size(10)"
+; 
+Global PBBDefaultFontStyle$ ; Default font for the content of the panels (defined at the beginning of PBBrowser.pb).
+;
+; ****************************************************************************** 
+;
+;                Parameters for the arrow buttons and the code
+;
+; ****************************************************************************** 
+;
+#PBBRTFMarker$ = "PBBMark_:" ; Will be used to identify images inserted in RichEdit gadgets.
+#PBBLeftArrowMarker$ = "Previous" ; Used only in the code as the name for the << navigation button.
+#PBBRightArrowMarker$ = "Next"    ; Used only in the code as the name for the >> navigation button.
+#PBBLeftArrow$ = "◄";"←"          ; Substitution character when the OS version doesn't support embedding images in text.
+#PBBRightArrow$ = "►" ;"→"        ; Substitution character when the OS version doesn't support embedding images in text.
+#PBBArrowsFontStyle$ = "Bold,Size(12)" ; Font for the substitution characters.
+;
+Global CharButtons
+If OSVersion() <= #PB_OS_Windows_Server_2008_R2
+  ; The program is running on Windows 7 or an earlier version,
+  ; unable to display an image in RichEdit. As an alternative
+  ; solution, we will display the characters #PBBLeftArrow$ and #PBBRightArrow$
+  CharButtons = #True
+Else
+  CharButtons = #False
+EndIf
+;
 #OutOfElementsName = "OutOfElements"
 ;
 ; *********************************************************
-;            Définition des types d'éléments
+;    List of PureBasic Keywords that can preceed a variable name
+;
+#OperatorAsWord$ = ",If,ElseIf,While,Until,Select,Case,Default,With,To,ProcedureReturn,And,Or,Xor,Not,Protected,Global,Static,Shared,Define,"
+;
+; *********************************************************
+;            Definition of element types
 ;
 Enumeration PBBTypes
-  #PBBProcedure       ; Élement de type 'Procedure'.
-  #PBBStructure       ; idem pour les structures
-  #PBBMacro           ; idem pour les macros
-  #PBBEnumeration     ; idem pour les énumérations
-  #PBBInterface       ; idem pour les interfaces
-  #PBBLabel           ; idem pour les labels
-  #PBBConstante       ; idem pour les constantes
-  #PBBVariable        ; idem pour les variables
-  #EndEnumPBBElementTypes ; Signale la fin des éléments trouvés dans les fichiers
-  #PBBNativeFunction  ; idem pour les fonctions natives de PureBasic
-  #PBBBasicKeyword    ; idem pour les mots-clé du Basic (While, Wend, If, Then, etc.)
-  #EndEnumPBBTypes    ; Signale la fin de la liste
+  #PBBProcedure       ; Element of type 'Procedure'.
+  #PBBStructure       ; Same for structures
+  #PBBMacro           ; Same for macros
+  #PBBEnumeration     ; Same for enumerations
+  #PBBInterface       ; Same for interfaces
+  #PBBLabel           ; Same for labels
+  #PBBConstante       ; Same for constants
+  #PBBVariable        ; Same for variables
+  #EndEnumPBBElementTypes ; Signals the end of the elements found in the files
+  #PBBNativeFunction  ; Same for native PureBasic functions
+  #PBBBasicKeyword    ; Same for Basic keywords (While, Wend, If, Then, etc.)
+  #EndEnumPBBTypes    ; Signals the end of the list
+  #NotAnElement
 EndEnumeration
-; On attribue un nom pour chaque type :
-Global Dim PBBTypeNames$(#EndEnumPBBTypes - 1)
+;
+; Assign a name for each type:
 TypesList$ = "Procedure,Structure,Macro,Enumeration,Interface,Label,Constante,Variable,,PBNativeFunction,PBKeyword"
-; On enregistre ces noms dans le tableau PBBTypeNames$()
+;
+; Register these names in the PBBTypeNames$() array
+Global Dim PBBTypeNames$(#EndEnumPBBTypes - 1)
 For ct = 0 To (#EndEnumPBBTypes - 1)
   PBBTypeNames$(ct) = StringField(TypesList$, ct + 1, ",")
 Next
 ;
-; L'élément #PBBVariable sera le seul qui sera éclaté en plusieurs
-; catégories. Ces catégories figurent ci-dessous :
+; The element #PBBVariable will be the only one that will be split into several
+; categories. These categories are listed below:
 #PBBVariableSpecies$ = "Global,Shared"
 ;
 ; ************************************************************
-;                   Tableaux d'éléments
+;                   Element arrays
 ;
-; Les tableaux qui vont suivre permettront de compléter les diverses étapes d'exploration,
-; afin d'obtenir les listes des éléments (procédures, structures, énumérations, etc.) qui
-; figurent dans les fichiers examinés.
-; Ces tableaux sont nombreux, mais comme leur dimension est très petite, ils n'occuperont
-; qu'une place raisonnablement limitée en mémoire.
+; The following arrays will be used to complete various stages of exploration,
+; in order to obtain the lists of elements (procedures, structures, enumerations, etc.) that
+; appear in the examined files.
 ;
-; ListOfAllElements$() contiendra la liste complète des éléments
-; qui ont été trouvés dans la liste des fichiers.
-Global Dim ListOfAllElements$(#EndEnumPBBElementTypes - 1)
-;
-; ListOfAllElementsNbr() contiendra le nombre d'éléments
-; trouvés pour un type d'élément donné.
+; ListOfAllElementsNbr() will contain the number of elements
+; found for a given element type.
 Global Dim ListOfAllElementsNbr(#EndEnumPBBElementTypes - 1)
 ;
-; ListOfUsedElements$ contiendra la liste des éléments (procédures, structures, etc.)
-; réellements utilisés par le fichier principal.
-; Il peut sembler idiot de travailler sur une liste séparée de ListOfAllElements$(),
-; d'autant que ListOfAllElements$() est également mise à jour afin de signaler les
-; élements utilisés ou non (voir le champs #EL_Parent, figurant dans la structure
-; de cette liste). Cependant, le fait de gérer une liste séparée permet de gagner
-; beaucoup de temps pendant la phase d'exploration (jusqu'à 50% du temps est économisé),
-; car cette liste permet d'éviter une recherche afin de déterminer si un élément
-; est utilisé ou non. De plus, elle permet de savoir quels sont les derniers
-; éléments a avoir été notés comme utilisés, puisqu'ils sont toujours placés
-; en fin de liste. Cette information permet d'optimiser considérablement la
-; procédure 'SetListOfUsedElements()' qui se contente d'examiner la fin de cette
-; liste en boucle jusqu'à être sûr que tous les éléments utilisés ont été identifiés.
-Global Dim ListOfUsedElements$(#EndEnumPBBElementTypes - 1)
+; ListOfUsedElementsNbr() will contain the number of elements
+; used for a given element type.
+Global Dim ListOfUsedElementsNbr(#EndEnumPBBElementTypes - 1)
 ;
-; Les tableaux ListCompletionAll et ListCompletionUsed indiqueront si les
-; tableaux qui précèdent ont déjà été complétés par l'exploration des fichiers.
+; ListOfAllElementsColor() will contain the colors to be used to color
+; each element in the code.
+Global Dim ListOfAllElementsColor(#EndEnumPBBTypes - 1)
+;
+; The ListCompletionAll and ListCompletionUsed arrays will indicate if the
+; arrays above have already been completed by the file exploration.
 Global Dim ListCompletionAll(#EndEnumPBBElementTypes - 1)
 Global Dim ListCompletionUsed(#EndEnumPBBElementTypes - 1)
 ;
-; Pour ListOfAllElements$, le tableau suivant contiendra l'étape à laquelle
-; la procédure de complétion s'est interrompue lors du travail en tâche de fond.
+; For the first exploration phase, the following array will contain the stage at which
+; the completion procedure was interrupted during background work.
 Global Dim ListCompletionStage(#EndEnumPBBElementTypes - 1)
 ;
-; Pour ListOfAllElements$, le tableau suivant comportera le nom de fichier
-; en cours d'examen lors du travail en tâche de fond.
-; Pour ListOfUsedElements$, il contiendra le dernier élément de référence
-; (celui dont on examine les codes, pour déterminer si l'élément principal
-; est utilisé ou non).
+; For the first exploration phase, the following array will contain the file name
+; being examined during background work.
 Global Dim ListCompletionReference$(#EndEnumPBBElementTypes - 1)
 ;
-; Le tableau suivant permettra de mesurer la completion de
-; ListOfUsedElements$() :
-Global Dim ListCompletionStepsCompleted(#EndEnumPBBElementTypes - 1)
 ;
 ; **************************************************************
-;         Valeurs pour l'état de complétion des listes
+;    Values for the completion state of the element list
 ;
-; L'énumération qui va suivre sera utilisée pour renseigner les tableaux
-; 'ListCompletionAll()' et 'ListCompletionUsed()'
-Enumeration ListCompletionState ; État courant de la complétion pour une liste donnée.
+Enumeration ListCompletionState ; Current state of completion for a given element type.
   #ListCompletion_Undone
-  #ListCompletion_ExamAll
-  #ListCompletion_RebootFromTabRef
   #ListCompletion_Pending
-  #ListCompletion_DoublePending
   #ListCompletion_StageCompleted
   #ListCompletion_Done
   #ListCompletion_Printed
-  #ListCompletion_DoNot
 EndEnumeration
 ;
-Enumeration CompletionState ; État général de la complétion
+Enumeration CompletionState ; General completion state
   #Completion_Completed
   #Completion_Uncomplete
   #Completion_Error
 EndEnumeration
 ;
 ; *************************************************************
-;           Organisation des données dans les listes
-;        'ListOfAllElements$()' et 'ListOfUsedElements$
-; (L'organisation est strictement la même dans les deux listes).
+;    Structure of the 'ElementsList()' which will contain
+;        the list of various elements of the examined code.
 ;
-; Les listes sont organisées comme une suite de valeurs séparées par
-; le caractère tabulation (Chr(9)).
-; Chaque ligne se termine par un retour chariot (Chr(13)).
-; La somme des lignes forme une chaîne de caractère qui représente
-; la totalité des éléments trouvés pour un type d'élément particulier.
-; Par exemple, ListOfAllElements$(#PBBProcedure) contiendra la liste
-; complète des procédures trouvées dans les fichiers.
-; Chaque ligne de ListOfAllElements$() est organisée comme suit :
-; 'Nom de l'élément (de la structure, de la procédure, etc.)' + Chr(9)
-;       + 'Adresse du fichier contenant l'élément' + Chr(9)
-;       + 'Déclaration complète de l'élement (avec arguments, s'il y en a)'  + Chr(9)
-;       + 'N° de ligne du début dans le fichier'  + Chr(9)
-;       + 'N° de ligne de la fin dans le fichier' + Chr(9)
-;       etc.
+Structure Elements
+  Name.s                ; Name of the element.
+  NameLCase.s           ; Name of the element in lowercase, and without the type, for structured or typed variables.
+  Type.l                ; Element type (procedure, structure, constant, variable, etc.).
+  Used.b                ; Indicates if the element is marked as 'used' by the program.
+  FileName.s            ; .pb file where the element is defined.
+  Declaration.s         ; Declaration line of the element
+  DeclarationDetails.s  ; Used only for constants (contains the name of the enumeration where
+                        ;   the constant is declared) and procedures (contains the line where the procedure is declared).
+  VariableSpecies.s     ; Used only for variables. Specifies the category (Global, Shared, List, Array, Var, Map).
+  StartingLine.l        ; Line number where the element is declared in the code
+  EndingLine.l          ; Line number at the end of the element ('EndProcedure', for example).
+  StartingPos.l         ; Exact position of the start of the element in the code.
+  EndingPos.l           ; Position of the end of the element.
+  Parents.s             ; List of indices of 'Parents' (elements that contain the current element).
+  Children.s            ; List of indices of 'Children' (elements contained by the current element).
+  OutOfElementLinePos.s ; Positions (files and line numbers) where the element is referenced in the main code.
+  Value.s               ; Used only for constants (constant value).
+  Comment.s             ; Contains the comments for elements that have no code.
+EndStructure
 ;
-Enumeration StructureOfElementsLists
-  ; Les procédures de PBBrowser sont conçues de sorte que
-  ; l'ordre et le nombre des composants de cette énumération
-  ; puisse être modifiés. À deux exceptions près : 
-  ; - #EL_ElementNameLCase doit être en première position avec la valeur '1',
-  ; - #EL_EndOfLine doit figurer en dernière position.
-  #EL_ElementNameLCase = 1
-  #EL_ElementName
-  #EL_FileName     ; Nom du fichier ou l'élément figure (où il est défini).
-  #EL_CompleteElementDeclaration ; Déclaration de l'élément avec ses paramètres,
-                                 ; s'il y en a.
-  #EL_StartingLine ; Numéro de ligne ou l'élément est déclaré dans le code
-  #EL_EndingLine   ; Numéro de ligne de la fin de l'élément ('EndProcedure', par exemple).
-  #EL_StartingPos  ; Position exacte du début de l'élément dans le code.
-  #EL_EndingPos    ; Position de la fin de l'élément.
-  #EL_Parent       ; Ce champs contiendra une références à l'élément qui a permis de décider
-                   ; que l'élément courant est utilisé. Il sera renseigné comme suit :
-                   ;     ElementName/ElementType
-  #EL_DeclarationDetails     ; Utilisé seulement pour les constantes et les procédures.
-  #EL_Value           ; Utilisé seulement pour les constantes.
-  #EL_VariableSpecies ; Utilisé seulement pour les variables.
-  #EL_Comment     ; Contiendra les commentaires pour les éléments qui n'ont pas de code
-                  ; (Constante et Label, par exemple).
-  #EL_EndOfLine
-EndEnumeration
+Global NewList ElementsList.Elements()
 ;
 ; *********************************************************
-; Définition des différents panneaux des 'PannelGadgets'
+; Definition of the different panels of the 'PannelGadgets'
 ;
-Enumeration PBBPanels ; Numéros attribués au panneaux
+Enumeration PBBPanels ; Numbers assigned to panels
   ; MainPBBPanel
   #FilePBBPanel
   #ListPBBPanel
@@ -192,21 +210,28 @@ Enumeration PBBPanels ; Numéros attribués au panneaux
   #VariablePBBPanel
   #EndEnumPBBPanels
 EndEnumeration
-; On attribue un nom pour chaque panneau :
+;
+; Assign a name for each panel:
 Global Dim PBBPanelNames$(#EndEnumPBBPanels - 1)
 TypesList$ = "Files,Lists,Details,FoundIn,Procedures,Structures,Macros,Enumerations,Interfaces,Labels,Constantes,Variables"
-; On enregistre ces noms dans le tableau PBBPanelNames$()
+; Store these names in the PBBPanelNames$() array
 For ct = 0 To (#EndEnumPBBPanels - 1)
   PBBPanelNames$(ct) = StringField(TypesList$, ct + 1, ",")
 Next
-; Les tableaux suivants permettront de fournir des détails sur chaque panneau
+;
+; The following arrays will provide details about each panel:
 Global Dim NoPBBPanel(#EndEnumPBBPanels - 1)
 Global Dim NoGadgetPBBPanel(#EndEnumPBBPanels - 1)
 Global Dim NoREGadgetOfPBBPanel(#EndEnumPBBPanels - 1)
-; Ce qui suit va permettre d'établir un pont entre les pages ListPBBPanel
-; et les types d'éléments, en indiquant quels types d'éléments sont affichés
-; par chaque panneau.
+;
+; The following will create a bridge between ListPBBPanel
+; and element types, specifying which types of elements are displayed
+; by each panel.
 Global Dim TypeElementOfPBBPanel(#EndEnumPBBPanels - 1)
+TypeElementOfPBBPanel(#FilePBBPanel) = #NotAnElement
+TypeElementOfPBBPanel(#ListPBBPanel) = #NotAnElement
+TypeElementOfPBBPanel(#DetailPBBPanel) = #NotAnElement
+TypeElementOfPBBPanel(#FoundInFilesPBBPanel) = #NotAnElement
 TypeElementOfPBBPanel(#ProcPBBPanel) = #PBBProcedure
 TypeElementOfPBBPanel(#StructurePBBPanel) = #PBBStructure
 TypeElementOfPBBPanel(#MacroPBBPanel) = #PBBMacro
@@ -216,23 +241,27 @@ TypeElementOfPBBPanel(#LabelPBBPanel) = #PBBLabel
 TypeElementOfPBBPanel(#ConstantePBBPanel) = #PBBConstante
 TypeElementOfPBBPanel(#VariablePBBPanel) = #PBBVariable
 ;
-; Les énumérations suivantes seront utilisées pour gérer
-; les tâches qui s'exécutent en tâches de fond.
+; *********************************************************
 ;
-Enumeration PBB_PriorityMode ; Gestion de l'affichage pour les tâches de fonds.
+; The following enumerations will be used to manage
+; background tasks.
+;
+Enumeration PBB_PriorityMode ; Managing display for background tasks.
   #WorkInBackGround
   #ShowCompletionWindow
   #FinishCompletionNow
 EndEnumeration
 ;
-Enumeration PBB_BackgroundTasksState ; État d'exécution des tâches de fonds.
+Enumeration PBB_BackgroundTasksState ; Execution state of background tasks.
   #BackgroundTasksUncompleted
   #BackgroundTasksHavePriority
   #BackgroundTasksCompleted
   #BackgroundTasksMustRestart
 EndEnumeration
 ;
-; Pour les raccourcis clavier :
+; ****************************************************************************** 
+;
+;                        For keyboard shortcuts:
 ;
 Enumeration PBB_Menus
   #PBBMenu_Return
@@ -260,7 +289,9 @@ Enumeration REMenuItems
   #REM_SaveAsRTF
 EndEnumeration
 ;
-; Pour la mémorisation des numéros des gadgets de la fenêtre principale :
+; ******************************************************************************
+;
+;    For storing the gadget numbers of the main window:
 ;
 Structure PBBGadgets
   PBBWindow.i
@@ -289,26 +320,44 @@ Structure PBBGadgets
   ToolTip.i
 EndStructure
 ;
+Global GPBBGadgets.PBBGadgets;
+;
+; ******************************************************************************
+;
+;                  For managing item searches:
+;
 Structure LastSearchDetails
   ElementName$
   ElementType.i
   TypeName$
 EndStructure
 ;
-Global GPBBGadgets.PBBGadgets;
-;
-#PBBRTFMarker$ = "PBBMark_:" ; Sera utilisé pour identifier les images insérées dans les gadgets RichEdit.
-#PBBLeftArrowMarker$ = "Previous"
-#PBBRightArrowMarker$ = "Next"
-#PBBLeftArrow$ = "←"
-#PBBRightArrow$ = "→"
+Enumeration TypeOfSearch
+  #NoSearch = -1
+  #DoManualSearch = -2
+  #DoProgrammedSearch = -3
+  #FindAnyType = -4
+  #FindFollowedByParentheses = -5
+  #FindNotFollowedByParentheses = -6
 
-;
-Enumeration ValuesForExactValueSearch
-  #NoSearchOrManualSearch
-  #DoProgrammedSearch
-  #DoProgSearchAndPrintResult
 EndEnumeration
+;
+; ******************************************************************************
+;
+; For managing navigation within the 'Details' and 'Found in...' panels:
+;
+Structure SearchDetails
+  Search_Index.i
+  Search_Details.LastSearchDetails
+  Search_DetailScrollPos.Point
+  Search_FoundInScrollPos.Point
+EndStructure
+;
+Global NewList ListOfSearchs.SearchDetails()
+;
+; ******************************************************************************
+;
+;               For managing file cache memory:
 ;
 Enumeration ValuesForCheckFileUpdating
   #FileIsUpdated
@@ -318,21 +367,12 @@ Enumeration ValuesForCheckFileUpdating
   #FileHasBeenDeleted
 EndEnumeration
 ;
-Global PBFunctionList$       ; Contiendra la liste des fonctions natives.
-Global PBFunctionListLCase$  ; Idem en version LCase()
+; ******************************************************************************
 ;
-Global PBBDefaultCursor = LoadCursor_(0, #IDC_ARROW) ; Le curseur flèche standard qui sera affiché au-dessus des gadgets RichEdit.
-Global GreyColor = RGB(120, 120, 120)
-Global pcolorNotUsed = RGB(130, 140, 140) ; Gris pâle pour les procédures qui figurent dans ListOfAllElements$() mais pas dans ListOfUsedElementsForPrint$()
-Global DarkRedColor = RGB(180, 0, 0)
-Global SetValueColor = RGB(150, 90, 0)
-Global PBBTitleColor = RGB(150, 150, 150)
-Global PBBTitleFont = LoadFont(100, "Segoe UI", 9, #PB_Font_Bold | #PB_Font_HighQuality)
-Global ProgressLegendFont = LoadFont(101, "Segoe UI", 7, #PB_Font_HighQuality)
-;
-; Ce sui suit est une copie de sécurité du fichier des préférences de PureBasic,
-; pour les valeurs indispensables à PBBrowser. Cela permet de le faire fonctionner
-; sur une machine où PureBasic n'est pas installé.
+; The following is a backup copy of the PureBasic preferences file,
+; for values essential to PBBrowser. This allows it to run
+; on a machine where PureBasic is not installed.
+
 Global PBPrefSecure$
 PBPrefSecure$ = "ASMKeywordColor = 7490450" + Chr(13) + "BackgroundColor = 14680063" + Chr(13) + "BasicKeywordColor = 6710784" + Chr(13)
 PBPrefSecure$ + "CommentColor = 11184640" + Chr(13) + "ConstantColor = 7490450" + Chr(13) + "LabelColor = 0" + Chr(13) + "NormalTextColor = 0" + Chr(13)
@@ -348,66 +388,83 @@ PBPrefSecure$ + "Debugger_WarningColor = 53503" + Chr(13) + "Debugger_WarningSym
 PBPrefSecure$ + "ModuleColor = 0" + Chr(13) + "SelectionRepeatColor = 5746176" + Chr(13) + "PlainBackground = 14680063" + Chr(13)
 PBPrefSecure$ + "EditorFontName = Consolas" + Chr(13) + "EditorFontSize = 10"
 ;
-; Les fichiers suivants seront intégrés dans l'exécutable, puis extraits dans
-; le dossier des préférences au premier lancement de l'exécutable.
+; ******************************************************************************
+;
+; The following files will be embedded into the executable, and then extracted
+; to the preferences folder on the first launch of the executable.
+;
+IncludePath  "..\Images\"
 ;
 DataSection
   BNext: 
-  IncludeBinary "..\Images\Next.jpg"
+  IncludeBinary "Next.jpg"
   BNextEnd: 
   
   BPrevious: 
-  IncludeBinary "..\Images\Previous.jpg"
+  IncludeBinary "Previous.jpg"
   BPreviousEnd: 
   
   BNoNext: 
-  IncludeBinary "..\Images\NoNext.jpg"
+  IncludeBinary "NoNext.jpg"
   BNoNextEnd: 
   
   BNoPrevious: 
-  IncludeBinary "..\Images\NoPrevious.jpg"
+  IncludeBinary "NoPrevious.jpg"
   BNoPreviousEnd: 
     
   BRefresh: 
-  IncludeBinary "..\Images\Refresh.jpg"
+  IncludeBinary "Refresh.jpg"
   BRefreshEnd: 
-  
+  ;
+  IncludePath  "..\Catalogs\"
+  ;
   BCatalogFR: 
-  IncludeBinary "..\Catalogs\Français\PBBrowser.catalog"
+  IncludeBinary "Francais\PBBrowser.catalog"
   BCatalogFREnd: 
   
   BIntroFR: 
-  IncludeBinary "..\Catalogs\Français\IntroPBBrowser.rtf"
+  IncludeBinary "Francais\IntroPBBrowser.rtf"
   BIntroFREnd: 
   
   BCatalogEN: 
-  IncludeBinary "..\Catalogs\English\PBBrowser.catalog"
+  IncludeBinary "English\PBBrowser.catalog"
   BCatalogENEnd: 
   
   BIntroEN: 
-  IncludeBinary "..\Catalogs\English\IntroPBBrowser.rtf"
+  IncludeBinary "English\IntroPBBrowser.rtf"
   BIntroENEnd: 
   
   BCatalogIT: 
-  IncludeBinary "..\Catalogs\Italiano\PBBrowser.catalog"
+  IncludeBinary "Italiano\PBBrowser.catalog"
   BCatalogITEnd: 
   
   BIntroIT: 
-  IncludeBinary "..\Catalogs\Italiano\IntroPBBrowser.rtf"
-  BIntroITEnd: 
+  IncludeBinary "Italiano\IntroPBBrowser.rtf"
+  BIntroITEnd:
   
+  BCatalogRU: 
+  IncludeBinary "Russian\PBBrowser.catalog"
+  BCatalogRUEnd: 
+  
+  BIntroRU: 
+  IncludeBinary "Russian\IntroPBBrowser.rtf"
+  BIntroRUEnd: 
+  ;
+  IncludePath  "..\"
+  ;
   PBFunction: 
-  IncludeBinary "..\PBFunctionList.Data"
+  IncludeBinary "PBFunctionList.Data"
   PBFunctionEnd: 
     
   APIFunction: 
-  IncludeBinary "..\APIFunctionListing.txt"
+  IncludeBinary "APIFunctionListing.txt"
   APIFunctionEnd: 
 EndDataSection
 ;
+; ******************************************************************************
 ;
-; La liste des mots-clés du Basic n'est pas longue. Plutôt que de la conserver
-; dans un fichier, elle est stockée ici sous forme de data.
+; The list of Basic keywords is not long. Rather than keeping it in a file,
+; it is stored here as data.
 ;
 DataSection
 	PBBasicKeyWords: 
@@ -422,9 +479,9 @@ DataSection
   Data.s "Swap", "To", "Wend", "While", "With", "XIncludeFile", "XOr", "UseModule", "UnuseModule", "UndefineMacro"
   Data.s "EndPBBasicKeyWords"
 EndDataSection
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 325
-; FirstLine = 313
+; IDE Options = PureBasic 6.10 LTS (Windows - x86)
+; CursorPosition = 80
+; FirstLine = 60
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb
