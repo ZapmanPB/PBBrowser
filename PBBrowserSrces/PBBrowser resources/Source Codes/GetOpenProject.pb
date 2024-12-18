@@ -55,7 +55,7 @@ Procedure GetProcessIdFromFilePath(filePath.s)
   ;
   Protected hSnapshot, proc.PROCESSENTRY32, pid = 0
   Protected QueryFullProcessImageName.protoQueryFullProcessImageName
-  Protected hLib, modulehandle, lentgh, FullFileName$
+  Protected hLib, modulehandle, length, FullFileName$
   ;
   hLib = OpenLibrary(#PB_Any, "kernel32.dll")
   If IsLibrary(hLib)
@@ -139,9 +139,10 @@ Procedure.s GetPBPOpenFile(PBAddress$)
 EndProcedure
   
 ;Debug GetPBPOpenFile("C:\Program Files (x86)\PureBasic ttVersions\PureBasic 6.1\PureBasic.exe")
-; IDE Options = PureBasic 6.10 LTS (Windows - x86)
-; CursorPosition = 12
-; Folding = +
+; IDE Options = PureBasic 6.12 LTS (Windows - x86)
+; CursorPosition = 121
+; FirstLine = 10
+; Folding = g
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb
