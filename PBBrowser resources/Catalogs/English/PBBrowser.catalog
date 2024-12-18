@@ -75,6 +75,48 @@ ComputerBenchmark  = Computer benchmark
 TFileLength        = Total code length
 ElementUsedOrNot   = Number of elements found / Elements used:
 
+[ParametersWindow]
+PBBrowserParameters    = PBBrowser parameters
+
+PBBrowserWindows       = PBBrowser windows:
+PBBrowserColorTheme    = PBBrowser color theme:
+Modify                 = Modifier
+Standard               = Standard
+PBBAllGadgetsFont      = PBBrowser default font *:
+PBBTitleFont           = Font of the titles in windows *:
+PBBTitleColor          = Color of the titles in windows:
+PBBUnusedElementColor  = Color of unused elements:
+NotRecommendedToModify = * It is not recommended to modify these parameters.
+
+DetailsFoundInPannels  = 'Details' and 'Found in...' pannels:
+PBBElementNameColor    = Color for Element types and names:
+PBBPanelsDefaultFontStyle = Font:
+PBB_Bullet             = Bullet character:
+
+DetailsPannel          = 'Details' pannel:
+PBBElementDetailsColor = Color for Element details:
+PBBCodeFontStyle       = Font for the code:
+
+FoundInPannel          = 'Found in...' pannel:
+PBBSetValueColor       = Color for the 'Set', 'Read', 'Param',... mentions:
+
+[ZapmanColorRequester]
+
+ThemeColors         = Theme Colors
+Presets             = Presets:
+BackgroundColor     = Background Color
+TextColor           = Text Color
+ResetToDefaultColor = Reset to original color
+EditColor           = Color Editor
+Red                 = Red:
+Green               = Green:
+Blue                = Blue:
+Hue                 = Hue:
+Saturation          = Saturation:
+Lightness           = Lightness:
+HexValue            = Hex Value:
+ClickToAdjustColor  = Click to select a color. Use the mouse wheel to adjust saturation.
+
 [AddToolToPB]
 
 CaptureShortCutsTitle    = Keyboard shortcut
@@ -167,6 +209,7 @@ FilesToDelete            = Files that could be removed from the project:
 ProjectNotModified       = The project was up to date. It has not been modified.
 WouldYouOpenProject      = Would you like to open the project in the PureBasic editor?
 NotForTempFile           = Sorry! This function cannot be executed on an unsaved file.%newline%Please save your code file first before running this function.
+ProjectAllreadyOpen      = This project is currently open in PureBasic and cannot be modified.%newline%Close it if you wish to examine and update it, then click OK.  
 
 CosmeticFileTransformerTitle  = Cosmetic Enhancer
 CosmeticFileTransformerEx     = This function modifies the code of a file to improve its appearance by adding spaces around the characters +-*/><=(&|,. It also handles spaces around the characters '(', ')' and ':'.%newline%Example of modification: %newline%•%nonbreakingspace%Mid (CodeContent\s, dTest, PosInCode - dTest)%newline%  will be transformed into%newline%•%nonbreakingspace%Mid(CodeContent\s, dTest, PosInCode - dTest)
@@ -184,7 +227,7 @@ CreateFolderError      = Unable to create the folder
 CodeMismatchAlert      = Code mismatch!!%newline%I found an '%EndString$%' without a corresponding '%StartString$%' in %nFile$%newline%Line: 
 ElementMissingError    = 'Element' without 'EndElement'!%newline%File:
 UnclosedQuoteError     = Opening quote not closed.
-ErrorWhileReadingFile  = One or more files declared as 'Include' or 'XInclude' are empty or do not exist at the indicated address. PBBrowser cannot continue its analysis.%newline%%newline%Empty or missing file(s):
+ErrorWhileReadingFile  = One or more files declared as 'Include' or 'XInclude' are empty or do not exist at the indicated address. PBBrowser cannot complete its analysis.%newline%%newline%Empty or missing file(s):
 IncludedFileError      = Error in included files
 ConstantNameError      = Analysis error in an 'Include' declaration (constant not found):
 
@@ -205,6 +248,7 @@ SaveAsRTF      = Save as RTF
 [Main]
 
 OpenTHATWindow         = Display help and configure tools
+Preferences            = Preferences
 SelectMainFile         = Select the main PureBasic file to examine:
 SaveFilePrompt         = You must save the file for PBBrowser to navigate inside it.
 ShouldSearchForSomething = Search for an expression (procedure, structure, variable, or function name) to see which files it appears in.

@@ -75,6 +75,49 @@ ComputerBenchmark  = Benchmark del computer
 TFileLength        = Lunghezza totale del codice
 ElementUsedOrNot   = Numero di elementi trovati / Elementi utilizzati:
 
+[ParametersWindow]
+
+PBBrowserParameters    = Parametri di PBBrowser
+
+PBBrowserWindows       = Finestre di PBBrowser:
+PBBrowserColorTheme    = Tema colori di PBBrowser:
+Modify                 = Modificar
+Standard               = Standard
+PBBAllGadgetsFont      = Font predefinito di PBBrowser *:
+PBBTitleFont           = Font dei titoli nelle finestre *:
+PBBTitleColor          = Colore dei titoli nelle finestre:
+PBBUnusedElementColor  = Colore degli elementi non utilizzati:
+NotRecommendedToModify = * Non è consigliato modificare questi parametri.
+
+DetailsFoundInPannels  = Pannelli 'Dettagli' e 'Trovato in...':
+PBBElementNameColor    = Colore per tipi di elementi e nomi:
+PBBPanelsDefaultFontStyle = Font:
+PBB_Bullet             = Carattere del punto elenco:
+
+DetailsPannel          = Pannello 'Dettagli':
+PBBElementDetailsColor = Colore per i dettagli degli elementi:
+PBBCodeFontStyle       = Carattere per il codice:
+
+FoundInPannel          = Pannello 'Trovato in...':
+PBBSetValueColor       = Colore per le menzioni 'Set', 'Read', 'Param',...:
+
+[ZapmanColorRequester]
+
+ThemeColors         = Colori del tema
+Presets             = Preimpostazioni:
+BackgroundColor     = Colore di sfondo
+TextColor           = Colore del testo
+ResetToDefaultColor = Ripristina il colore originale
+EditColor           = Editor di colore
+Red                 = Rosso:
+Green               = Verde:
+Blue                = Blu:
+Hue                 = Tonalità:
+Saturation          = Saturazione:
+Lightness           = Luminosità:
+HexValue            = Valore HEX:
+ClickToAdjustColor  = Clicca per selezionare un colore. Usa la rotella del mouse per regolare la saturazione.
+
 [AddToolToPB]
 
 CaptureShortCutsTitle    = Scorciatoia da tastiera
@@ -167,6 +210,7 @@ FilesToDelete            = File che potrebbero essere rimossi dal progetto:
 ProjectNotModified       = Il progetto era aggiornato. Non è stato modificato.
 WouldYouOpenProject      = Vuoi aprire il progetto nell'editor di PureBasic?
 NotForTempFile           = Mi dispiace! Questa funzione non può essere eseguita su un file non salvato.%newline%Salva prima il tuo file di codice prima di eseguire questa funzione.
+ProjectAllreadyOpen = Questo progetto è attualmente aperto in PureBasic e non può essere modificato.%newline%Chiudilo se desideri esaminarlo e aggiornarlo, quindi fai clic su OK.  
 
 CosmeticFileTransformerTitle  = Miglioratore cosmetico
 CosmeticFileTransformerEx     = Questa funzione modifica il codice di un file per migliorarne la presentazione aggiungendo spazi attorno ai caratteri +-*/><=(&|,. Gestisce anche gli spazi attorno ai caratteri '(', ')' e ':'.%newline%Esempio di modifica : %newline%•%nonbreakingspace%Mid (CodeContent\s, dTest, PosInCode - dTest)%newline%  sarà trasformato in%newline%•%nonbreakingspace%Mid(CodeContent\s, dTest, PosInCode - dTest)
@@ -184,7 +228,7 @@ CreateFolderError      = Impossibile creare la cartella
 CodeMismatchAlert      = Codice non conforme !!%newline%Ho trovato un %quote%%EndString$%%quote% senza %quote%%StartString$%%quote% corrispondente, in %nFile$%%newline%Linea: 
 ElementMissingError    = 'Element' senza 'EndElement' !%newline%File: 
 UnclosedQuoteError     = Virgolato di apertura e non chiuso.
-ErrorWhileReadingFile  = Uno o più file dichiarati come 'Include' o 'XInclude' sono vuoti o non esistono all'indirizzo indicato. PBBrowser non può continuare la sua analisi.%newline%%newline%File(i) vuoto(i) o mancante(i):
+ErrorWhileReadingFile  = Uno o più file dichiarati come 'Include' o 'XInclude' sono vuoti o non esistono all'indirizzo indicato. PBBrowser non può completare la sua analisi.%newline%%newline%File vuoti o mancanti:
 IncludedFileError      = Errore nei file inclusi
 ConstantNameError      = Errore di analisi in una dichiarazione 'Include' (costante non trovata):
 
@@ -205,6 +249,7 @@ SaveAsRTF      = Salva in formato RTF
 [Main]
 
 OpenTHATWindow         = Mostra l'aiuto e configura gli strumenti
+Preferences            = Preferenze
 SelectMainFile         = Seleziona il file principale di PureBasic da esaminare:
 SaveFilePrompt         = Devi salvare il file affinché PBBrowser possa navigare al suo interno.
 ShouldSearchForSomething = Cerca un'espressione (un nome di procedura, di struttura, di variabile, o di funzione) per vedere in quali file figura.

@@ -5,12 +5,14 @@
 ;
 NCommand.CommandDetails\CommandName$ = "InCatalog:InstallPBBrowserTitle"
 NCommand\Commandtype = 1
+NCommand\CommandDontShow = 0
 NCommand\CommandDescription$  = "InCatalog:InstallPBBrowserEx"
 NCommand\CommandSimpleProcAddr = @InstallPBBTool()
 AddCommandToList(NCommand)
 ;
 NCommand\CommandName$ = "InCatalog:UninstallPBBrowserTitle"
 NCommand\Commandtype = 1
+NCommand\CommandDontShow = 0
 NCommand\CommandDescription$  = "InCatalog:UnInstallPBBrowserEx"
 NCommand\CommandSimpleProcAddr = @UnInstallPBBrowserAndPrintResult()
 AddCommandToList(NCommand)
@@ -31,8 +33,8 @@ AddCommandToList(NCommand)
 
 
 ;
-; IDE Options = PureBasic 6.10 LTS (Windows - x86)
-; CursorPosition = 9
+; IDE Options = PureBasic 6.12 LTS (Windows - x86)
+; CursorPosition = 16
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb
