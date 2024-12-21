@@ -380,8 +380,8 @@ CompilerIf Not Defined(GetWinErrorMessage, #PB_Procedure)
           EndIf
         EndIf 
       EndIf
-      messageBuffer$ = ReplaceString(messageBuffer$, Chr(10), "")
-      messageBuffer$ = ReplaceString(messageBuffer$, Chr(13), "")
+      messageBuffer$ = ReplaceString(messageBuffer$, #LF$, "")
+      messageBuffer$ = ReplaceString(messageBuffer$, #CR$, "")
       messageBuffer$ = Trim(messageBuffer$)
       If messageBuffer$ = ""
         messageBuffer$ = "Unknown error"
@@ -1446,9 +1446,9 @@ DataSection
     Data.b $C0, $00, $00, $00, $00, $00, $00, $46
     ;
 EndDataSection
-; IDE Options = PureBasic 6.10 LTS (Windows - x86)
-; CursorPosition = 499
-; FirstLine = 343
-; Folding = v5PQ-
+; IDE Options = PureBasic 6.12 LTS (Windows - x86)
+; CursorPosition = 383
+; FirstLine = 378
+; Folding = -5PQ-
 ; EnableXP
 ; DPIAware

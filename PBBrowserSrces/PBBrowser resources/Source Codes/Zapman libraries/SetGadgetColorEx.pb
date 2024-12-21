@@ -84,13 +84,16 @@ EndProcedure
 ;
 Structure SGCE_GadgetsColors
   Gadget_ID.i
+  Gadget_Handle.i
   Gadget_FrontColor.i
   Gadget_BackColor.i
   Gadget_BorderColor.l
   Gadget_OverColor.l
   Gadget_OldREProc.i
   Gadget_Enabled.i
-  Gadget_Contener.i
+  Gadget_MainWindow.i
+  Gadget_ChildOf.i
+  Gadget_ParentOf.i
 EndStructure
 ;
 #SGCE_StandardColors = -1
@@ -202,28 +205,24 @@ Procedure SGCE_ReplaceColors(hdc, width, height, *backColor.pixelColor, *BorderC
   DeleteDC_(memDC)
 EndProcedure
 ;
-Procedure RepaintBordersInCallBack(gHandle, BorderColor, BackColor, GadgetType, BorderWidth = 2)
+Procedure RepaintBordersInCallBack(gHandle, BorderColor, BackColor, BorderShift = 2, OuterBorderWidth = 0, InnerBorderWidth = 2)
   ;
   Protected windowRect.Rect, hdc, hRgn1, hRgn2, hBrush, PBorderWidth
   ;
   ; Get the position and full size of the gadget window (including borders and scrollbars)
   GetWindowRect_(gHandle, @windowRect.Rect)
   ;
-  If GadgetType = #PB_GadgetType_ButtonImage
-    PBorderWidth = 0
-  Else
-    PBorderWidth = BorderWidth
-  EndIf
   ; Include the gadget borders:
-  windowRect\right - windowRect\left - PBorderWidth
-  windowRect\bottom - windowRect\top - PBorderWidth
-  windowRect\left = - PBorderWidth
-  windowRect\top = - PBorderWidth
+  windowRect\right - windowRect\left - BorderShift + OuterBorderWidth
+  windowRect\bottom - windowRect\top - BorderShift + OuterBorderWidth
+  windowRect\left = -BorderShift - OuterBorderWidth
+  windowRect\top = -BorderShift - OuterBorderWidth
   ;
   hdc =  GetDC_(gHandle)
   ;
   ; Create a region to redraw only the borders
   hRgn1 = CreateRectRgn_(windowRect\left , windowRect\top, windowRect\right, windowRect\bottom)
+  BorderWidth = OuterBorderWidth + InnerBorderWidth
   hRgn2 = CreateRectRgn_(windowRect\left + BorderWidth, windowRect\top + BorderWidth, windowRect\right - BorderWidth, windowRect\bottom - BorderWidth)
   CombineRgn_(hRgn1, hRgn1, hRgn2, #RGN_DIFF)
   DeleteObject_(hRgn2)
@@ -247,7 +246,6 @@ Procedure RepaintBordersInCallBack(gHandle, BorderColor, BackColor, GadgetType, 
   EndIf
   DeleteDC_(hdc)
 EndProcedure
-
 ;
 Procedure SGCE_ChangeColorsCallback(gHandle, uMsg, wParam, lParam)
   ;
@@ -259,6 +257,7 @@ Procedure SGCE_ChangeColorsCallback(gHandle, uMsg, wParam, lParam)
   ;
   Protected *GadgetsColors.SGCE_GadgetsColors = GetWindowLongPtr_(gHandle, #GWL_USERDATA)
   Protected OldREProc = *GadgetsColors\Gadget_OldREProc
+  ;
   Select GadgetType(*GadgetsColors\Gadget_ID)
     Case  #PB_GadgetType_Editor, #PB_GadgetType_String, #PB_GadgetType_ListView, #PB_GadgetType_ButtonImage
       Protected RepaintBorder = 1
@@ -275,17 +274,17 @@ Procedure SGCE_ChangeColorsCallback(gHandle, uMsg, wParam, lParam)
   ;
   If uMsg = #WM_PAINT
     ;
-    GetClientRect_(gHandle, @gadgetRect.Rect)
-    ;
     If RepaintBorder
       ;
       ; Call the default procedure to draw the gadget
       CallWindowProc_(OldREProc, gHandle, uMsg, wParam, lParam)
       ;
-      RepaintBordersInCallBack(gHandle, *GadgetsColors\Gadget_BorderColor, *GadgetsColors\Gadget_BackColor, GadgetType(*GadgetsColors\Gadget_ID))
+      RepaintBordersInCallBack(gHandle, *GadgetsColors\Gadget_BorderColor, *GadgetsColors\Gadget_BackColor)
       ;
       ProcedureReturn 1
     EndIf
+    ;
+    GetClientRect_(gHandle, @gadgetRect.Rect)
     ;
     hdc = BeginPaint_(gHandle, ps)
     width = gadgetRect\right - gadgetRect\left
@@ -329,6 +328,11 @@ Procedure SGCE_ChangeColorsCallback(gHandle, uMsg, wParam, lParam)
       InvalidateRect_(gHandle, 0, #True)
     EndIf
     ;
+    If *GadgetsColors\Gadget_ParentOf
+      ; Redraw child window if any:
+      InvalidateRect_(*GadgetsColors\Gadget_ParentOf, 0, #True)
+    EndIf
+    ;
     ProcedureReturn 0
     ;
   EndIf
@@ -347,9 +351,9 @@ Procedure SGCE_MainWindowCallbackCleaner(gHandle, uMsg, wParam, lParam)
   If uMsg = #WM_DESTROY
     ; Clean the memory when the main window is destroyed:
     ForEach GadgetsColors()
-      If Not(IsGadget(GadgetsColors()\Gadget_ID)) Or GadgetsColors()\Gadget_Contener = gHandle
-        If IsGadget(GadgetsColors()\Gadget_ID) And GadgetsColors()\Gadget_OldREProc
-          SetWindowLongPtr_(GadgetID(GadgetsColors()\Gadget_ID), #GWL_WNDPROC, GadgetsColors()\Gadget_OldREProc)
+      If Not (IsGadget(GadgetsColors()\Gadget_ID)) Or GadgetsColors()\Gadget_MainWindow = gHandle
+        If GadgetsColors()\Gadget_OldREProc
+          SetWindowLongPtr_(GadgetsColors()\Gadget_Handle, #GWL_WNDPROC, GadgetsColors()\Gadget_OldREProc)
         EndIf
         DeleteElement(GadgetsColors())
       EndIf
@@ -379,7 +383,7 @@ Procedure GetGadgetWindow(Gadget)
       CompilerCase #PB_OS_Linux
         ID = gtk_widget_get_toplevel_(GadgetID(Gadget))
         If ID
-          r1 = g_object_get_data_(ID, "pb_id" )
+          r1 = g_object_get_data_(ID, "pb_id")
         Else
           r1 = -1
         EndIf
@@ -398,57 +402,46 @@ Procedure GetGadgetWindow(Gadget)
   ProcedureReturn r1
 EndProcedure
 ;
-Procedure GetGadgetColorEx(GadgetID, ColorType)
+Procedure SGCE_FindChildCallback(hWnd, val)
   ;
-  ; Extended GetGadgetColor function for buttons and other
-  ; gadgets with wich GetGadgetColor doesn't work.
+  Shared ChildHandle
+  ChildHandle = hWnd
   ;
+  Protected windowTitle.s = Space(256)
   ;
-  Shared GadgetsColors()
+  GetWindowText_(hWnd, @windowTitle, 255)
   ;
-  If IsGadget(GadgetID)
-    ;
-    Protected CustomColor = 1
-    Select GadgetType(GadgetID)
-      Case #PB_GadgetType_Calendar, #PB_GadgetType_Container, #PB_GadgetType_Date, #PB_GadgetType_Editor, #PB_GadgetType_ExplorerList
-        CustomColor = 0
-      Case #PB_GadgetType_ExplorerTree, #PB_GadgetType_HyperLink, #PB_GadgetType_ListView, #PB_GadgetType_ListIcon, #PB_GadgetType_MDI
-        CustomColor = 0
-      Case #PB_GadgetType_ProgressBar, #PB_GadgetType_ScrollArea, #PB_GadgetType_Spin, #PB_GadgetType_String, #PB_GadgetType_Text, #PB_GadgetType_Tree
-        CustomColor = 0
-    EndSelect
-    ;
-    Protected Found = 0
-    If CustomColor
-      If ListSize(GadgetsColors())
-        ForEach GadgetsColors()
-          If GadgetsColors()\Gadget_ID = GadgetID
-            Found = 1
-            Break
-          EndIf
-        Next
-      EndIf
-      ;
-      If Found
-        If ColorType = #PB_Gadget_BackColor
-          ;
-          ProcedureReturn GadgetsColors()\Gadget_BackColor
-          ;
-        ElseIf ColorType = #PB_Gadget_FrontColor
-          ;
-          ProcedureReturn GadgetsColors()\Gadget_FrontColor
-          ;
-        EndIf
-      Else
-        ProcedureReturn GetGadgetColor(GadgetID, ColorType)
-      EndIf
-      ;
-    Else
-      ;
-      ProcedureReturn GetGadgetColor(GadgetID, ColorType)
-      ;
-    EndIf
+  ProcedureReturn 0
+EndProcedure
+;
+Procedure SGCE_EnumChildWindows(Gadget)
+  ;
+  Shared ChildHandle
+  ;
+  If IsGadget(Gadget)
+    Gadget = GadgetID(Gadget)
   EndIf
+  If Gadget
+    EnumChildWindows_(Gadget, @SGCE_FindChildCallback(), 0)
+  EndIf
+  ;
+  ProcedureReturn ChildHandle
+EndProcedure
+;
+Procedure SGCE_IsCustomColorGadget(GadgetID)
+  Protected CustomColor = 1
+  Select GadgetType(GadgetID)
+    ; All the gadgets listed here are natively managed by PureBasic and don't need any special process:
+    Case #PB_GadgetType_Editor, #PB_GadgetType_String, #PB_GadgetType_ListView, #PB_GadgetType_ButtonImage
+      CustomColor = -1
+    Case #PB_GadgetType_Calendar, #PB_GadgetType_Container, #PB_GadgetType_Date, #PB_GadgetType_ExplorerList
+      CustomColor = 0
+    Case #PB_GadgetType_ExplorerTree, #PB_GadgetType_HyperLink, #PB_GadgetType_MDI;, #PB_GadgetType_ListIcon
+      CustomColor = 0
+    Case #PB_GadgetType_ProgressBar, #PB_GadgetType_ScrollArea, #PB_GadgetType_Spin, #PB_GadgetType_Text, #PB_GadgetType_Tree
+      CustomColor = 0
+  EndSelect
+  ProcedureReturn CustomColor
 EndProcedure
 ;
 Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
@@ -492,44 +485,51 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
     Found = 0
     If ListSize(GadgetsColors())
       ForEach GadgetsColors()
-        If GadgetsColors()\Gadget_ID = GadgetID
+        If GadgetsColors()\Gadget_Handle = GadgetID(GadgetID)
           Found = 1
           Break
         EndIf
       Next
     EndIf
     ;
-    SetStandardColor:
+    SetStandardColor: 
     If ColorType = #SGCE_StandardColors
       If Found
-        ; Reset to standard management:
-        If GadgetsColors()\Gadget_OldREProc
-          SetWindowLongPtr_(GadgetID(GadgetID), #GWL_WNDPROC, GadgetsColors()\Gadget_OldREProc)
-          GadgetsColors()\Gadget_OldREProc = 0
-        EndIf
+        ;
+        ; Clean memory --> Clean the element and its child element
+        ForEach GadgetsColors()
+          If GadgetsColors()\Gadget_ID = GadgetID
+            If GadgetsColors()\Gadget_OldREProc
+              ; Reset to standard management:
+              SetWindowLongPtr_(GadgetsColors()\Gadget_Handle, #GWL_WNDPROC, GadgetsColors()\Gadget_OldREProc)
+            EndIf
+            DeleteElement(GadgetsColors())
+          EndIf
+        Next
         ;
         ; Force gadget to redraw:
         If IsWindowVisible_(GadgetID(GadgetID))
           HideGadget(GadgetID, #True)
           HideGadget(GadgetID, #False)
         EndIf
-        ;
-        ; Clean memory
-        DeleteElement(GadgetsColors())
       EndIf
       SetGadgetColor(GadgetID, #PB_Gadget_FrontColor, #PB_Default)
       SetGadgetColor(GadgetID, #PB_Gadget_BackColor,  #PB_Default)
+      ;
       ProcedureReturn
+      ;
     EndIf
     ;
     If Found = 0
       AddElement(GadgetsColors())
       GadgetsColors()\Gadget_ID = GadgetID
+      GadgetsColors()\Gadget_Handle = GadgetID(GadgetID)
       GadgetsColors()\Gadget_FrontColor = #PB_Default
       GadgetsColors()\Gadget_BackColor = #PB_Default
       GadgetsColors()\Gadget_OldREProc = 0
       GadgetsColors()\Gadget_Enabled = IsWindowEnabled_(GadgetID(GadgetID))
-      GadgetsColors()\Gadget_Contener = Contener
+      GadgetsColors()\Gadget_MainWindow = Contener
+      GadgetsColors()\Gadget_ChildOf = 0
     EndIf
     ;
     If ColorType = #PB_Gadget_BackColor
@@ -544,13 +544,13 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
         Luminosity = (Red(Color) - $80) + (Green(Color) - $80) + (Blue(Color) - $80)
         If Abs(Luminosity) < 100
           ; Gadget color is quite middle grey
-          FrontColor = RGB(255,255,255)
+          FrontColor = RGB(255, 255, 255)
         ElseIf Luminosity > 0
           ; Bright theme
           FrontColor = 0
         Else
           ; Dark theme
-          FrontColor = RGB(220,220,220)
+          FrontColor = RGB(220, 220, 220)
         EndIf
         GadgetsColors()\Gadget_FrontColor = FrontColor
       EndIf
@@ -566,7 +566,7 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
         If IsWindow(contener)
           GadgetsColors()\Gadget_BackColor = GetWindowColor(contener)
         ElseIf IsGadget(contener)
-          GadgetsColors()\Gadget_BackColor = GetGadgetColorEx(contener, #PB_Gadget_BackColor)
+          GadgetsColors()\Gadget_BackColor = GetGadgetColor(contener, #PB_Gadget_BackColor)
         EndIf
       EndIf
     EndIf
@@ -589,8 +589,7 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
     EndSelect
     If ApplyDarkMode
       ;
-      ; If the background is darker than lighter, set the scrollbar
-      ; to dark mode:
+      ; If the background is darker than lighter, set the scrollbar to dark mode:
       If (Red(GadgetsColors()\Gadget_BackColor) + Green(GadgetsColors()\Gadget_BackColor) + Blue(GadgetsColors()\Gadget_BackColor)) > (127 * 3)
         SetWindowTheme_(GadgetID(GadgetID), @"Explorer", #Null)
       Else
@@ -598,18 +597,7 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
       EndIf
     EndIf
     ;
-    Protected CustomColor = 1
-    Select GadgetType(GadgetID)
-      ; All the gadgets listed here are natively managed by PureBasic and don't need any special process:
-      Case #PB_GadgetType_Editor, #PB_GadgetType_String, #PB_GadgetType_ListView, #PB_GadgetType_ButtonImage
-        CustomColor = -1
-      Case #PB_GadgetType_Calendar, #PB_GadgetType_Container, #PB_GadgetType_Date, #PB_GadgetType_ExplorerList
-        CustomColor = 0
-      Case #PB_GadgetType_ExplorerTree, #PB_GadgetType_HyperLink, #PB_GadgetType_MDI, #PB_GadgetType_ListIcon
-        CustomColor = 0
-      Case #PB_GadgetType_ProgressBar, #PB_GadgetType_ScrollArea, #PB_GadgetType_Spin, #PB_GadgetType_Text, #PB_GadgetType_Tree
-        CustomColor = 0
-    EndSelect
+    Protected CustomColor = SGCE_IsCustomColorGadget(GadgetID)
     ;
     If CustomColor
       ;
@@ -621,7 +609,7 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
       EndIf
       ;
       ; Compute the color of the borders, for some gadgets, as EditorGadget, which need to repaint the border:
-      Ratio.f = 0.2
+      Ratio.f = 0.25
       Red = Red(GadgetsColors()\Gadget_FrontColor) * Ratio + Red(GadgetsColors()\Gadget_BackColor) * (1 - Ratio)
       Green = Green(GadgetsColors()\Gadget_FrontColor) * Ratio + Green(GadgetsColors()\Gadget_BackColor) * (1 - Ratio)
       Blue = Blue(GadgetsColors()\Gadget_FrontColor) * Ratio + Blue(GadgetsColors()\Gadget_BackColor) * (1 - Ratio)
@@ -635,23 +623,100 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
       ; Set the gadget callback if not already done:
       ;
       If GadgetsColors()\Gadget_OldREProc = 0 
-        GadgetsColors()\Gadget_OldREProc = SetWindowLongPtr_(GadgetID(GadgetID), #GWL_WNDPROC, @SGCE_ChangeColorsCallback())
+        GadgetsColors()\Gadget_OldREProc = SetWindowLongPtr_(GadgetsColors()\Gadget_Handle, #GWL_WNDPROC, @SGCE_ChangeColorsCallback())
       EndIf
       ; Register color data adress in #GWL_USERDATA
-      SetWindowLongPtr_(GadgetID(GadgetID), #GWL_USERDATA, @GadgetsColors())
+      SetWindowLongPtr_(GadgetsColors()\Gadget_Handle, #GWL_USERDATA, @GadgetsColors())
+      ;
+      ;
+      If GadgetType(GadgetID) = #PB_GadgetType_ListIcon Or GadgetType(GadgetID) = #PB_GadgetType_ComboBox
+        WChild = SGCE_EnumChildWindows(GadgetID)
+        If WChild
+          *Parent = @GadgetsColors()
+          GadgetsColors()\Gadget_ParentOf = WChild
+          SetWindowLong_(GadgetsColors()\Gadget_Handle, #GWL_EXSTYLE, GetWindowLong_(GadgetsColors()\Gadget_Handle, #GWL_EXSTYLE) & ~#WS_EX_CLIENTEDGE)
+          SetWindowLong_(GadgetsColors()\Gadget_Handle, #GWL_STYLE, GetWindowLong_(GadgetsColors()\Gadget_Handle, #GWL_STYLE) | #WS_BORDER)
+          Found = 0
+          ForEach GadgetsColors()
+            If GadgetsColors()\Gadget_Handle = WChild
+              Found = 1
+              Break
+            EndIf
+          Next
+          If found = 0
+            AddElement(GadgetsColors())
+            CopyMemory(*Parent, GadgetsColors(), SizeOf(SGCE_GadgetsColors))
+            GadgetsColors()\Gadget_Handle = WChild
+            GadgetsColors()\Gadget_ChildOf = 1
+            GadgetsColors()\Gadget_ParentOf = 0
+            GadgetsColors()\Gadget_OldREProc = SetWindowLongPtr_(GadgetsColors()\Gadget_Handle, #GWL_WNDPROC, @SGCE_ChangeColorsCallback())
+          EndIf
+          SetWindowLongPtr_(WChild, #GWL_USERDATA, @GadgetsColors())
+          ;
+          ChangeCurrentElement(GadgetsColors(), *Parent)
+          ;
+        EndIf
+      EndIf
+      ;
       ; Force gadget to be redrawn:
       InvalidateRect_(GadgetID(GadgetID), 0, #True)
       For ct = 1 To 50 : WindowEvent() : Next
       ;
     EndIf
     If CustomColor  <>  1
-      
       If ColorType = #PB_Gadget_FrontColor Or ColorType = #PB_Gadget_BackColor
         SetGadgetColor(GadgetID, #PB_Gadget_FrontColor, GadgetsColors()\Gadget_FrontColor)
         SetGadgetColor(GadgetID, #PB_Gadget_BackColor, GadgetsColors()\Gadget_BackColor)
       Else
         SetGadgetColor(GadgetID, ColorType, Color)
       EndIf
+    EndIf
+  EndIf
+EndProcedure
+;
+Procedure GetGadgetColorEx(GadgetID, ColorType)
+  ;
+  ; Extended GetGadgetColor function for buttons and other
+  ; gadgets with wich GetGadgetColor doesn't work.
+  ;
+  ;
+  Shared GadgetsColors()
+  ;
+  If IsGadget(GadgetID)
+    ;
+    Protected Found = 0
+    ;
+    If SGCE_IsCustomColorGadget(GadgetID) = 1
+      ;
+      If ListSize(GadgetsColors())
+        ForEach GadgetsColors()
+          If GadgetsColors()\Gadget_Handle = GadgetID(GadgetID)
+            Found = 1
+            Break
+          EndIf
+        Next
+      EndIf
+      ;
+      If Found
+        If ColorType = #PB_Gadget_BackColor
+          ;
+          ProcedureReturn GadgetsColors()\Gadget_BackColor
+          ;
+        ElseIf ColorType = #PB_Gadget_FrontColor
+          ;
+          ProcedureReturn GadgetsColors()\Gadget_FrontColor
+          ;
+        Else
+          ;
+          ProcedureReturn GetGadgetColor(GadgetID, ColorType)
+          ;
+        EndIf
+      EndIf
+      ;
+    Else
+      ;
+      ProcedureReturn GetGadgetColor(GadgetID, ColorType)
+      ;
     EndIf
   EndIf
 EndProcedure
@@ -698,17 +763,17 @@ Procedure MulticolorDemoWindow()
     FrameGadget(#Frame, 10, 10, 120, 70, "Options")
     ;
     SetGadgetColorEx(#Frame, #PB_Gadget_BackColor, RGB(0, 50, 15))
-    SetGadgetColorEx(#Frame, #PB_Gadget_FrontColor, RGB($FF,$60,$00))
+    SetGadgetColorEx(#Frame, #PB_Gadget_FrontColor, RGB($FF, $60, $00))
     ;
       OptionGadget(#Option1, 15, 25, 100, 25, "Option #1")
       SetGadgetState(#Option1, 1)
       ;
       SetGadgetColorEx(#Option1, #PB_Gadget_BackColor, RGB(0, 50, 15))
-      SetGadgetColorEx(#Option1, #PB_Gadget_FrontColor, RGB($FF,$50,$FF))
+      SetGadgetColorEx(#Option1, #PB_Gadget_FrontColor, RGB($FF, $50, $FF))
       ;
       OptionGadget(#Option2, 15, 45, 100, 25, "Option #2")
       SetGadgetColorEx(#Option2, #PB_Gadget_BackColor, RGB(0, 50, 15))
-      SetGadgetColorEx(#Option2, #PB_Gadget_FrontColor, RGB($60,$FF,$60))
+      SetGadgetColorEx(#Option2, #PB_Gadget_FrontColor, RGB($60, $FF, $60))
     ;
     CheckBoxGadget(#CheckBox, 10, 90, 100, 25, "Desable")
     ;
@@ -718,7 +783,7 @@ Procedure MulticolorDemoWindow()
     SetGadgetColorEx(#CheckBox, #PB_Gadget_FrontColor, BorderColor)
     SetGadgetState(#CheckBox, 1)
     ButtonGadget(#Button1, 10, 120, 100, 25, "Desabled Button")
-    DisableGadget(#Button1,#True)
+    DisableGadget(#Button1, #True)
     SetGadgetColorEx(#Button1, #PB_Gadget_FrontColor, BorderColor)
     ;
     TextGadget(#Text, 10, 150, 100, 25, "Simple text")
@@ -740,7 +805,7 @@ Procedure MulticolorDemoWindow()
     Next
     ;
     PanelGadget(#Panel, 350, 10, 200, 240)
-    SetGadgetColorEx(#Panel, #PB_Gadget_BackColor, BackColor)
+    SetGadgetColorEx(#Panel, #PB_Gadget_FrontColor, RGB($60, $FF, $60))
     ;
     ; If #PB_Gadget_FrontColor is not defined, SetGadgetColorEx() will automatically choose
     ; a color with a strong contrast from #PB_Gadget_BackColor
@@ -756,7 +821,7 @@ Procedure MulticolorDemoWindow()
     CloseGadgetList()
     ;
     ContainerGadget(#Contener, 10, 260, 120, 100)
-      SetGadgetColorEx(#Contener, #PB_Gadget_BackColor, RGB($90,00,$90))
+      SetGadgetColorEx(#Contener, #PB_Gadget_BackColor, RGB($90, 00, $90))
       ButtonGadget(#ContenerButton1, 10, 10, 100, 22, "Button #1")
       SetGadgetColorEx(#ContenerButton1, #PB_Gadget_BackColor, BorderColor)
       ButtonGadget(#ContenerButton2, 10, 40, 100, 22, "Button #2")
@@ -774,27 +839,27 @@ Procedure MulticolorDemoWindow()
       SetWindowTheme_(GadgetID(#ContenerButton2), "DarkMode_Explorer", #Null)
       ;
       ButtonGadget(#ContenerButton3, 10, 70, 100, 22, "Button #3")
-      SetGadgetColorEx(#ContenerButton3, #PB_Gadget_FrontColor, RGB($FF,$FF,$0))
+      SetGadgetColorEx(#ContenerButton3, #PB_Gadget_FrontColor, RGB($FF, $FF, $0))
     CloseGadgetList()
     ;
     ListIconGadget(#ListIcon, 140, 260, 200, 90, "ListIcon", 120)
     AddGadgetColumn(#ListIcon, 1, "Column 2", 240)
-    For ct = 1 To 5 : AddGadgetItem(#ListIcon, -1, "ListIcon Element " + Str(ct) +Chr(10)+ "Column 2 Element " + Str(ct))
+    For ct = 1 To 5 : AddGadgetItem(#ListIcon, -1, "ListIcon Element " + Str(ct) + #LF$ + "Column 2 Element " + Str(ct))
     Next
-    SetGadgetColorEx(#ListIcon, #PB_Gadget_FrontColor, RGB($C0,$FF,$0))
+    SetGadgetColorEx(#ListIcon, #PB_Gadget_FrontColor, RGB($C0, $FF, $0))
     
     ComboBoxGadget(#Combo, 350, 260, 200, 28)
     For ct = 1 To 5 : AddGadgetItem(#Combo, -1, "Combo Element " + Str(ct)) : Next
     SetGadgetState(#Combo, 0)
-    SetGadgetColorEx(#Combo, #PB_Gadget_FrontColor, RGB($FF,$FF,$0))
+    SetGadgetColorEx(#Combo, #PB_Gadget_FrontColor, RGB($FF, $FF, $0))
     
     ComboBoxGadget(#ComboEdit, 350, 300, 200, 28, #PB_ComboBox_Editable)
     For ct = 1 To 5 : AddGadgetItem(#ComboEdit, -1, "Combo Editable Element " + Str(ct)) : Next
     SetGadgetState(#ComboEdit, 0)
-    SetGadgetColorEx(#ComboEdit, #PB_Gadget_FrontColor, RGB($FF,$FF,$0))
+    SetGadgetColorEx(#ComboEdit, #PB_Gadget_FrontColor, RGB($FF, $FF, $0))
     ;     
     ButtonGadget(#BQuit, WindowWidth(1) - 110, WindowHeight(1) - 35, 100, 25, "Exit")
-    SetGadgetColorEx(#BQuit, #PB_Gadget_BackColor, RGB(255,0,0))
+    SetGadgetColorEx(#BQuit, #PB_Gadget_BackColor, RGB(255, 0, 0))
     ;       
     Repeat
       Event = WaitWindowEvent()
@@ -806,7 +871,7 @@ Procedure MulticolorDemoWindow()
             DisableGadget(#Button1, #True)
             SetGadgetText(#Button1, "Desabled Button")
           Else
-            DisableGadget(#Button1,#False)
+            DisableGadget(#Button1, #False)
             SetGadgetText(#Button1, "Enabled Button")
           EndIf
         EndIf
@@ -829,7 +894,8 @@ CompilerIf #PB_Compiler_IsMainFile
 
 CompilerEndIf
 ; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 20
-; Folding = 02
+; CursorPosition = 849
+; FirstLine = 526
+; Folding = 9h0
 ; EnableXP
 ; DPIAware

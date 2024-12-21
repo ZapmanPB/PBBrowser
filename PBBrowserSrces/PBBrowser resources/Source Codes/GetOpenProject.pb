@@ -128,7 +128,7 @@ Procedure.s GetPBPOpenFile(PBAddress$)
   If Win
     EnumChildWindows_(Win, @FindChildFromPartialName(), targetWindowTitle)
     If targetWindowTitle\s <> SFind$
-      pd = FindString(LCase(targetWindowTitle\s), Chr(13)) + 1
+      pd = FindString(LCase(targetWindowTitle\s), #CR$) + 1
       pf = FindString(LCase(targetWindowTitle\s), SFind$, pf) + Len(SFind$)
       Result$ = Mid(targetWindowTitle\s, pd, pf - pd)
       pd = FindString(Result$, ": ")
@@ -140,9 +140,9 @@ EndProcedure
   
 ;Debug GetPBPOpenFile("C:\Program Files (x86)\PureBasic ttVersions\PureBasic 6.1\PureBasic.exe")
 ; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 121
-; FirstLine = 10
-; Folding = g
+; CursorPosition = 130
+; FirstLine = 27
+; Folding = w
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb

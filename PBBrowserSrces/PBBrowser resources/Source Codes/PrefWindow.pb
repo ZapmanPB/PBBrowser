@@ -188,7 +188,7 @@ EndProcedure
 Procedure PW_SetColorsToPWGadgets()
   ;
   Shared ParamWAG.ParametersStruct
-  Protected WarningColor = RGB(150,120,20)
+  Protected WarningColor = RGB(150, 120, 20)
   Protected TitleColor
   ;
   ForEach PBBParameters()
@@ -221,10 +221,13 @@ Procedure PBBSetParameters(WWidth = 550, WHeight = 485)
   ;
   Protected *GadgetAdress, GadgetList$, LastCategory$, InnerHeight
   Protected Event, EventType, EventGadget, MouseButton, EventMenu, GetOut
-  Protected TNotRecommended, Vpos
+  Protected TNotRecommended, Vpos, OX, OY
   ;
   ParamWAG\BorderColor = RGB(150, 150, 150)
-  ParamWAG\ParamWindow = OpenWindow(#PB_Any, 0, 0, WWidth, WHeight, GetTextFromCatalogPB("PBBrowserParameters"), #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_ScreenCentered | #PB_Window_Invisible)
+  Protected ParentWindowXCenter = WindowX(GPBBGadgets\PBBWindow) + (WindowWidth(GPBBGadgets\PBBWindow) / 2)
+  Alert_ComputeWinOrigins(@OX, @OY, WWidth, WHeight, ParentWindowXCenter)
+  ;
+  ParamWAG\ParamWindow = OpenWindow(#PB_Any, OX, OY, WWidth, WHeight, GetTextFromCatalogPB("PBBrowserParameters"), #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_Invisible)
   If ParamWAG\ParamWindow
     ApplyDarkModeToWindow(ParamWAG\ParamWindow)
     StickyWindow(ParamWAG\ParamWindow, #True)
@@ -484,7 +487,10 @@ CompilerIf #PB_Compiler_IsMainFile
 CompilerEndIf
 
 ; IDE Options = PureBasic 6.12 LTS (Windows - x86)
+; CursorPosition = 217
+; FirstLine = 203
 ; Folding = b-
 ; EnableXP
 ; DPIAware
+; UseMainFile = ..\..\PBBrowser.pb
 ; Executable = PrefWindow.exe

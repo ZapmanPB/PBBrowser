@@ -12,6 +12,7 @@ Procedure.s ChooseLanguage(folder$, LDefault$ = "")
   ;
   Protected selectedFolder$
   Protected numDirs, radioY, selectedGadget
+  Protected WHeight, WWidth, OX, OY, GadgetID, GadgetList$, Event
   ;
   If ExamineDirectory(0, folder$, "*.*")
     ; Create a list to store the folder names
@@ -34,17 +35,21 @@ Procedure.s ChooseLanguage(folder$, LDefault$ = "")
     
     ; Calculate the window size based on the number of folders
     numDirs = ListSize(Dirs$())
-    WindowHeight = (numDirs * 22) + 50
-    WindowWidth = 190
-    
-    If OpenWindow(0, 250, 200, WindowWidth, WindowHeight, "Choose your language", #PB_Window_SystemMenu | #PB_Window_ScreenCentered | #PB_Window_Invisible)
+    WHeight = (numDirs * 22) + 50
+    WWidth = 190
+    If IsWindow(GPBBGadgets\PBBWindow)
+      Protected ParentWindowXCenter = WindowX(GPBBGadgets\PBBWindow) + (WindowWidth(GPBBGadgets\PBBWindow) / 2)
+    EndIf
+    Alert_ComputeWinOrigins(@OX, @OY, WWidth, WHeight, ParentWindowXCenter)
+    ;
+    If OpenWindow(0, OX, OY, WWidth, WHeight, "Choose your language", #PB_Window_SystemMenu | #PB_Window_Invisible)
       ApplyDarkModeToWindow(0)
       StickyWindow(0, 1)
       ; Create radio buttons for each folder and select the first one by default
       radioY = 5
       selectedGadget = -1
       ForEach Dirs$()
-        GadgetID = OptionGadget(#PB_Any, 60, radioY, WindowWidth - 20, 20, Dirs$())
+        GadgetID = OptionGadget(#PB_Any, 60, radioY, WWidth - 20, 20, Dirs$())
         GadgetList$ + Str(GadgetID) + ","
         If selectedGadget = -1 Or FindString(LDefault$, Dirs$())
           SetGadgetState(gadgetID, 1) ; Select the first button
@@ -57,7 +62,7 @@ Procedure.s ChooseLanguage(folder$, LDefault$ = "")
       Next dirs$()
       
       ; Create the OK button at the bottom right
-      ButtonGadget(1, WindowWidth - 80, WindowHeight - 32, 70, 22, "OK")
+      ButtonGadget(1, WWidth - 80, WHeight - 32, 70, 22, "OK")
       GadgetList$ + "1,"
       ;
       SetFontAndGadgetsColors(0, InterfaceColorPresets(), GadgetList$)
@@ -96,6 +101,9 @@ EndProcedure
 ;Debug ChooseLanguage("C:\MyFolder")
 
 ; IDE Options = PureBasic 6.12 LTS (Windows - x86)
+; CursorPosition = 44
+; FirstLine = 25
 ; Folding = -
 ; EnableXP
 ; DPIAware
+; UseMainFile = ..\..\PBBrowser.pb
