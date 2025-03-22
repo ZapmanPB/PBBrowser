@@ -37,12 +37,9 @@ Procedure.s ChooseLanguage(folder$, LDefault$ = "")
     numDirs = ListSize(Dirs$())
     WHeight = (numDirs * 22) + 50
     WWidth = 190
-    If IsWindow(GPBBGadgets\PBBWindow)
-      Protected ParentWindowXCenter = WindowX(GPBBGadgets\PBBWindow) + (WindowWidth(GPBBGadgets\PBBWindow) / 2)
-    EndIf
-    Alert_ComputeWinOrigins(@OX, @OY, WWidth, WHeight, ParentWindowXCenter)
+    Protected ParentWindowID = ComputeWinOrigins(@OX, @OY, WWidth, WHeight, GPBBGadgets\PBBWindow)
     ;
-    If OpenWindow(0, OX, OY, WWidth, WHeight, "Choose your language", #PB_Window_SystemMenu | #PB_Window_Invisible)
+    If OpenWindow(0, OX, OY, WWidth, WHeight, "Choose your language", #PB_Window_SystemMenu | #PB_Window_Invisible, ParentWindowID)
       ApplyDarkModeToWindow(0)
       StickyWindow(0, 1)
       ; Create radio buttons for each folder and select the first one by default
@@ -101,8 +98,8 @@ EndProcedure
 ;Debug ChooseLanguage("C:\MyFolder")
 
 ; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 44
-; FirstLine = 25
+; CursorPosition = 42
+; FirstLine = 11
 ; Folding = -
 ; EnableXP
 ; DPIAware

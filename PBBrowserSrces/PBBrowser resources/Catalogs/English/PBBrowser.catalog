@@ -54,7 +54,7 @@ WantToSeeHelp           = Do you want to see PBBrowser help?
 
 SWTitle           = Search
 SWSearch          = Search:
-SWReplaceTitle    = Replace with:
+SWReplaceTitle    = Replace by:
 SWReplace         = Replace
 SWReplaceAll      = Replace all
 SWCaseSensitive   = Case sensitive
@@ -62,8 +62,8 @@ SWWholeWord       = Whole word
 SWInAllDocument   = In the entire document
 SWUnableToFind    = Unable to find
 SWReplacementMade = replacement(s) made.
-SWSearchFromStart = Search from the end?
-SWSearchFromEnd   = Search from the beginning?
+SWSearchFromStart = Search from the beginning?
+SWSearchFromEnd   = Search from the end?
 
 [StatReport]
 
@@ -116,6 +116,36 @@ Saturation          = Saturation:
 Lightness           = Lightness:
 HexValue            = Hex Value:
 ClickToAdjustColor  = Click to select a color. Use the mouse wheel to adjust saturation.
+
+[ZapmanFontRequester]
+
+ChooseAFont         = Choose a font
+Variants:           = Variants:
+Size:               = Size:
+DetailsDwn          = Details ⏷
+DetailsUp           = Details ⏶
+fancyFont           = fancy font
+unspecified         = unspecified
+monospace           = monospace
+withSerif           = with serif
+handwriting         = handwriting
+withoutSerif        = without serif
+Unknown             = Unknown
+Name:               = Name:
+Type:               = Type:
+Family:             = Family:
+Script(s):          = Script(s):
+Metrics:            = Metrics:
+Style:              = Style:
+Size:               = Size:
+Color:              = Color:
+Sample              = Sample
+Normal              = Normal
+Bold                = Bold
+Italic              = Italic
+Underline           = Underline
+StrikeOut           = StrikeOut
+CAFDemoText         = The invisible worm%newline%That flies in the night%newline%In the howling storm%newline%Has found out thy bed%newline%Of crimson joy:%newline%his dark secret love%newline%thy life destroy.
 
 [AddToolToPB]
 
@@ -220,6 +250,9 @@ WorkDone               = The operation is complete.
 
 ExportSourceCodeTitle  = Retrieve the source code of PBBrowser
 ExportSourceCodeEx     = Since PBBrowser is designed for programmers, it would not be surprising if you wanted to dive into its code, which is open-source and freely downloadable. Click 'Run' to access the website offering the download.
+
+EraseCommentsTitle  = Erase comments from the code
+EraseCommentsEx     = For many reasons, including the need to reduce code size, it is sometimes desirable to remove all comments from your code. This command does exactly that. Make a copy of the current version of your files before running it, as all files included in your project will be revised.
 
 [ClientErrors]
 

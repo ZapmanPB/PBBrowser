@@ -2,7 +2,7 @@
 ;
 ;                            PrefWindow.pb
 ;                      Part of PBBrowser project
-;                          Zapman - Dec 2024
+;                         Zapman - March 2025
 ;
 ;          Open the preferences window and manage user choices.
 ;
@@ -47,46 +47,44 @@ Global ParamWAG.ParametersStruct
 Procedure PW_SetFontsToPWGadgets()
   ;
   Shared ParamWAG.ParametersStruct
-  Static AllGadgetsFont
-  Static TitleFont
   ;
   ForEach PBBParameters()
     If PBBParameters()\Name$ = "PBBAllGadgetsFont"
-      If IsFont(AllGadgetsFont)
-        FreeFont(AllGadgetsFont)
+      If IsFont(PBBAllGadgetsFont)
+        FreeFont(PBBAllGadgetsFont)
       EndIf
-      AllGadgetsFont = FontID(GetFontFromDescription(GetGadgetText(PBBParameters()\InputGadget)))
+      PBBAllGadgetsFont = FontID(LoadFontFromDescription(GetGadgetText(PBBParameters()\InputGadget)))
     ElseIf PBBParameters()\Name$ = "PBBTitleFont"
-      If IsFont(TitleFont)
-        FreeFont(TitleFont)
+      If IsFont(PBBTitleFont)
+        FreeFont(PBBTitleFont)
       EndIf
-      TitleFont = FontID(GetFontFromDescription(GetGadgetText(PBBParameters()\InputGadget)))
+      PBBTitleFont = FontID(LoadFontFromDescription(GetGadgetText(PBBParameters()\InputGadget)))
     EndIf
   Next
   ForEach PBBParameters()
     If IsGadget(PBBParameters()\TitleGadget)
-      SetGadgetFont(PBBParameters()\TitleGadget, TitleFont)
+      SetGadgetFont(PBBParameters()\TitleGadget, PBBTitleFont)
     EndIf
-    SetGadgetFont(PBBParameters()\LegendGadget, AllGadgetsFont)
-    SetGadgetFont(PBBParameters()\StandardButtonGadget, AllGadgetsFont)
+    SetGadgetFont(PBBParameters()\LegendGadget, PBBAllGadgetsFont)
+    SetGadgetFont(PBBParameters()\StandardButtonGadget, PBBAllGadgetsFont)
     If PBBParameters()\Type = #PBBP_FontStyle And IsGadget(PBBParameters()\InputGadget)
       If IsFont(PBBParameters()\InputGadgetFont)
         FreeFont(PBBParameters()\InputGadgetFont)
       EndIf
-      PBBParameters()\InputGadgetFont = GetFontFromDescription(GetGadgetText(PBBParameters()\InputGadget))
+      PBBParameters()\InputGadgetFont = LoadFontFromDescription(GetGadgetText(PBBParameters()\InputGadget))
       SetGadgetFont(PBBParameters()\InputGadget, FontID(PBBParameters()\InputGadgetFont))
     ElseIf PBBParameters()\Type <> #PBBP_Color 
-      SetGadgetFont(PBBParameters()\InputGadget, AllGadgetsFont)
+      SetGadgetFont(PBBParameters()\InputGadget, PBBAllGadgetsFont)
     EndIf
   Next
   ;
-  SetGadgetFont(ParamWAG\TNotRecommended, AllGadgetsFont)
+  SetGadgetFont(ParamWAG\TNotRecommended, PBBAllGadgetsFont)
   ;
-  SetGadgetFont(ParamWAG\BSave, AllGadgetsFont)
-  SetGadgetFont(ParamWAG\BCancel, AllGadgetsFont)
-  SetGadgetFont(ParamWAG\TColorTheme, AllGadgetsFont)
-  SetGadgetFont(ParamWAG\SColorTheme, AllGadgetsFont)
-  SetGadgetFont(ParamWAG\BColorTheme, AllGadgetsFont)
+  SetGadgetFont(ParamWAG\BSave, PBBAllGadgetsFont)
+  SetGadgetFont(ParamWAG\BCancel, PBBAllGadgetsFont)
+  SetGadgetFont(ParamWAG\TColorTheme, PBBAllGadgetsFont)
+  SetGadgetFont(ParamWAG\SColorTheme, PBBAllGadgetsFont)
+  SetGadgetFont(ParamWAG\BColorTheme, PBBAllGadgetsFont)
 EndProcedure
 ;
 Procedure PW_ResizeWindowAndGadgets()
@@ -172,19 +170,6 @@ Procedure PW_ResizeWindowAndGadgets()
   ;
 EndProcedure
 ;
-Procedure PW_FontRequester(Gadget)
-  ;
-  Protected GadgetText$ = GetGadgetText(Gadget)
-  Protected Font$
-  ;
-  If FontRequester(Trim(StringField(GadgetText$, 1, ",")), Val(Trim(StringField(GadgetText$, 2, ","))), 0, 0, AttributesTextDescriptionToNumAttributes(GadgetText$))
-    Font$ = SelectedFontName() + ", " + Str(SelectedFontSize())
-    Font$ + NumAttributesToAttributesTextDescription(SelectedFontStyle())
-    SetGadgetText(Gadget, Font$)
-    PW_SetFontsToPWGadgets()
-  EndIf
-EndProcedure
-;
 Procedure PW_SetColorsToPWGadgets()
   ;
   Shared ParamWAG.ParametersStruct
@@ -224,10 +209,10 @@ Procedure PBBSetParameters(WWidth = 550, WHeight = 485)
   Protected TNotRecommended, Vpos, OX, OY
   ;
   ParamWAG\BorderColor = RGB(150, 150, 150)
-  Protected ParentWindowXCenter = WindowX(GPBBGadgets\PBBWindow) + (WindowWidth(GPBBGadgets\PBBWindow) / 2)
-  Alert_ComputeWinOrigins(@OX, @OY, WWidth, WHeight, ParentWindowXCenter)
+  Protected WParam = #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_Invisible
+  Protected ParentWindowID = ComputeWinOrigins(@OX, @OY, WWidth, WHeight, GPBBGadgets\PBBWindow)
   ;
-  ParamWAG\ParamWindow = OpenWindow(#PB_Any, OX, OY, WWidth, WHeight, GetTextFromCatalogPB("PBBrowserParameters"), #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_Invisible)
+  ParamWAG\ParamWindow = OpenWindow(#PB_Any, OX, OY, WWidth, WHeight, GetTextFromCatalogPB("PBBrowserParameters"), WParam, ParentWindowID)
   If ParamWAG\ParamWindow
     ApplyDarkModeToWindow(ParamWAG\ParamWindow)
     StickyWindow(ParamWAG\ParamWindow, #True)
@@ -379,17 +364,26 @@ Procedure PBBSetParameters(WWidth = 550, WHeight = 485)
           ForEach PBBParameters()
             If PBBParameters()\InputGadget = EventGadget
               If PBBParameters()\Type = #PBBP_FontStyle
-                HideGadget(ParamWAG\IWhiteOver, #False)
+                If IsGadget(ParamWAG\IWhiteOver)
+                  HideGadget(ParamWAG\IWhiteOver, #False)
+                EndIf
                 DisableWindow(ParamWAG\ParamWindow, #True)
-                PW_FontRequester(EventGadget)
+                SetGadgetText(EventGadget, FontRequesterEx(GetGadgetText(EventGadget), #ZFR_FontRequester_Default, 0, ParamWAG\ParamWindow))
+                PW_SetFontsToPWGadgets()
                 DisableWindow(ParamWAG\ParamWindow, #False)
-                HideGadget(ParamWAG\IWhiteOver, #True)
+                If IsGadget(ParamWAG\IWhiteOver)
+                  HideGadget(ParamWAG\IWhiteOver, #True)
+                EndIf
               ElseIf PBBParameters()\Type = #PBBP_Color And MouseButton = #PB_EventType_LeftButtonDown
-                HideGadget(ParamWAG\IWhiteOver, #False)
+                If IsGadget(ParamWAG\IWhiteOver)
+                  HideGadget(ParamWAG\IWhiteOver, #False)
+                EndIf
                 DisableWindow(ParamWAG\ParamWindow, #True)
-                PBBParameters()\ColorTempValue$ = Str(ZapmanColorRequester(Val(PBBParameters()\ColorTempValue$), InterfaceColorPresets()\TextColor, InterfaceColorPresets()\BackgroundColor))
+                PBBParameters()\ColorTempValue$ = Str(ZapmanColorRequester(Val(PBBParameters()\ColorTempValue$), ParamWAG\ParamWindow))
                 DisableWindow(ParamWAG\ParamWindow, #False)
-                HideGadget(ParamWAG\IWhiteOver, #True)
+                If IsGadget(ParamWAG\IWhiteOver)
+                  HideGadget(ParamWAG\IWhiteOver, #True)
+                EndIf
                 PW_SetColorsToPWGadgets()
                 MouseButton = 0
               EndIf
@@ -415,11 +409,15 @@ Procedure PBBSetParameters(WWidth = 550, WHeight = 485)
                 PW_SetColorsToPWGadgets()
               EndIf
             Case ParamWAG\BColorTheme
-              HideGadget(ParamWAG\IWhiteOver, #False)
+              If IsGadget(ParamWAG\IWhiteOver)
+                HideGadget(ParamWAG\IWhiteOver, #False)
+              EndIf
               DisableWindow(ParamWAG\ParamWindow, #True)
-              EditThemesColors()
+              EditThemesColors(ParamWAG\ParamWindow)
               DisableWindow(ParamWAG\ParamWindow, #False)
-              HideGadget(ParamWAG\IWhiteOver, #True)
+              If IsGadget(ParamWAG\IWhiteOver)
+                HideGadget(ParamWAG\IWhiteOver, #True)
+              EndIf
               ClearGadgetItems(ParamWAG\SColorTheme)
               ColorTheme = ListIndex(InterfaceColorPresets())
               ForEach InterfaceColorPresets()
@@ -474,8 +472,14 @@ Procedure PBBSetParameters(WWidth = 550, WHeight = 485)
       EndIf
     EndIf
     ;
-    PBBAllGadgetsFont     = FontID(GetFontFromDescription(GetPBBStringParameter("PBBAllGadgetsFont")))
-    PBBTitleFont          = FontID(GetFontFromDescription(GetPBBStringParameter("PBBTitleFont")))
+    If IsFont(PBBAllGadgetsFont)
+      FreeFont(PBBAllGadgetsFont)
+    EndIf
+    PBBAllGadgetsFont     = FontID(LoadFontFromDescription(GetPBBStringParameter("PBBAllGadgetsFont")))
+    If IsFont(PBBTitleFont)
+      FreeFont(PBBAllGadgetsFont)
+    EndIf
+    PBBTitleFont          = FontID(LoadFontFromDescription(GetPBBStringParameter("PBBTitleFont")))
     CloseWindow(ParamWAG\ParamWindow)
   EndIf
 EndProcedure
@@ -486,10 +490,10 @@ CompilerIf #PB_Compiler_IsMainFile
 
 CompilerEndIf
 
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 217
-; FirstLine = 203
-; Folding = b-
+; IDE Options = PureBasic 6.20 (Windows - x64)
+; CursorPosition = 381
+; FirstLine = 377
+; Folding = -
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb

@@ -62,8 +62,8 @@ SWWholeWord       = Parola intera
 SWInAllDocument   = In tutto il documento
 SWUnableToFind    = Impossibile trovare
 SWReplacementMade = sostituzione(i) effettuata(e).
-SWSearchFromStart = Cercare dalla fine ?
-SWSearchFromEnd   = Cercare dall'inizio ?
+SWSearchFromStart = Cercare dall'inizio ?
+SWSearchFromEnd   = Cercare dalla fine ?
 
 [StatReport]
 
@@ -117,6 +117,37 @@ Saturation          = Saturazione:
 Lightness           = Luminosità:
 HexValue            = Valore HEX:
 ClickToAdjustColor  = Clicca per selezionare un colore. Usa la rotella del mouse per regolare la saturazione.
+[ChooseFont]
+
+[ZapmanFontRequester]
+
+ChooseAFont         = Scegli un carattere
+Variants:           = Varianti:
+Size:               = Dimensione:
+DetailsDwn          = Dettagli ⏷
+DetailsUp           = Dettagli ⏶
+fancyFont           = carattere elegante
+unspecified         = non specificato
+monospace           = monospazio
+withSerif           = con grazie
+handwriting         = scrittura a mano
+withoutSerif        = senza grazie
+Unknown             = Sconosciuto
+Name:               = Nome:
+Type:               = Tipo:
+Family:             = Famiglia:
+Script(s):          = Script:
+Metrics:            = Metriche:
+Style:              = Stile:
+Size:               = Dimensione:
+Color:              = Colore:
+Sample              = Campione
+Normal              = Normale
+Bold                = Grassetto
+Italic              = Corsivo
+Underline           = Sottolineato
+StrikeOut           = Barrato
+CAFDemoText         = Sempre caro mi fu quest'ermo colle,%newline%E questa siepe, che da tanta parte%newline%Dell'ultimo orizzonte il guardo esclude.
 
 [AddToolToPB]
 
@@ -221,6 +252,9 @@ WorkDone               = L'operazione è completata.
 
 ExportSourceCodeTitle  = Recuperare il codice sorgente di PBBrowser
 ExportSourceCodeEx     = PBBrowser essendo progettato per programmatori, non sarebbe sorprendente se volessi mettere le mani nel suo codice, che è open-source e scaricabile liberamente. Fai clic su %quote%Esegui%quote% per accedere al sito Web che offre il download.
+
+EraseCommentsTitle  = Rimuovere i commenti dal codice  
+EraseCommentsEx     = Per molte ragioni, tra cui la necessità di ridurre le dimensioni del codice, a volte è opportuno rimuovere tutti i commenti dal codice. Questo è esattamente ciò che fa questo comando. Crea una copia della versione corrente dei tuoi file prima di eseguirlo, poiché tutti i file inclusi nel tuo progetto verranno rivisti.
 
 [ClientErrors]
 
