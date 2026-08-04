@@ -91,8 +91,8 @@ EndMacro
 ; Debug "Timer "+Str(1)+" : "+Str(StageTimer(1))
 ; Debug StrF(mt/StageTimer(1))
 
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 6
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
+; CursorPosition = 10
 ; Folding = -
 ; EnableXP
 ; DPIAware

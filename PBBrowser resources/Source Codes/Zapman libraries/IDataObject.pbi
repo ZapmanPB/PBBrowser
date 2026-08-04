@@ -864,7 +864,7 @@ Procedure dataobject_GetData(*DataObjectDet.IDO_DetailsStruct, *pformatetcIn.FOR
   ; Anyway, all of the differences between 'GetData' and 'GetDataHere' are managed by the
   ; procedure CloneStgMedium() wich will be called to duplicate the data. 
   ;
-  Shared GetDataHere, IDO_Details(), IDO_DataSave()
+  Shared GetDataHere, IDO_DataSave()
   Protected Found = 0
   Protected CheckedData
   Protected Method$, DPos, *MyStgMedium.STGMEDIUM, *MyFormatEtc.FORMATETC
@@ -1448,8 +1448,9 @@ DataSection
     Data.b $C0, $00, $00, $00, $00, $00, $00, $46
     ;
 EndDataSection
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 12
-; Folding = -5Pw
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x64)
+; CursorPosition = 510
+; FirstLine = 341
+; Folding = MIAA-
 ; EnableXP
 ; DPIAware
