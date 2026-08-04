@@ -1,7 +1,7 @@
 ﻿;
 ;***************************************************************************
 ;                           GetOpenProject.pb
-;                         by Zapman - Nov. 2024
+;                        by Zapman - March 2025
 ;
 ;        List of functions to check if a project is open by the IDE.
 ;
@@ -14,12 +14,14 @@
 ;   • Get the PID (Process IDentifier) of a running version of PureBasic from its disk address with 'GetProcessIdFromFilePath(filePath.s)';
 ;   • Examine all windows of this process, looking for one containing "PureBasic" in it's name, with 'GetPureBasicMainWindowNumber(filePath.s)';
 ;   • Examine all child windows of the first one, looking for one containing ".pbp" in it's name, with 'FindChildFromPartialName(hWnd, *searchName.string)';
-;   • Extract the full name of the found child window and then, extract the .pbp file name from it, with 'GetPBPOpenFile(PBAddress$)'.
+;   • Extract the full name of the found child window and then, extract the .pbp file name from it, with 'GetPBOpenProject(PBAddress$)'.
 ;
 ;   It is clearly possible that the IDE evolutions may compromise the result of this strategy in the future.
 ;   But I didn't find a better way to do the job.
 ;
 ;***************************************************************************
+;
+Define MainPBWindowNumber
 ;
 ProcedureC EnumPureBasicWindowsProc(hWnd, lParam)
   ;
@@ -119,7 +121,7 @@ Procedure FindChildFromPartialName(hWnd, *searchName.string)
   ProcedureReturn 1 ; Continue
 EndProcedure
 ;
-Procedure.s GetPBPOpenFile(PBAddress$)
+Procedure.s GetPBOpenProject(PBAddress$)
   ;
   Protected targetWindowTitle.string\s = ".pbp"
   Protected SFind$ = targetWindowTitle\s, Result$, pd, pf
@@ -138,11 +140,11 @@ Procedure.s GetPBPOpenFile(PBAddress$)
   EndIf
 EndProcedure
   
-;Debug GetPBPOpenFile("C:\Program Files (x86)\PureBasic ttVersions\PureBasic 6.1\PureBasic.exe")
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 130
-; FirstLine = 27
-; Folding = w
+;Debug GetPBOpenProject("C:\Program Files (x86)\PureBasic ttVersions\PureBasic 6.1\PureBasic.exe")
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
+; CursorPosition = 18
+; FirstLine = 2
+; Folding = x
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb

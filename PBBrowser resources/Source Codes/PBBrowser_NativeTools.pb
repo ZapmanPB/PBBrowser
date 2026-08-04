@@ -3,7 +3,7 @@
 ;               PB Browser Native Tools
 ;
 ;
-NCommand.CommandDetails\CommandName$ = "InCatalog:InstallPBBrowserTitle"
+Define NCommand.CommandDetails\CommandName$ = "InCatalog:InstallPBBrowserTitle"
 NCommand\Commandtype = 1
 NCommand\CommandDontShow = 0
 NCommand\CommandDescription$  = "InCatalog:InstallPBBrowserEx"
@@ -33,8 +33,8 @@ AddCommandToList(NCommand)
 
 
 ;
-; IDE Options = PureBasic 6.12 LTS (Windows - x86)
-; CursorPosition = 16
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
+; CursorPosition = 5
 ; EnableXP
 ; DPIAware
 ; UseMainFile = ..\..\PBBrowser.pb

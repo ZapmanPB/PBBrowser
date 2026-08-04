@@ -65,17 +65,23 @@ Procedure PW_SetFontsToPWGadgets()
     If IsGadget(PBBParameters()\TitleGadget)
       SetGadgetFont(PBBParameters()\TitleGadget, PBBTitleFont)
     EndIf
-    SetGadgetFont(PBBParameters()\LegendGadget, PBBAllGadgetsFont)
-    SetGadgetFont(PBBParameters()\StandardButtonGadget, PBBAllGadgetsFont)
-    If PBBParameters()\Type = #PBBP_FontStyle And IsGadget(PBBParameters()\InputGadget)
-      If IsFont(PBBParameters()\InputGadgetFont)
-        FreeFont(PBBParameters()\InputGadgetFont)
-      EndIf
-      PBBParameters()\InputGadgetFont = LoadFontFromDescription(GetGadgetText(PBBParameters()\InputGadget))
-      SetGadgetFont(PBBParameters()\InputGadget, FontID(PBBParameters()\InputGadgetFont))
-    ElseIf PBBParameters()\Type <> #PBBP_Color 
-      SetGadgetFont(PBBParameters()\InputGadget, PBBAllGadgetsFont)
+    If IsGadget(PBBParameters()\LegendGadget)
+      SetGadgetFont(PBBParameters()\LegendGadget, PBBAllGadgetsFont)
     EndIf
+    If IsGadget(PBBParameters()\StandardButtonGadget)
+      SetGadgetFont(PBBParameters()\StandardButtonGadget, PBBAllGadgetsFont)
+    EndIf
+    If IsGadget(PBBParameters()\InputGadget)
+      If PBBParameters()\Type = #PBBP_FontStyle
+        If IsFont(PBBParameters()\InputGadgetFont)
+          FreeFont(PBBParameters()\InputGadgetFont)
+        EndIf
+        PBBParameters()\InputGadgetFont = LoadFontFromDescription(GetGadgetText(PBBParameters()\InputGadget))
+        SetGadgetFont(PBBParameters()\InputGadget, FontID(PBBParameters()\InputGadgetFont))
+      ElseIf PBBParameters()\Type <> #PBBP_Color
+        SetGadgetFont(PBBParameters()\InputGadget, PBBAllGadgetsFont)
+      EndIf
+    endif
   Next
   ;
   SetGadgetFont(ParamWAG\TNotRecommended, PBBAllGadgetsFont)
@@ -490,9 +496,9 @@ CompilerIf #PB_Compiler_IsMainFile
 
 CompilerEndIf
 
-; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 381
-; FirstLine = 377
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
+; CursorPosition = 83
+; FirstLine = 46
 ; Folding = -
 ; EnableXP
 ; DPIAware
