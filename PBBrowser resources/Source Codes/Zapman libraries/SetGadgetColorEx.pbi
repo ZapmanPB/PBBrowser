@@ -29,6 +29,10 @@
 ;
 ; ****************************************************************************************
 ;
+CompilerIf #PB_Compiler_IsMainFile
+  EnableExplicit
+CompilerEndIf
+;
 ;-   1--- FIRST PART: MISCELLANEOUS FUNCTIONS (possibly reusable for other needs) ---
 ;
 CompilerIf Not(Defined(DwmSetWindowAttribute, #PB_Prototype))
@@ -981,7 +985,6 @@ EndProcedure
 Procedure SGCE_MainWindowCallbackCleaner(hWnd, uMsg, wParam, lParam)
   ;
   Shared SGCE_GadgetsInfos()
-  Protected *pnmh.NMHDR
   ;
   If uMsg = #WM_DESTROY
     ; Clean the memory when the main window is destroyed:
@@ -1056,7 +1059,7 @@ Procedure SetGadgetColorEx(GadgetID, ColorType, Color = 0, ThisColorOnly = 0)
   ;
   Shared SGCE_GadgetsInfos()
   ;
-  Protected BackLuminosity, ParentWindow, Found, hCTRLWnd, hWnd, gRect.Rect
+  Protected BackLuminosity, ParentWindow, Found, hCTRLWnd, gRect.Rect
   Protected FrontColor, hParent, ApplyDarkMode, Red, Green, Blue
   ;
   If IsGadget(GadgetID)
@@ -1336,7 +1339,7 @@ EndMacro
 CompilerIf #PB_Compiler_IsMainFile
   ; The following won't run when this file is used as 'Included'.
   ;
-  Macro ColorizeGadgets()
+  Macro ColorizeGadgets
     ApplyColorsToAllGadgets(#SGCE_DemoWindow, FrontColor, BackColor)
     ;
     ; Then customize colors for some gadgets:
@@ -1382,7 +1385,8 @@ CompilerIf #PB_Compiler_IsMainFile
   ;
   Procedure MulticolorDemoWindow()
     ;
-    Protected LightenBackground
+    Protected LightenBackground, PanelWidth, ct, a, ContainerWidth, StandardBack, StandardFront, LightBlueBack
+    Protected LightBlueFront, MatrixBack, MatrixFront, DarkGreyBack, DarkGreyFront, BackColor, FrontColor, Event
     ;
     Enumeration WindowAndGadgetNum
       #SGCE_DemoWindow
@@ -1602,7 +1606,8 @@ CompilerIf #PB_Compiler_IsMainFile
   MulticolorDemoWindow()
   ;
 CompilerEndIf
-; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 5
-; Folding = oq1vv--
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x64)
+; CursorPosition = 1341
+; FirstLine = 1183
+; Folding = RXpf---
 ; DPIAware

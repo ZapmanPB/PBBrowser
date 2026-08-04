@@ -3,7 +3,7 @@
 ;
 ;                             SetMenuItemEx.pbi library
 ;                                   Windows only
-;                             Zapman - March 2025 - 6.2
+;                             Zapman - July 2026 - 6.4
 ;
 ;          This file should be saved under the name "SetMenuItemEx.pbi".
 ;
@@ -323,26 +323,30 @@ EndStructure
 #MIM_MENUDATA         = 8
 #HBMMENU_CALLBACK     = -1
 ;
-Structure MENUINFO Align #PB_Structure_AlignC
-  cbSize.l           ; Size of the structure (in bytes).
-  fMask.l            ; Mask specifying which members are being set or retrieved.
-  dwStyle.l          ; Style of the menu.
-  cyMax.l            ; Maximum height of the menu, in pixels.
-  hbrBack.i          ; Handle to the brush used to paint the menu background.
-  dwContextHelpID.l  ; Context help ID for the menu.
-  dwMenuData.i       ; Custom data associated with the menu.
-EndStructure
+CompilerIf Not Defined(MENUINFO, #PB_Structure) ; Necessary for version 6.4 of PureBasic
+  Structure MENUINFO Align #PB_Structure_AlignC ; The structure definition stays usefull for older versions.
+    cbSize.l           ; Size of the structure (in bytes).
+    fMask.l            ; Mask specifying which members are being set or retrieved.
+    dwStyle.l          ; Style of the menu.
+    cyMax.l            ; Maximum height of the menu, in pixels.
+    hbrBack.i          ; Handle to the brush used to paint the menu background.
+    dwContextHelpID.l  ; Context help ID for the menu.
+    dwMenuData.i       ; Custom data associated with the menu.
+  EndStructure
+CompilerEndIf
 ;
-Structure MENUBARINFO Align #PB_Structure_AlignC
-  cbSize.l
-  rcBar.RECT
-  hMenu.i
-  hwndMenu.i
-  fBarFocused.b
-  fFocused.b
-  fUnused.b
-  Padding_1.b
-EndStructure
+CompilerIf Not Defined(MENUBARINFO, #PB_Structure) ; Necessary for version 6.4 of PureBasic
+  Structure MENUBARINFO Align #PB_Structure_AlignC ; The structure definition stays usefull for older versions.
+    cbSize.l
+    rcBar.RECT
+    hMenu.i
+    hwndMenu.i
+    fBarFocused.b
+    fFocused.b
+    fUnused.b
+    Padding_1.b
+  EndStructure
+CompilerEndIf
 ;
 Enumeration MustBeOwnerdrawn
   #SMI_NOT_Ownerdrawn
@@ -1720,7 +1724,7 @@ Procedure   SMI_ResizeMenu(hMenu, RecursiveSearch = #False)
   ; to the item.
   ;
   Protected MenuItemInfo.MENUITEMINFO_Fixed
-  Protected ItemPos, LastMenuItem, Counter, hSubMenu
+  Protected LastMenuItem, Counter, hSubMenu
   ;
   If IsMenu(hMenu)
     hMenu = MenuID(hMenu)
@@ -1758,14 +1762,14 @@ EndProcedure
 ;
 ; *****************************************************************************
 ;
-Procedure   ApplyThemesToMenu(hMenu, RecursiveSearch = #True)
+Procedure ApplyThemesToMenu(hMenu, RecursiveSearch = #True)
   ;
   ; Will force a menu to be ownerdrawn, even if none of its items
   ; uses a particular font or color. This will allow the library
   ; to apply color themes from 'ObjectTheme.pbi' or 'ApplyColorThemes.pbi'
   ; to the menus.
   ;
-  Protected ItemPos, LastMenuItem, Counter, hSubMenu
+  Protected LastMenuItem, Counter, hSubMenu
   ;
   If IsMenu(hMenu)
     hMenu = MenuID(hMenu)
@@ -2001,7 +2005,6 @@ EndProcedure
 ;
 Procedure CheckMenuItem(hMenu, ItemPosOrIdOrSubmenuHandle, State = #True, Style = #PB_Default, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
   ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed
   Protected ItemPos, Result
   ;
   PushListPosition(MenuItemData())
@@ -2345,7 +2348,7 @@ Macro OpenSubMenu(MenuNum, MenuItemImage = #PB_Default)
   ; Override OpenSubMenu
   SMI_OpenSubMenu(MenuNum, MenuItemImage)
 EndMacro
-Macro CloseSubMenu()
+Macro CloseSubMenu
   ; Override CloseSubMenu
   SMI_CloseSubMenu()
 EndMacro
@@ -2638,8 +2641,9 @@ CompilerIf #PB_Compiler_IsMainFile
   EndIf
   ;
 CompilerEndIf
-; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 5
-; Folding = qqKvz1PAAAAA+--
+; IDE Options = PureBasic 6.40 (Windows - x64)
+; CursorPosition = 338
+; FirstLine = 321
+; Folding = qqKvz1vAAIAA+
 ; EnableXP
 ; DPIAware

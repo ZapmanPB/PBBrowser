@@ -1193,7 +1193,7 @@ Procedure ZCR_SetFieldsSizeAndMargins()
   ;
   Shared ECGadgets.EditColorGadgetsStruct
   ;
-  Protected LegendHeight, HexColorWidth, InputWidth, tx$, LegendWidth, MarginCircular
+  Protected LegendHeight, HexColorWidth, InputWidth, tx$, LegendWidth
   ;
   ECGadgets\TargetDim = 10     ; Width of the moving target over the rainbow canvas.
   ECGadgets\CursorWidth = 10   ; Width of the moving cursors over trackbars.
@@ -1443,9 +1443,9 @@ Procedure ZapmanColorRequester(InitialColor, ParentID = #PB_Default, XShiftOrPos
   ; Window and gadget numbers:
   Shared ECGadgets.EditColorGadgetsStruct
   ; Other variables
-  Protected WWidth, WHeight, GetOut, IsPWActive
-  Protected Event, EventType, EventMenu
+  Protected WWidth, WHeight, GetOut, Event, EventType, EventMenu
   Protected WParam, OX, OY, MarginCircular, *GadgetAdress, EventGadget
+  Protected TextColor, BackGroundColor
   ;
   Protected ParentWindow = #PB_Default
   If IsWindow(ParentID)
@@ -1599,9 +1599,9 @@ CompilerIf #PB_Compiler_IsMainFile
   ;
   Debug Hex(ZapmanColorRequester($EA5D8))
 CompilerEndIf
-; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 1453
-; FirstLine = 1290
+; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
+; CursorPosition = 1445
+; FirstLine = 1269
 ; Folding = f--------
 ; EnableXP
 ; DPIAware
