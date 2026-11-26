@@ -191,8 +191,8 @@ PBShortCutsEx          = As long as the PBBrowser window is active, you can use 
 AboutPBBrowserTitle  = General presentation
 AboutPBBrowserEx     = file:IntroPBBrowser.rtf
 
-SearchLimitsTitle      = Bypassing search limits.
-SearchLimitsEx         = PBBrowser is designed to work on program code. By default, it only searches for whole words located in the actual code, i.e., outside of string literals and outside of comments.%newline%In some cases, however, it is possible to bypass these limits:%newline%•%nonbreakingspace%You can search for an entire string by typing %quote%Complete string%quote% (with opening and closing quotes) in the %quote%Expression:%quote% field.%newline%•%nonbreakingspace%You can search for an expression starting with something by entering that something in the %quote%Expression:%quote% field. The first expression found that starts with that something will then be considered as the one you wanted to search for. However, if you type the letter 'A' and one of your variables is named 'A', you will only get results for 'A'.%newline%•%nonbreakingspace%You can search for a comment starting with a specific word or series of words: type ; Start of comment (with the semicolon at the beginning), in the %quote%Expression:%quote% field and you will find all comments starting with %quote%Start of comment%quote%.
+SearchLimitsTitle      = Search Capabilities
+SearchLimitsEx         = Since version 2.0 of PBBrowser, search capabilities have been significantly expanded. It is now possible to search for complex expressions (%quote%MyVar = 10%quote%, for example) even if they span across multiple lines (which the PureBasic IDE search does not allow). Furthermore, searches for complex expressions are insensitive to the number of spaces present in the code or in the searched expression: a search for %quote%MyVar = 10%quote% will find %quote%MyVar     = 10%quote%, for example.%newline%This new search function automatically detects whether the searched expression is a complex expression (several words, for example) or the name of an element (a procedure or a variable, for example). In cases where it concerns a local variable name used in several procedures or a procedure name used in several modules, it is now possible to restrict the results to a particular procedure or a particular module. If the searched expression corresponds to multiple elements (homonymous structure and variable, for example), it is also possible to choose the type of element for which you want to display the results.%newline%Finally, the %quote%+%quote% button allows you to refine the search mode to extend it to the contents of comments or strings present in the code. This button also provides access to a Find/Replace function across your entire code (including Include and XInclude files), even if this code has not been grouped into a project file (.pbp).
 
 CreateToolsTitle      = Create your own tools in PBBrowser.
 CreateToolsEx         = Since PBBrowser is designed for programmers, it wouldn't be surprising if you wanted to dive into its code, which is freely downloadable. But with more than two hundred procedures to analyze, the task might seem daunting, even though its code is abundantly commented (in english only, unfortunately for non-english-speaking programmers, but Google Translate should be able to help you).%newline%If you're satisfied with its current functionality and only want to add features by taking advantage of some of its existing procedures, you can add functions without touching the existing ones.%newline%•%nonbreakingspace%1-Execute the %quote%Retrieve PBBrowser source code%quote% command found in the list at the bottom left of this window.%newline%•%nonbreakingspace%2-Open the %quote%PBBrowser_CustomTools.pb%quote% file in %quote%PBBrowser resources/Source Codes%quote%. You will find all the necessary explanations to integrate one of your procedures into the %quote%Tools%quote% menu, located at the bottom left of this window..%newline%•%nonbreakingspace%3-Recompile the application with PureBasic.
@@ -203,8 +203,8 @@ MainFileEx            = PBBrowser is primarily designed to be called from the Pu
 ChangeMainFileTitle    = Change main file
 ChangeMainFileEx       = The 'Change' button on the main window allows you to change the main file. When you do this, PBBrowser clears all the information it has gathered from its previous examination and starts a complete exploration of the files identified as being related to the new main file. %newline%However, if the %quote%new%quote% file you choose was already in the previous list of files, the operation will produce no changes.
 
-SearchModTitle         = PBBrowser search modes
-SearchModEx            = PBBrowser searches within the code of your files in three possible ways:%newline%•%nonbreakingspace%1- The %quote%Found in...%quote% panel displays the results of a direct search within the code. The expression is searched for, and then the surrounding code is explored to determine the context in which the expression was found (inside a procedure or macro, for example). This search mode allows you to display (almost) immediate results for a given expression.%newline%•%nonbreakingspace%2- As soon as PBBrowser starts, a systematic exploration of the files linked to the main file begins, to create an exhaustive list of all the 'elements' that compose the code. Among these elements are, for example, procedures, macros, structures, constants, etc. This first code exploration is generally quite fast (less than half a second, even for large code) and provides the user with an overview of what makes up their code.%newline%•%nonbreakingspace%3- Once the exploration of the previous mode (2-) is completed, PBBrowser begins an in-depth exploration to determine which elements are used (or not) by the main file. In the case of a large or very large project (over 200 KB), this exploration can take several seconds. It starts by examining all the code located outside procedures and macros. The procedures called by the defined code are considered 'used'. They are then themselves examined to see which procedures and macros they call, and so on. Once the deep exploration is complete, the names of unused elements are colored gray in all windows.
+SearchModTitle       = PBBrowser Search Modes
+SearchModEx          = PBBrowser searches inside your files' code in three possible ways:%newline%•%nonbreakingspace%1- The %quote%Found in...%quote% panel displays the results of a direct search in the code. The expression is searched for, and the surrounding code is then explored to determine in what context the expression was found (inside a procedure or macro, for example). This search mode allows displaying results for a given expression (almost) immediately.%newline%•%nonbreakingspace%2- As soon as PBBrowser starts, a systematic exploration of the files linked to the main file is initiated in order to compile an exhaustive list of all the 'elements' that make up the code. These elements include, for example, procedures, macros, structures, constants, etc. This code exploration is generally quite fast (less than half a second, even for large codebases) and provides the user with an overview of what makes up their code. It allows, for example, determining which elements are used (or not) by the main file. It begins by examining all code located outside procedures and macros. Procedures called by the code thus defined are considered 'used'. They are then examined in turn to see which procedures and macros they call, and so on. The names of unused elements are colored in gray in all windows.
 
 SearchLaunchTitle         = Launch a search in PBBrowser
 SearchLaunchEx            = There are four ways to launch a search in the code of your files:%newline%•%nonbreakingspace%1- From the PureBasic editor, and if PBBrowser has been installed in the editor's tools, simply click or double-click on any word, then go to the %quote%Tools / PBBrowser%quote% menu, or use the keyboard shortcut for PBBrowser (CTRL + Q, if you've kept the default shortcut). This will automatically launch PBBrowser if it is not already open, and a search for the chosen word will be immediately performed. If PBBrowser is already running, the search will be done directly.%newline%•%nonbreakingspace%2- Once PBBrowser is launched, and a main file has been designated, you can enter an expression in the 'Expression' field, then click 'Search' or press the 'Return' key.%newline%•%nonbreakingspace%3- When you click on an underlined expression, a search is immediately launched with that expression.%newline%•%nonbreakingspace%4- If you want to search for an expression that appears in one of PBBrowser's panels but is not underlined, double-click on the expression, then press CTRL + Q on the keyboard.
@@ -245,15 +245,46 @@ ProjectAllreadyOpen      = This project is currently open in PureBasic and canno
 CosmeticFileTransformerTitle  = Cosmetic Enhancer
 CosmeticFileTransformerEx     = This function modifies the code of a file to improve its appearance by adding spaces around the characters +-*/><=(&|,. It also handles spaces around the characters '(', ')' and ':'.%newline%Example of modification: %newline%•%nonbreakingspace%Mid (CodeContent\s, dTest, PosInCode - dTest)%newline%  will be transformed into%newline%•%nonbreakingspace%Mid(CodeContent\s, dTest, PosInCode - dTest)
 
-MakeACopy              = It is recommended to make a backup copy of all files that may be modified by this function before running it.%newline%Click %quote%OK%quote% when you are ready to start the process.
+SignatureToolTitle = Generate Procedure Declarations
+SignatureToolEx = Generates a compilable list of procedure declarations (Declare) or signatures for a single file or the entire project, with optional comments and analysis annotations.
+ST_SecScope = Scope and Ordering
+ST_TargetFiles = Target files:
+ST_AllProjectFiles = All project files
+ST_SortSource = Source order (grouped by file)
+ST_SortAlpha = Alphabetical order
+ST_ExcludeModules = Exclude procedures inside Modules
+ST_SecFormat = Signature and Comments
+ST_UseDeclare = Use 'Declare' keyword
+ST_KeepProcedure = Keep 'Procedure' keyword
+ST_KeepHeaderCom = Keep header comments below signature (; Role:...)
+ST_KeepStandaloneCom = Keep standalone comment blocks outside procedures
+ST_SecMeta = Analysis Annotations (inserted as ';' comments)
+ST_AnnotateCalls = List called procedures and calling procedures
+ST_AnnotateGlobals = List Global, Threaded, and Shared variables used
+ST_AnnotateVarIssues = Report Unprotected and Unused local variables
+ST_SecOutput = Output Destination
+ST_CopyClipboard = Copy generated list to clipboard
+ST_SaveToFile = Save generated list to file:
+ST_OpenAfterSave = Open file after saving
+ST_FileFilter = PureBasic (*.pb, *.pbi)|*.pb;*.pbi|Text (*.txt)|*.txt|All files (*.*)|*.*
+ST_DoneClipboard = The declarations list has been copied to the clipboard.
+ST_DoneSaved = The declarations list has been saved to: %1
+ST_DoneBoth = The declarations list has been copied to the clipboard and saved to: %1
 
-WorkDone               = The operation is complete.
+MakeACopy              = It is recommended to make a copy of all files that may be modified by this function before running it.%newline%Click %quote%YES%quote% to make the copy, or %quote%NO%quote% to work on the current files.%newline%%newline%If a copy is made, the current project will be left untouched and the modified files will be saved in a new folder.
+SelectFolder           = Name your copy folder:
+CopyFailed             = The copy failed.
+
+FilesAreUpdated        = The operation is finished. Reload the files or files in the PureBasic IDE to see the results.
 
 ExportSourceCodeTitle  = Retrieve the source code of PBBrowser
 ExportSourceCodeEx     = Since PBBrowser is designed for programmers, it would not be surprising if you wanted to dive into its code, which is open-source and freely downloadable. Click 'Run' to access the website offering the download.
 
 EraseCommentsTitle  = Erase comments from the code
 EraseCommentsEx     = For many reasons, including the need to reduce code size, it is sometimes desirable to remove all comments from your code. This command does exactly that. Make a copy of the current version of your files before running it, as all files included in your project will be revised.
+EC_EraseAllComments = Erase all comments from the code
+EC_EraseExtraSpaces = Erase extra spaces and empty lines from the code
+EC_WorkOnCopy = Work on a copy of the project in folder:
 
 [ClientErrors]
 
@@ -286,13 +317,15 @@ Preferences            = Preferences
 SelectMainFile         = Select the main PureBasic file to examine:
 SaveFilePrompt         = You must save the file for PBBrowser to navigate inside it.
 ShouldSearchForSomething = Search for an expression (procedure, structure, variable, or function name) to see which files it appears in.
-NoDetailFound          = Sorry, no details are available for %SExpression$%.%newline%If it's a local variable or a field, the 'Found in...' panel will show where it is used.%newline%Note that no details are available for anything outside the code (in a 'string' or in comments).
+NoDetailFound          = Sorry, no details are available for %SExpression$%.%newline%If this is an implicit (undeclared) parameter or variable, the 'Found in...' panel will show you where it appears.%newline%Note that no details are available for content outside of the code (such as within a %quote%string%quote% or a comment).
+NoDetailChooseScope      = Multiple scopes exist for %SExpression$%.%newline%Select a specific scope by clicking the '%LookUp%' button to view its details.
 NoDetailNoExpression   = Search for an expression or element to view its details.
 HelpClickInstruction   = Click on the numbers in parentheses to have the PureBasic editor open the file and position you at the corresponding line.%newline%Note: There may be a discrepancy between the displayed line number and the actual line number in files that are being edited and unsaved.%newline%•%nonbreakingspace%'Set' indicates that a variable was assigned a value at the corresponding location.%newline%•%nonbreakingspace%'Param' indicates that it is used as a parameter in a procedure or macro.%newline%•%nonbreakingspace%'Test' means that it appears in a test (e.g., If or While).%newline%•%nonbreakingspace%'Arg' means that it is used as an argument in a function call.%newline%•%nonbreakingspace%The mentions 'Global', 'Shared', 'Static', and 'Protected' indicate that a variable is declared as such at the corresponding location.%newline%The list is organized as follows:%newline%- Underlined file name where the searched expression was found.%newline%- •%nonbreakingspace%Procedure ▷ or •%nonbreakingspace%Structure ▷ or •%nonbreakingspace%Macro ▷ indicates the corresponding declarations/definitions.%newline%- •%nonbreakingspace%In ElementName: 'ElementName' indicates the name of the element where the searched expression was found. 'OutOfElements' means the location is outside a procedure.%newline%If the name of an element is light gray, it means the procedure is not used by the main file. This color distinction will only occur once the file exploration is completely finished.%newline%- (xxx) (xxx) (xxx)... line numbers where the expression was found.
 
 ExpressionTypeProc     = Procedure
 PBNativeFunction       = PureBasic native function
-PBKeyword              = PureBasic keyword
+PBNativeKeyword        = PureBasic native keyword
+PBBasicKeyword         = BASIC keyword
 LookingForElements     = Searching for elements in project files:
 LookingForUsedElements = Searching for elements used by the main file.
 MoreInfo               = Learn more...
@@ -303,7 +336,7 @@ NoElementFound         = No element was found.
 FoundListIntro         = The numbers in parentheses indicate the line numbers where the expression was found.
 MainFileLabel          = Source/Project:
 Expression             = Expression:
-SearchInstructions     = You can search for variable, procedure, function, constant, or structure names across all files listed in 'File List'.%newline%Anything in strings or comments will not be considered in the search.%newline%The search is only for whole words.
+SearchInstructions     = You can search for variable, procedure, function, constant, or structure names across all files listed in the %quote%File List%quote%.%newline%Searching for complex expressions (multiple words) is also possible. Click the %quote%+%quote% button to access Find/Replace.
 RefreshEx              = Relaunch a deep exploration on the current project version.
 Files                  = Files
 Lists                  = Lists
@@ -313,7 +346,7 @@ Macros                 = Macros
 Enumerations           = Enumerations
 Interfaces             = Interfaces
 Labels                 = Labels
-Constantes             = Constants
+Constants              = Constants
 Variables              = Variables
 Modules                = Modules
 Fields                 = Fields
@@ -324,7 +357,7 @@ Macro                  = Macro
 Enumeration            = Enumeration
 Interface              = Interface
 Label                  = Label
-Constante              = Constant
+Constant               = Constant
 Variable               = Variable
 Module                 = Module
 Field                  = Field
@@ -333,6 +366,7 @@ Imported               = Imported
 Details                = Details
 FoundIn                = Found in...
 in                     = in
+of                     = of
 IncludedFilesIntro     = Included files (XIncludeFile and IncludeFile):
 IncludedBinaries       = Other included files (IncludeBinary):
 mainFile               = main file
@@ -344,11 +378,65 @@ LookingForPBExe        = Searching for the PureBasic.exe program
 used                   = used
 usedBy                 = used by
 Unused                 = Unused
+citedInUnused          = also referenced in unused code
+citedOnlyInUnused      = referenced only in unused code
 OutOfElements          = program body
 CalledMacros           = Macro(s) called in the code:
+CalledProcedures       = Procedure(s) called in the code:
 Exploration            = Exploration
 SeeVariablesList       = View the full list of variables
 UnusedVariables:       = Declared but unused variables:
 UnprotectedVariables:  = Unprotected local variables:
+MissingElements:       = Referenced elements missing from project:
+AllProcedures          = all procedures
+AllMacros              = all macros
+AllStructures          = all structures
+AllEnumerations        = all enumerations
+AllInterfaces          = all interfaces
+AllModules             = all modules
+LookUp                 = Look Up
+TargetedResultOn       = Result targeted on
+SeeOneOtherScope       = See the other scope in the project...
+SeeOtherScopes         = See the %1 other scopes in the project...
 
+[FindReplace]
 
+FindReplaceTitle       = Find / Replace
+Replace                = Replace
+ReplaceWith            = Replace with
+Close                  = Close
+
+MatchExact             = Exact match
+MatchStartsWith        = Starts with...
+MatchEndsWith          = Ends with...
+MatchContains          = Contains...
+
+IgnoreComments         = Ignore comments
+IgnoreStrings          = Ignore strings
+
+ReplaceFiltered        = In the filtered scope
+ReplaceEverywhere      = Replace everywhere
+ResultsTruncated       = ... Results truncated (more than %1 matches)
+OneResultFound         = One result found
+ResultsFound           = results found
+ToolTip+               = Click here to open the %quote%Find/Replace%quote% window.
+ToolTipSearchAction    = Click here or press %quote%Enter%quote% to start the search.
+ToolTipReplaceAction   = Click here to start the replacement.
+ReplaceNote            = The replacement will respect the search criteria above.%newline%Choose %quote%All%quote% to replace the expression in all scopes.
+
+inactiveCompilerZone   = {Inactive CompilerIf block}
+
+[CodeFlattener]
+
+FlattenToolTitle       = Export Standalone Single-File .pb
+FlattenToolEx          = Turns any PureBasic program in a single click — from a simple script to a large project split across dozens of IncludeFile directives and external .pbi libraries — into a single 100% standalone .pb file, assembled in the exact order the compiler reads it and immediately ready to compile. Your original files are never modified.%newline%%newline%With its customizable cleanup options, this tool addresses five needs:%newline%%newline%•%nonbreakingspace%Clean up a project (even a single-file one!) of all its dead code in one pass: no need to have included files to take advantage of it. Used on a single .pb file, the tool surgically strips all unused procedures, macros, structures, interfaces, constants, Global/Define variables, and Declare statements, instantly delivering a clean, streamlined version of your source.%newline%•%nonbreakingspace%Easily share code on forums or with a collaborator: no more incomplete archives, missing XIncludeFile paths on your recipient's machine, or hitting message size limits on the PureBasic forum! By checking the removal of unused elements, inactive CompilerIf zones, comments, or extra spaces, you keep only the essential core actually executed by your program (while automatically adjusting IncludeBinary and icon paths).%newline%•%nonbreakingspace%Archive a %quote%frozen snapshot%quote% of a complex project and its libraries: when your projects share common .pbi files that evolve over the months, a library update can break an older program. Exporting your project into a single file freezes the exact state of all its code at a given point in time: an ideal, ultra-convenient backup where a simple Ctrl+F lets you find and retrieve an older version of any procedure!%newline%•%nonbreakingspace%Isolate a bug for a test report: extract in seconds a minimal, self-contained, reproducible version of a complex project without exposing or bundling the rest of your personal libraries.%newline%•%nonbreakingspace%Feed your code to an AI: copy the streamlined output straight to the clipboard to give an AI assistant the entire useful context of your program in one block, without saturating its memory with unused code.
+FT_SecContent          = Code Content and Cleanup
+FT_AddFileBanners      = Insert file-transition comment banners between merged segments
+FT_PruneDeadZones      = Strip inactive CompilerIf / CompilerSelect zones
+FT_PruneUnused         = Strip unused procedures, structures, macros, constants, and globals
+FT_EraseComments       = Erase all code comments
+FT_CleanSpaces         = Compact inline spaces and strip blank lines
+FT_RewriteBinPaths     = Rewrite IncludeBinary and UseIcon paths relative to target file
+FT_SecOutput           = Output Destination
+FT_OpenInIDE           = Open generated file in the PureBasic IDE
+FT_FileFilter          = PureBasic Source (*.pb)|*.pb|All Files (*.*)|*.*
