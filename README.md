@@ -1,4 +1,4 @@
-Actual version is beta 2.0
+Actual version is 2.0 beta
 
 PBBrowser is aimed at all PureBasic developers who want to improve their own codes and navigate into their procedures much more easily than with the native PureBasic editor. PBBrowser is NOT a 'fork' (a rewrite) of the editor. It is a tool that is ADDED to the editor and which provides a large number of functions to help you in your programming tasks.
 
