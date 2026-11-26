@@ -2,7 +2,7 @@
 ;****************************************************************
 ;
 ;                   Font Description Library
-;                  v2 - By Zapman - March 2025
+;                  v3 - By Zapman - Nov. 2026
 ;
 ; This file should be saved under the name "FontDescription.pbi".
 ;
@@ -16,7 +16,7 @@
 ;     of parameters and commands, immediate understanding of
 ;      returned results, the absence of type issues, etc.
 ;   But they also pose problems and risks: because they do not
-;   require the coder to be strictely rigorous in presenting
+;   require the coder to be strictly rigorous in presenting
 ;     parameters, they can lead to errors that are sometimes
 ;  difficult to identify. Furthermore, a very detailed analysis
 ;    of textual commands must be performed to authorize and
@@ -29,11 +29,11 @@
 ; • GetFontDescription(), which returns a text description of an existing font.
 ; • GetFontName(), which returns the name of an existing font.
 ; • GetFontSize(), which returns the size of an existing font.
-; • GetFontStyle(), which returns a style text description of an existing font.
-; • NormalizeFontDescription(), which normalizes a simple description
+; • GetFontStyles(), which returns a style text description of an existing font.
+; • NormalizeFontDescription(), which normalizes a simple or mixed-case description
 ;   and returns a tagged description to avoid any ambiguity in interpretation.
-;   For example: "Arial, 12, RGB(255, 0, 0)" will be transformed into:
-;   "Name(Arial), Size(12), ForeColor($0000FF)".
+;   For example: "Arial, 12, RGB(255, 0, 0)" or "Name(Arial), Size(12), ForeColor($0000FF)"
+;   will be transformed into: "name(Arial),size(12),forecolor($ff)".
 ; • SimplifyFontDescription(), which generates a simplified description from
 ;   a normalized description.
 ; • GetAttributesDescriptionFromNumStyle(), which returns a text description of
@@ -41,406 +41,580 @@
 ; • GetNumStyleFromAttributesDescription(), which returns a numeric combination
 ;   of the styles from a text description of them.
 ;
-; Most of the following functions are designed to work with the Microsoft TOM (Text Object Model)
-; wich allows many more possibilities to describe a font and its variations than it
-; can be done in PureBasic with the LoadFont() and FontRequester native functions.
-; i.e.: • The font size is an integer for LoadFont(), while it is decimal for TOM;
-;       • They are only four possible styles for LoadFont() (Bold, Italic, Underline, StrikeOut)
-;         while they are many more with TOM (Emboss, Engrave and Outline, for example);
-;       • TOM offers the possibility to define a back color for the text;
+; Most of the following functions are designed to work with the Microsoft TOM (Text Object Model),
+; which allows many more possibilities to describe a font and its variations than
+; PureBasic's native LoadFont() and FontRequester() functions.
+; e.g.: • The font size is an integer for LoadFont(), while it can be decimal for TOM;
+;       • There are only four possible styles for LoadFont() (Bold, Italic, Underline, StrikeOut),
+;         while there are many more with TOM (Emboss, Engrave, and Outline, for example);
+;       • TOM offers the possibility to define a background color for the text;
 ;       • etc.
 ;
 ;****************************************************************
 ;
-Global FD_KnownFontKeywords$ = ",Bold,Italic,Emboss,AllCaps,SmallCaps,Engrave,Shadow,OutLine,Underline"
-FD_KnownFontKeywords$ + ",StrikeThrough,StrikeOut,Hidden,Protected,Size,Spacing,Position,Kerning,BackColor"
-FD_KnownFontKeywords$ + ",ForeColor,Weight,Style,Name,FontName,Font,"
-FD_KnownFontKeywords$ = LCase(FD_KnownFontKeywords$)
+; Store all recognized font attributes and tags in lowercase, framed by leading and trailing
+; commas so callers can test exact token membership via "," + Token$ + "," without partial matches:
+Global FD_KnownFontKeywords$ = ",bold,italic,light,emboss,allcaps,smallcaps,engrave,shadow,outline,underline" +
+                               ",strikethrough,strikeout,subscript,superscript,hidden,protected,size,spacing" +
+                               ",position,kerning,backcolor,forecolor,weight,style,name,fontname,font,scaling,"
 ;
-Procedure.s FD_NormalizeStringSyntaxe(FontDescription$)
+Procedure.s FD_NormalizeStringSyntax(FontDescription$, PreserveCase = #False)
+  ;
+  ; Role: Standardizes delimiters and strips redundant spaces around separators and parentheses.
+  ; Parameters: PreserveCase - Keeps original capitalization when #True; converts to lowercase when #False.
+  ; Output: Normalized compact command string.
   ;
   Protected mStyle$
+  ;
+  ; Convert alternative delimiters once before the space-stripping loop
+  FontDescription$ = ReplaceString(FontDescription$, ";", ",")
+  FontDescription$ = ReplaceString(FontDescription$, ":", "(")
   ;
   Repeat
     mStyle$ = FontDescription$
     FontDescription$ = ReplaceString(FontDescription$, " ,", ",")
     FontDescription$ = ReplaceString(FontDescription$, ", ", ",")
     FontDescription$ = ReplaceString(FontDescription$, ",,", ",")
-    FontDescription$ = ReplaceString(FontDescription$, ";", ",")
     FontDescription$ = ReplaceString(FontDescription$, " (", "(")
     FontDescription$ = ReplaceString(FontDescription$, "( ", "(")
     FontDescription$ = ReplaceString(FontDescription$, ") ", ")")
     FontDescription$ = ReplaceString(FontDescription$, " )", ")")
-    FontDescription$ = ReplaceString(FontDescription$, ": ", "(")
-    FontDescription$ = ReplaceString(FontDescription$, " :", "(")
-    FontDescription$ = ReplaceString(FontDescription$, ":", "(")
   Until mStyle$ = FontDescription$
-  ProcedureReturn LCase(Trim(FontDescription$))
+  ;
+  FontDescription$ = Trim(Trim(FontDescription$), ",")
+  If PreserveCase = #False
+    FontDescription$ = LCase(FontDescription$)
+  EndIf
+  ProcedureReturn FontDescription$
 EndProcedure
 ;
+CompilerIf Not Defined(FD_TokenEntry, #PB_Structure)
+  Structure FD_TokenEntry
+    Tag.s
+    Val.s
+  EndStructure
+CompilerEndIf
+;
 Procedure.s NormalizeFontDescription(FontDescription$)
+  Protected NewList Tokens.FD_TokenEntry()
+  Protected *Char.Character
+  Protected StyleUnit$, Tag$, Val$, RGBColor$, Color$
+  Protected pp, pp2, pp3, mpp, ct
+  Protected NameSet, SizeSet, ForeColorSet, BackColorSet, DigitCount, DotCount, HexFlag
   ;
-  ; Try to interpretate each possible manners to describe a font,
-  ; and normalize its description.
+  ; Role: Interprets all possible ways to describe a font and normalizes its description into a tagged format.
+  ; Output: Canonical string formatted as "name(Value),size(Value),forecolor($hex),backcolor($hex),styles..."
+  ;         The operation is designed to be reversible by calling SimplifyFontDescription() with a normalized
+  ;         font description as parameter.
   ;
-  ; The classical description order is: FontName, Size, ForeColor, BackColor, Styles
-  ; 'Style' can be a succession of comma separated values as Bold, Italic, Underline, etc.
-  ;
-  ; • The first value of 'FontDescription$' is supposed to be the font name, the second is supposed  to be the size,
-  ;   the optional third is supposed to be the forecolor, and the optional fourth is supposed to be the backcolor.
-  ;
-  ; • The normalized description form is: FontName(Value), Size(Value), ForeColor(Value), BackColor(Value), Bold, Italic, Underline, etc."
-  ;   but many less formal declarations are accepted in entry, as "Arial, 12, Bold" (colors are optionnal),
-  ;   or "Arial, size:12, BackColor:RGB(255,0,0), Bold"
-  ;
-  ;   For example, "Segoe UI, 9, Italic" will be transformed in "name(Segoe UI),size(9), italic".
-  ;
+  ; Supported syntax and interpretation rules:
+  ; • The classical description order is: FontName, Size, ForeColor, BackColor, Styles.
+  ;   'Styles' can be a succession of comma-separated values such as Bold, Italic, Underline, etc.
+  ; • By default, the first untagged value of 'FontDescription$' is interpreted as the font name (unless it is
+  ;   a number, a color, or a style keyword), the next numeric value as the size, the optional third untagged
+  ;   value as the forecolor, and the optional fourth untagged value as the backcolor.
+  ; • The normalized description form is: "name(Value),size(Value),forecolor($hex),backcolor($hex),bold,italic,..."
+  ;   Many less formal declarations are accepted as input, such as "Arial, 12, Bold" (colors are optional),
+  ;   "Name(Arial), Size(12), ForeColor($0000FF)", "SetForeColor(23756)", or "Arial, size:12, BackColor:RGB(255,0,0), Bold".
+  ;   Leading "Set..." and "Font..." prefixes on tags or known style keywords are normalized automatically.
   ; • Instead of commas, the different values can be separated by ";".
+  ; • Colors given as RGB(r,g,b) are evaluated and converted to hexadecimal.
+  ; • A color given without a 'backcolor' tag is considered by default as 'forecolor' (and a second untagged
+  ;   color as 'backcolor').
+  ; • Hexadecimal color values are accepted when preceded by "$" or "0x" (or given as hex digits inside a color tag).
   ;
-  ; • Colors given as RGB will be interpreted.
-  ; • A color given without 'background' type is considered by default as 'forecolor'.
-  ; • Hexadecimal values are accepted if preceeded by "$" or "0x"
+  FontDescription$ = FD_NormalizeStringSyntax(FontDescription$, #True)
+  If FontDescription$ = ""
+    ProcedureReturn ""
+  EndIf
   ;
-  ; The operation is designed to be reversible by calling SymplifyFontDescription() with
-  ; a normalized font description as parameter.
-  ;
-  Protected ct, StyleUnit$, mStyleUnit$, pp, mpp, pp2, RGBColor$, Color, ColorType$
-  Protected NameSet, ForeColorSet, BackColorSet, SizeSet, posDep, Color$, cont
-  ;
-  FontDescription$ = FD_NormalizeStringSyntaxe(FontDescription$)
-  ;
-  FontDescription$ = ReplaceString(FontDescription$, "font(", "name(")
-  FontDescription$ = ReplaceString(FontDescription$, "fontname(", "name(")
-  FontDescription$ = ReplaceString(FontDescription$, "0x", "$")
-  ;
-  ; Evaluate RGB colors:
-  ;
-  posDep = 0
+  ; Evaluate RGB(r,g,b) colors into "$hex" before splitting on commas:
+  pp = 1
   Repeat
-    posDep + 1
-    pp = FindString(FontDescription$, "rgb", posDep)
+    pp = FindString(FontDescription$, "rgb(", pp, #PB_String_NoCase)
     If pp
-      mpp = pp
-      pp + 3
-      While Mid(FontDescription$, pp, 1) = " "
-        pp + 1
-      Wend
-      If Mid(FontDescription$, pp, 1) = "("
-        pp + 1
-        pp2 = pp
-        For ct = 1 To 3
-          pp2 = FindString(FontDescription$, ",", pp2 + 1)
-          If pp2 = 0
-            pp2 = FindString(FontDescription$, ")", pp2 + 1)
-            If pp2 = 0
-              pp2 = Len(FontDescription$) + 1
-            EndIf
-            Break
-          EndIf
-        Next
-        mStyleUnit$ = Mid(FontDescription$, mpp, pp2 - mpp)
-        RGBColor$ = Mid(FontDescription$, pp, pp2 - pp)
-        Color = RGB(Val(StringField(RGBColor$, 1, ",")), Val(StringField(RGBColor$, 2, ",")), Val(StringField(RGBColor$, 3, ",")))
-        FontDescription$ = ReplaceString(FontDescription$, mStyleUnit$, "$" + Hex(Color))
+      ; Locate up to the 3rd comma to bound unclosed "RGB:r,g,b" declarations:
+      pp2 = pp + 3
+      For ct = 1 To 3
+        pp2 = FindString(FontDescription$, ",", pp2 + 1)
+        If pp2 = 0
+          pp2 = Len(FontDescription$) + 1
+          Break
+        EndIf
+      Next
+      mpp = FindString(FontDescription$, ")", pp + 4)
+      If mpp > 0 And mpp < pp2
+        ; Closed parenthesis belongs to RGB(...): extract inner components and consume ")":
+        RGBColor$ = Mid(FontDescription$, pp + 4, mpp - pp - 4)
+        pp2 = mpp + 1
+      Else
+        ; Unclosed colon syntax: stop right before the 3rd comma or at the end of the string:
+        RGBColor$ = Mid(FontDescription$, pp + 4, pp2 - pp - 4)
       EndIf
+      Color$ = "$" + LCase(Hex(RGB(Val(StringField(RGBColor$, 1, ",")) & $FF, Val(StringField(RGBColor$, 2, ",")) & $FF, Val(StringField(RGBColor$, 3, ",")) & $FF)))
+      FontDescription$ = Left(FontDescription$, pp - 1) + Color$ + Mid(FontDescription$, pp2)
+      pp + Len(Color$)
     EndIf
   Until pp = 0
   ;
-  ; Look for explicite values declarations:
-  ct = 1
-  Repeat
-    StyleUnit$ = StringField(FontDescription$, ct, ",")
-    If StyleUnit$
-      If FindString(StyleUnit$, "size")
-        SizeSet = 1
-      ElseIf FindString(StyleUnit$, "name")
-        NameSet = 1
-      ElseIf FindString(StyleUnit$, "forecolor")
-        ForeColorSet = 1
-      ElseIf FindString(StyleUnit$, "backcolor")
-        BackColorSet = 1
-      EndIf
-    EndIf
-    ct + 1
-  Until StyleUnit$ = ""
-  ;
-  ; Normalize colors values:
-  ct = 1
-  Repeat
-    StyleUnit$ = StringField(FontDescription$, ct, ",")
-    If StyleUnit$
-      pp = FindString(StyleUnit$, "color")
-      If pp
-        mStyleUnit$ = StyleUnit$
-        mpp = pp
-        pp + 5
-        While Mid(StyleUnit$, pp, 1) = " "
-          pp + 1
-        Wend
-        If Mid(StyleUnit$, pp, 1) = "("
-          pp + 1
-          pp2 = FindString(StyleUnit$, ")", pp)
-          If pp2 = 0
-            pp2 = Len(StyleUnit$) + 1
-          EndIf
-          Color$ = Trim(Mid(StyleUnit$, pp, pp2 - pp))
-          If FindString(StyleUnit$, "backcolor")
-            ColorType$ = "backcolor"
-            BackColorSet = 1
-          Else
-            ColorType$ = "forecolor"
-            ForeColorSet = 1
-          EndIf
-          If Val(Color$) = 0 And Val("$" + Color$)
-            StyleUnit$ = ColorType$ + "($" + Color$ + ")"
-          ElseIf Str(Val(Color$)) = Color$ Or Left(Color$, 1) = "$"
-            StyleUnit$ = ColorType$ + "($" + Hex(Val(Color$)) + ")"
-          EndIf
-          FontDescription$ = ReplaceString(FontDescription$, mStyleUnit$, StyleUnit$)
-        EndIf
-      EndIf
-      ; Add the last parenthesys if it is missing:
-      If FindString(StyleUnit$, "(") And FindString(StyleUnit$, ")") = 0
-        FontDescription$ = ReplaceString(FontDescription$, StyleUnit$, StyleUnit$ + ")")
-        FontDescription$ = ReplaceString(FontDescription$, "))", ")")
-      EndIf
-    EndIf
-    ct + 1
-  Until StyleUnit$ = ""
-  ;
-  cont = 1
+  ; Split tokens on top-level commas and normalize all tag prefixes, aliases, and style keywords in a single pass:
   pp = 1
-  For ct = 1 To 4
+  While pp <= Len(FontDescription$)
     pp2 = FindString(FontDescription$, ",", pp)
+    mpp = FindString(FontDescription$, "(", pp)
+    If pp2 > 0 And mpp > 0 And mpp < pp2
+      ; Preserve internal commas when "(" is closed before any subsequent "(" (multi-arg tag vs unclosed "tag:val"):
+      ct  = FindString(FontDescription$, ")", mpp + 1)
+      pp3 = FindString(FontDescription$, "(", mpp + 1)
+      If ct > 0 And (pp3 = 0 Or ct < pp3)
+        pp2 = FindString(FontDescription$, ",", ct + 1)
+      EndIf
+    EndIf
     If pp2 = 0
       pp2 = Len(FontDescription$) + 1
-      cont = 0
     EndIf
-    StyleUnit$ = Mid(FontDescription$, pp, pp2 - pp)
-    ; Look at the first parameter to see if it can be the font name:
-    If ct = 1 And NameSet = 0
-      If FindString(StyleUnit$, "(") = 0
-        If FindString(LCase(FD_KnownFontKeywords$), StyleUnit$) = 0
-          FontDescription$ = "name(" + StyleUnit$ + ")" + Mid(FontDescription$, pp2)
-          pp2 + 6 ; 6 is the lenght of added caracteres (name()).
+    If pp2 > pp
+      AddElement(Tokens())
+      If mpp > 0 And mpp < pp2
+        Tag$ = LCase(Mid(FontDescription$, pp, mpp - pp))
+        If Mid(FontDescription$, pp2 - 1, 1) = ")"
+          Val$ = Mid(FontDescription$, mpp + 1, pp2 - mpp - 2)
+        Else
+          Val$ = Mid(FontDescription$, mpp + 1, pp2 - mpp - 1)
+        EndIf
+        ; Canonicalize "set..." / "font..." tag prefixes and color aliases once so downstream logic sees only standard tags:
+        If Len(Tag$) > 3 And Left(Tag$, 3) = "set"
+          Tag$ = Mid(Tag$, 4)
+        EndIf
+        If Tag$ = "font"
+          Tag$ = "name"
+        ElseIf Len(Tag$) > 4 And Left(Tag$, 4) = "font"
+          Tag$ = Mid(Tag$, 5)
+        EndIf
+        If Tag$ = "color" Or Tag$ = "frontcolor" Or Tag$ = "textcolor"
+          Tag$ = "forecolor"
+        ElseIf Tag$ = "backgroundcolor"
+          Tag$ = "backcolor"
+        EndIf
+        If Tag$ = "name"
+          NameSet = #True
+        ElseIf Tag$ = "size"
+          SizeSet = #True
+        ElseIf Tag$ = "forecolor"
+          ForeColorSet = #True
+        ElseIf Tag$ = "backcolor"
+          BackColorSet = #True
+        EndIf
+        Tokens()\Tag = Tag$
+        Tokens()\Val = Val$
+      Else
+        Val$ = Mid(FontDescription$, pp, pp2 - pp)
+        Tag$ = LCase(Val$)
+        ; Identify standalone style keywords (including "Set..." variants such as "SetBold") using "*" as a marker:
+        If FindString(FD_KnownFontKeywords$, "," + Tag$ + ",")
+          Tokens()\Tag = "*"
+          Tokens()\Val = Tag$
+        ElseIf Len(Tag$) > 3 And Left(Tag$, 3) = "set" And FindString(FD_KnownFontKeywords$, "," + Mid(Tag$, 4) + ",")
+          Tokens()\Tag = "*"
+          Tokens()\Val = Mid(Tag$, 4)
+        Else
+          Tokens()\Val = Val$
         EndIf
       EndIf
     EndIf
-    ; Look at the second parameter to see if it can be the font size:
-    If ct = 2 And SizeSet = 0
-      If FindString(StyleUnit$, "(") = 0
-        If StrF(ValF(StyleUnit$)) = StyleUnit$ Or Str(Val(StyleUnit$)) = StyleUnit$ 
-          FontDescription$ = Left(FontDescription$, pp - 1) + "size(" + StyleUnit$ + ")" + Mid(FontDescription$, pp2)
-          pp2 + 6 ; 6 is the lenght of added caracteres (size()).
+    pp = pp2 + 1
+  Wend
+  ;
+  ; Classify remaining untagged values (colors, numeric sizes, or font name) and assemble the canonical string:
+  FontDescription$ = ""
+  ForEach Tokens()
+    Tag$ = Tokens()\Tag
+    Val$ = Tokens()\Val
+    If Tag$ = "*"
+      Tag$ = ""
+    ElseIf Tag$ = ""
+      If LCase(Left(Val$, 2)) = "0x"
+        Val$ = "$" + Mid(Val$, 3)
+      EndIf
+      If Left(Val$, 1) = "$"
+        ; Untagged hexadecimal or RGB-converted color defaults to forecolor, then backcolor:
+        If ForeColorSet = #False
+          Tag$ = "forecolor"
+          ForeColorSet = #True
+        ElseIf BackColorSet = #False
+          Tag$ = "backcolor"
+          BackColorSet = #True
+        EndIf
+      Else
+        ; Inspect whether the untagged value is numeric (integer/decimal size, or fallback decimal color):
+        *Char = @Val$
+        DigitCount = 0
+        DotCount = 0
+        While *Char\c
+          If *Char\c >= '0' And *Char\c <= '9'
+            DigitCount + 1
+          ElseIf *Char\c = '.'
+            DotCount + 1
+          Else
+            DigitCount = 0
+            Break
+          EndIf
+          *Char + SizeOf(Character)
+        Wend
+        If DigitCount > 0 And DotCount <= 1
+          If SizeSet = #False
+            Tag$ = "size"
+            SizeSet = #True
+          ElseIf DotCount = 0
+            If ForeColorSet = #False
+              Tag$ = "forecolor"
+              ForeColorSet = #True
+            ElseIf BackColorSet = #False
+              Tag$ = "backcolor"
+              BackColorSet = #True
+            EndIf
+          EndIf
+        ElseIf NameSet = #False
+          ; Treat the first non-keyword, non-numeric, non-color untagged value as the font name:
+          Tag$ = "name"
+          NameSet = #True
+        Else
+          Val$ = LCase(Val$)
         EndIf
       EndIf
     EndIf
-    ; Look at the third parameter to see if it can be the font forecolor:
-    If ct = 3 And ForeColorSet = 0
-      If FindString(StyleUnit$, "(") = 0
-        If Val(StyleUnit$) Or StyleUnit$ = "0" Or Left(StyleUnit$, 1) = "$"
-          FontDescription$ = Left(FontDescription$, pp - 1) + "forecolor(" + StyleUnit$ + ")" + Mid(FontDescription$, pp2)
-          pp2 + 10 ; 10 is the lenght of added caracteres (forecolor()).
-        EndIf
+    ;
+    ; Format the normalized token and add the closing parenthesis if it was missing:
+    If Tag$ = ""
+      StyleUnit$ = Val$
+    ElseIf Tag$ = "name"
+      If LCase(Val$) = "default" Or LCase(Val$) = "none"
+        Val$ = LCase(Val$)
       EndIf
-    EndIf
-    ; Look at the fourth parameter to see if it can be the font backcolor:
-    If ct = 4 And BackColorSet = 0
-      If FindString(StyleUnit$, "(") = 0
-        If Val(StyleUnit$) Or StyleUnit$ = "0" Or Left(StyleUnit$, 1) = "$"
-          FontDescription$ = Left(FontDescription$, pp - 1) + "backcolor(" + StyleUnit$ + ")" + Mid(FontDescription$, pp2)
-          pp2 + 10 ; 10 is the lenght of added caracteres (backcolor()).
-        EndIf
+      StyleUnit$ = "name(" + Val$ + ")"
+    ElseIf Tag$ = "forecolor" Or Tag$ = "backcolor"
+      ; Normalize color values ("$hex", "0xHex", decimal, or hex digits) while preserving keywords such as "default"
+      If LCase(Left(Val$, 2)) = "0x"
+        Val$ = "$" + Mid(Val$, 3)
       EndIf
-    EndIf
-    If cont
-      pp = pp2 + 1
+      HexFlag = #False
+      DigitCount = 0
+      *Char = @Val$
+      If *Char\c = '$'
+        HexFlag = #True
+        *Char + SizeOf(Character)
+      EndIf
+      While *Char\c
+        If *Char\c >= '0' And *Char\c <= '9'
+          DigitCount + 1
+        ElseIf (*Char\c >= 'a' And *Char\c <= 'f') Or (*Char\c >= 'A' And *Char\c <= 'F')
+          DigitCount + 1
+          HexFlag = #True
+        Else
+          DigitCount = 0
+          Break
+        EndIf
+        *Char + SizeOf(Character)
+      Wend
+      If DigitCount > 0
+        If HexFlag And Left(Val$, 1) <> "$"
+          Val$ = "$" + Val$
+        EndIf
+        Val$ = "$" + LCase(Hex(Val(Val$)))
+      Else
+        Val$ = LCase(Val$)
+      EndIf
+      StyleUnit$ = Tag$ + "(" + Val$ + ")"
     Else
-      Break
+      StyleUnit$ = Tag$ + "(" + LCase(Val$) + ")"
+    EndIf
+    ;
+    If FontDescription$
+      FontDescription$ + "," + StyleUnit$
+    Else
+      FontDescription$ = StyleUnit$
     EndIf
   Next
   ;
   ProcedureReturn FontDescription$
 EndProcedure
 ;
-Procedure.s FD_ExtractParameter(FontDescription$, ParameterName$, Silence = 0)
+Procedure.s FD_ExtractParameter(FontDescription$, ParameterName$, Silence = 0, *Found.Integer = #Null)
   ;
-  ; This procedure, retrieves the parameter in parenthesis
-  ; that follows 'ParameterName$' in the 'FontDescription$' string.
+  ; Role: Retrieves the parameter enclosed in parentheses (or following a colon) that follows
+  ;       'ParameterName$' in the 'FontDescription$' string.
+  ; Parameters: Silence - When zero, displays an error MessageRequester if 'ParameterName$' is not found.
+  ;             *Found  - Optional integer pointer receiving #True when 'ParameterName$' is present as a
+  ;                       top-level attribute, or #False otherwise.
+  ; Output: Extracted parameter string, or an empty string if 'ParameterName$' has no value or is absent.
   ;
-  Protected pa, pas, limp
+  Protected *Char.Character, *Start.Character, *Scan.Character
+  Protected ParamLen, ParenDepth, IsMatch, HasValue
   ;
-  pa = FindString(FontDescription$, LCase(ParameterName$), 1)
-  If pa
-    pa + Len(ParameterName$)
-    If PeekC(@FontDescription$ + (pa - 1) * SizeOf(CHARACTER)) = Asc("(")
-      pa + 1
-    EndIf
-    pas = pa
-    If PeekC(@FontDescription$ + (pa - 1) * SizeOf(CHARACTER)) <> Asc(",")
-      limp = Len(FontDescription$)
-      While pa <= limp And PeekC(@FontDescription$ + (pa - 1) * SizeOf(CHARACTER)) <> Asc(")")
-        pa + 1
-      Wend
-    EndIf
-    ProcedureReturn PeekS(@FontDescription$ + (pas - 1) * SizeOf(CHARACTER), pa - pas)
-  ElseIf Silence = 0
-    MessageRequester("Error", "Error while extracting parameter:  Wrong parameter name -> " + ParameterName$ + #CR$ + FontDescription$)
+  If *Found
+    *Found\i = #False
   EndIf
+  ParameterName$ = RTrim(Trim(ParameterName$), "(")
+  ParamLen = Len(ParameterName$)
+  If FontDescription$ <> "" And ParamLen > 0
+    *Char = @FontDescription$
+    While *Char\c
+      ; Skip leading spaces and separators between top-level attributes
+      While *Char\c = ' ' Or *Char\c = ',' Or *Char\c = ';'
+        *Char + SizeOf(Character)
+      Wend
+      If *Char\c = 0
+        Break
+      EndIf
+      ;
+      ; Read the candidate attribute identifier at the top level
+      *Start = *Char
+      While *Char\c And *Char\c <> ',' And *Char\c <> ';' And *Char\c <> '(' And *Char\c <> ':' And *Char\c <> ' '
+        *Char + SizeOf(Character)
+      Wend
+      IsMatch = Bool((*Char - *Start) / SizeOf(Character) = ParamLen And CompareMemoryString(*Start, @ParameterName$, #PB_String_NoCase, ParamLen) = #PB_String_Equal)
+      While *Char\c = ' '
+        *Char + SizeOf(Character)
+      Wend
+      If IsMatch And *Char\c <> '(' And *Char\c <> ':' And *Char\c <> ',' And *Char\c <> ';' And *Char\c <> 0
+        ; Reject prefix matches on multi-word untagged font names such as "Arial Bold"
+        IsMatch = #False
+      EndIf
+      ;
+      HasValue = #False
+      If *Char\c = '('
+        HasValue = #True
+        *Char + SizeOf(Character)
+        *Start = *Char
+        *Scan = *Char
+        ParenDepth = 1
+        While *Scan\c And ParenDepth > 0
+          If *Scan\c = '('
+            ParenDepth + 1
+          ElseIf *Scan\c = ')'
+            ParenDepth - 1
+          EndIf
+          If ParenDepth > 0
+            *Scan + SizeOf(Character)
+          EndIf
+        Wend
+        If ParenDepth = 0
+          ; Parenthesis is properly closed: return inner value or advance past ')'
+          If IsMatch
+            If *Found
+              *Found\i = #True
+            EndIf
+            ProcedureReturn Trim(PeekS(*Start, (*Scan - *Start) / SizeOf(Character)))
+          EndIf
+          *Char = *Scan + SizeOf(Character)
+        EndIf
+        ; If ParenDepth > 0 (unclosed '(' from colon conversion), fall through to stop at ',' or ';'
+        ParenDepth = 0
+      Else
+        If *Char\c = ':'
+          HasValue = #True
+          *Char + SizeOf(Character)
+        EndIf
+        *Start = *Char
+        ParenDepth = 0
+      EndIf
+      ;
+      ; Advance to the next top-level separator while preserving commas inside balanced parentheses
+      While *Char\c And (ParenDepth > 0 Or (*Char\c <> ',' And *Char\c <> ';'))
+        If *Char\c = '('
+          ParenDepth + 1
+        ElseIf *Char\c = ')' And ParenDepth > 0
+          ParenDepth - 1
+        EndIf
+        *Char + SizeOf(Character)
+      Wend
+      If IsMatch
+        If *Found
+          *Found\i = #True
+        EndIf
+        If HasValue
+          ProcedureReturn Trim(PeekS(*Start, (*Char - *Start) / SizeOf(Character)))
+        EndIf
+        ProcedureReturn ""
+      EndIf
+    Wend ; End of top-level attribute scan
+  EndIf
+  ;
+  If Silence = 0
+    MessageRequester("Error", "Error while extracting parameter: Wrong parameter name -> " + ParameterName$ + #CR$ + FontDescription$)
+    CallDebugger
+  EndIf
+  ProcedureReturn ""
 EndProcedure
 ;
-Macro FD_CompleteSimpleDescription(StyleName, Description)
-  If FindString(FontDescription$, StyleName)
-    parameter$ = FD_ExtractParameter(FontDescription$, StyleName)
-    If parameter$ <> "none" And parameter$ <> "0" And parameter$ <> "default"
-      Description + ", " + UCase(Left(StyleName, 1)) + Mid(StyleName, 2)
+Macro FD_CompleteSimpleDescription(StyleName, Description, AlwaysKeepValue = #False)
+  ;
+  ; Role: Appends 'StyleName' (and its optional parameter) to 'Description' when active in 'FontDescription$'.
+  ;
+  parameter$ = FD_ExtractParameter(FontDescription$, StyleName, #True, @Found)
+  If Found And parameter$ <> "none" And parameter$ <> "0" And parameter$ <> "default" And parameter$ <> "false"
+    If AlwaysKeepValue = #False And (parameter$ = "" Or parameter$ = "1" Or parameter$ = "-1" Or parameter$ = "true")
+      Description + ", " + StyleName
+    ElseIf parameter$
+      Description + ", " + StyleName + ":" + UCase(Left(parameter$, 1)) + Mid(parameter$, 2)
     EndIf
   EndIf
 EndMacro
 ;
-Procedure.s SymplifyFontDescription(FontDescription$)
+Procedure.s SimplifyFontDescription(FontDescription$)
   ;
-  ; From a normalized type description (as "Name(Segoe UI),Size(9),ForeColor($A05080),Bold")
-  ; This function will return a simplified font description as
-  ; "Segoe UI, 9, ForeColor:$A05080, Bold".
+  ; Role: Converts a normalized font description (such as "name(Segoe UI),size(9),forecolor($a05080),bold"
+  ;       or "Name(Segoe UI),Size(9),ForeColor($A05080),Bold") into a simplified description
+  ;       such as "Segoe UI, 9, ForeColor:$A05080, Bold".
+  ;       The operation is designed to be reversible by calling NormalizeFontDescription() with
+  ;       a simplified font description as parameter.
+  ; Output: Simplified human-readable font description string (supports partial descriptions without a font name).
   ;
-  ; The operation is designed to be reversible by calling NormalizeFontDescription() with
-  ; a simplified font description as parameter.
-  ;
+  Protected *Char.Character
   Protected parameter$, NFontDescription$
+  Protected Found, CapitalizeNext
   ;
-  ; First normalize the string to eventually interpret all its parameters:
+  ; First normalize the string to interpret all its parameters:
   FontDescription$ = NormalizeFontDescription(FontDescription$)
+  If FontDescription$ = ""
+    ProcedureReturn ""
+  EndIf
   ;
-  ; Then simplify the string:
-  If FindString(FontDescription$, "name(")
-    parameter$ = FD_ExtractParameter(FontDescription$, "name")
-    If parameter$ And parameter$ <> "default"
-      NFontDescription$ = UCase(Left(parameter$, 1)) + Mid(parameter$, 2)
-    EndIf
-  Else
-    MessageRequester("Error", "Error while examining the font description:  font name is missing -> " + #CR$ + FontDescription$)
-    ProcedureReturn
+  ; Then simplify the string (each active field prepends ", " uniformly):
+  parameter$ = FD_ExtractParameter(FontDescription$, "name", #True, @Found)
+  If Found And parameter$ And parameter$ <> "default"
+    ; Capitalize the initial of each word after a space or a hyphen while preserving existing uppercase letters
+    CapitalizeNext = #True
+    *Char = @parameter$
+    While *Char\c
+      If *Char\c = ' ' Or *Char\c = '-'
+        CapitalizeNext = #True
+      ElseIf CapitalizeNext
+        If *Char\c >= 'a' And *Char\c <= 'z'
+          *Char\c - 32
+        ElseIf *Char\c > 127
+          *Char\c = Asc(UCase(Chr(*Char\c)))
+        EndIf
+        CapitalizeNext = #False
+      EndIf
+      *Char + SizeOf(Character)
+    Wend
+    NFontDescription$ + ", " + parameter$
   EndIf
-  If FindString(FontDescription$, "size(")
-    parameter$ = FD_ExtractParameter(FontDescription$, "size")
-    If parameter$ And parameter$ <> "default"
-      NFontDescription$ + ", " + parameter$
-    EndIf
+  ;
+  parameter$ = FD_ExtractParameter(FontDescription$, "size", #True, @Found)
+  If Found And parameter$ And parameter$ <> "default"
+    NFontDescription$ + ", " + parameter$
   EndIf
-  If FindString(FontDescription$, "forecolor(")
-    parameter$ = FD_ExtractParameter(FontDescription$, "forecolor")
-    If parameter$ And parameter$ <> "default"
-      NFontDescription$ + ", ForeColor:" + UCase(parameter$)
-    EndIf
+  ;
+  parameter$ = FD_ExtractParameter(FontDescription$, "forecolor", #True, @Found)
+  If Found And parameter$ And parameter$ <> "default"
+    NFontDescription$ + ", ForeColor:" + UCase(parameter$)
   EndIf
-  If FindString(FontDescription$, "backcolor(")
-    parameter$ = FD_ExtractParameter(FontDescription$, "backcolor")
-    If parameter$ And parameter$ <> "default"
-      NFontDescription$ + ", BackColor:" + UCase(parameter$)
-    EndIf
+  ;
+  parameter$ = FD_ExtractParameter(FontDescription$, "backcolor", #True, @Found)
+  If Found And parameter$ And parameter$ <> "default"
+    NFontDescription$ + ", BackColor:" + UCase(parameter$)
   EndIf
   ;
   ; The following is designed to be compatible with the font descriptions
-  ; used for TOM (Text Object Model).
-  FD_CompleteSimpleDescription("bold", NFontDescription$)
-  FD_CompleteSimpleDescription("italic", NFontDescription$)
-  FD_CompleteSimpleDescription("emboss", NFontDescription$)
-  FD_CompleteSimpleDescription("allcaps", NFontDescription$)
-  FD_CompleteSimpleDescription("smallcaps", NFontDescription$)
-  FD_CompleteSimpleDescription("engrave", NFontDescription$)
-  FD_CompleteSimpleDescription("shadow", NFontDescription$)
-  FD_CompleteSimpleDescription("outline", NFontDescription$)
-  FD_CompleteSimpleDescription("strikethrough", NFontDescription$)
-  FD_CompleteSimpleDescription("strikeout", NFontDescription$)
-  FD_CompleteSimpleDescription("subscript", NFontDescription$)
-  FD_CompleteSimpleDescription("superscript", NFontDescription$)
-  FD_CompleteSimpleDescription("hidden", NFontDescription$)
-  FD_CompleteSimpleDescription("protected", NFontDescription$)
+  ; used for TOM (Text Object Model):
+  FD_CompleteSimpleDescription("Bold", NFontDescription$)
+  FD_CompleteSimpleDescription("Italic", NFontDescription$)
+  FD_CompleteSimpleDescription("Light", NFontDescription$)
+  FD_CompleteSimpleDescription("Emboss", NFontDescription$)
+  FD_CompleteSimpleDescription("AllCaps", NFontDescription$)
+  FD_CompleteSimpleDescription("SmallCaps", NFontDescription$)
+  FD_CompleteSimpleDescription("Engrave", NFontDescription$)
+  FD_CompleteSimpleDescription("Shadow", NFontDescription$)
+  FD_CompleteSimpleDescription("Outline", NFontDescription$)
+  FD_CompleteSimpleDescription("StrikeThrough", NFontDescription$)
+  FD_CompleteSimpleDescription("StrikeOut", NFontDescription$)
+  FD_CompleteSimpleDescription("Subscript", NFontDescription$)
+  FD_CompleteSimpleDescription("Superscript", NFontDescription$)
+  FD_CompleteSimpleDescription("Hidden", NFontDescription$)
+  FD_CompleteSimpleDescription("Protected", NFontDescription$)
+  FD_CompleteSimpleDescription("Underline", NFontDescription$)
+  FD_CompleteSimpleDescription("Spacing", NFontDescription$, #True)
+  FD_CompleteSimpleDescription("Position", NFontDescription$, #True)
+  FD_CompleteSimpleDescription("Kerning", NFontDescription$, #True)
+  FD_CompleteSimpleDescription("Weight", NFontDescription$, #True)
+  FD_CompleteSimpleDescription("Style", NFontDescription$, #True)
   ;
-  FD_CompleteSimpleDescription("underline", NFontDescription$)
-  ;
-  If Left(NFontDescription$, 2) = ", "
-    NFontDescription$ = Mid(NFontDescription$, 3)
-  EndIf
-  ;
-  ProcedureReturn NFontDescription$
-  ;
+  ProcedureReturn Mid(NFontDescription$, 3)
 EndProcedure
 ;
 Procedure GetNumStyleFromAttributesDescription(StyleDescription$)
   ;
-  ; Return the style (num value) of the style/font described by 'StyleDescription$'.
+  ; Role: Returns the PureBasic numeric style combination (#PB_Font_Bold, #PB_Font_Italic, etc.)
+  ;       matching the textual style or font description in 'StyleDescription$'.
   ;
-  Protected FontStyle = 0
-  StyleDescription$ = LCase(StyleDescription$)
+  Protected parameter$, FontStyle = 0, Found, ct
   ;
-  If FindString(StyleDescription$, "italic")
-    FontStyle = #PB_Font_Italic
-  EndIf
-  If FindString(StyleDescription$, "bold")
-    FontStyle | #PB_Font_Bold
-  EndIf
-  If FindString(StyleDescription$, "strike")
-    FontStyle | #PB_Font_StrikeOut
-  EndIf
-  If FindString(StyleDescription$, "underline")
-    FontStyle | #PB_Font_Underline
-  EndIf
+  For ct = 1 To 5
+    parameter$ = LCase(FD_ExtractParameter(StyleDescription$, StringField("bold,italic,strikeout,strikethrough,underline", ct, ","), #True, @Found))
+    If Found And parameter$ <> "none" And parameter$ <> "0" And parameter$ <> "default" And parameter$ <> "false"
+      Select ct
+        Case 1 : FontStyle | #PB_Font_Bold
+        Case 2 : FontStyle | #PB_Font_Italic
+        Case 3, 4 : FontStyle | #PB_Font_StrikeOut
+        Case 5 : FontStyle | #PB_Font_Underline
+      EndSelect
+    EndIf
+  Next
   ProcedureReturn FontStyle
 EndProcedure
 ;
 Procedure.s GetAttributesDescriptionFromNumStyle(FontStyle)
   ;
-  ; Return the style (num value) of the style/font described by 'StyleDescription$'.
+  ; Role: Returns a comma-separated textual style description from a numeric combination
+  ;       of PureBasic font style flags ('FontStyle').
   ;
   Protected StyleDescription$ = ""
   ;
-  If FontStyle & #PB_Font_Italic
-    StyleDescription$ + "Italic, "
-  EndIf
   If FontStyle & #PB_Font_Bold
-    StyleDescription$ + "Bold, "
+    StyleDescription$ + ", Bold"
+  EndIf
+  If FontStyle & #PB_Font_Italic
+    StyleDescription$ + ", Italic"
   EndIf
   If FontStyle & #PB_Font_StrikeOut
-    StyleDescription$ + "StrikeOut, "
+    StyleDescription$ + ", StrikeOut"
   EndIf
   If FontStyle & #PB_Font_Underline
-    StyleDescription$ + "Underline, "
+    StyleDescription$ + ", Underline"
   EndIf
-  ProcedureReturn Left(StyleDescription$, Len(StyleDescription$) - 2)
+  ProcedureReturn Mid(StyleDescription$, 3)
 EndProcedure
 ;
 Procedure LoadFontFromDescription(FontDescription$)
   ;
-  ; Return a font handle from a textual font description.
+  ; Role: Loads a PureBasic font from a textual font description and returns its PureBasic font number.
+  ;       Falls back to "Arial" and size 9 when the font name or size is omitted or set to "default".
   ;
-  Protected parameter$
+  Protected parameter$, FontName$ = "Arial", FontSize = 9
   ;
   FontDescription$ = NormalizeFontDescription(FontDescription$)
   ;
-  If FindString(FontDescription$, "name(")
-    parameter$ = FD_ExtractParameter(FontDescription$, "name")
-    If parameter$ And parameter$ <> "default"
-      Protected FontName$ = parameter$
+  parameter$ = FD_ExtractParameter(FontDescription$, "name", #True)
+  If parameter$ And parameter$ <> "default"
+    FontName$ = parameter$
+  EndIf
+  parameter$ = FD_ExtractParameter(FontDescription$, "size", #True)
+  If parameter$ And parameter$ <> "default"
+    FontSize = Round(ValF(parameter$), #PB_Round_Nearest)
+    If FontSize <= 0
+      FontSize = 9
     EndIf
   EndIf
-  If FindString(FontDescription$, "size(")
-    parameter$ = FD_ExtractParameter(FontDescription$, "size")
-    If parameter$ And parameter$ <> "default"
-      Protected FontSize = Val(parameter$)
-    EndIf
-  EndIf
   ;
-  Protected FontStyle = GetNumStyleFromAttributesDescription(FontDescription$)
-  ;
-  ProcedureReturn LoadFont(#PB_Any, FontName$, FontSize, FontStyle)
-  ;
+  ProcedureReturn LoadFont(#PB_Any, FontName$, FontSize, GetNumStyleFromAttributesDescription(FontDescription$))
 EndProcedure
 ;
 Procedure.s GetFontName(FontID)
   ;
-  ; Return the system name of the font defined by 'FontID'.
+  ; Role: Returns the system face name of the font defined by 'FontID' (falls back to "Arial").
+  ; Parameters: FontID - Either a PureBasic font number or an OS font handle (HFONT / NSFont).
   ;
   Protected FontName$
   ;
@@ -449,110 +623,166 @@ Procedure.s GetFontName(FontID)
   EndIf
   ;
   CompilerIf #PB_Compiler_OS = #PB_OS_MacOS
-    ; returns the font name of FontID
-    ;
+    ; Return the font name of FontID:
     Protected string
     If FontID
-      string = CocoaMessage(0, FontID, "displayName") ; "familyName" and "fontName" for internal use
-                                                      ; use "displayName" for the real name
+      ; "familyName" and "fontName" are for internal use; use "displayName" for the real name
+      string = CocoaMessage(0, FontID, "displayName")
       If string
         FontName$ = PeekS(CocoaMessage(0, string, "UTF8String"), -1, #PB_UTF8)
       EndIf
     EndIf
   CompilerElseIf #PB_Compiler_OS = #PB_OS_Windows
-    ;    
-    ; Create a HDC to get the font info:
-    Protected hdc = GetDC_(#Null)
-    Protected oldFont = SelectObject_(hdc, FontID)
-    ;
-    ; Get the real font name:
-    FontName$ = Space(#LF_FACESIZE) ; Maximum size for font name.
-    GetTextFace_(hdc, #LF_FACESIZE, @FontName$)
-    If FontName$ = "" : FontName$ = "Arial" : EndIf
-    ;
-    ; Clean up:
-    SelectObject_(hdc, oldFont)
-    ReleaseDC_(#Null, hdc)
+    ; Create an HDC to retrieve the font info:
+    Protected hdc, oldFont
+    If FontID
+      hdc = GetDC_(#Null)
+      If hdc
+        oldFont = SelectObject_(hdc, FontID)
+        If oldFont
+          ; Get the real font name (#LF_FACESIZE is the maximum size for a font name):
+          FontName$ = Space(#LF_FACESIZE)
+          If GetTextFace_(hdc, #LF_FACESIZE, @FontName$)
+            ; Rebuild a clean PureBasic string up to the null terminator written by GetTextFace_:
+            FontName$ = PeekS(@FontName$)
+          Else
+            FontName$ = ""
+          EndIf
+          ; Clean up:
+          SelectObject_(hdc, oldFont)
+        EndIf
+        ReleaseDC_(#Null, hdc)
+      EndIf
+    EndIf
   CompilerEndIf
   ;
+  If FontName$ = ""
+    FontName$ = "Arial"
+  EndIf
   ProcedureReturn FontName$
-  ;
 EndProcedure
 ;
-Procedure.f GetFontSize(FontID)
+Procedure GetFontSize(FontID)
   ;
-  ; Return the size of the font defined by 'FontID'.
+  ; Role: Returns the point size (rounded to the nearest integer) of the font defined by 'FontID'.
+  ; Parameters: FontID - Either a PureBasic font number or an OS font handle (HFONT / NSFont).
   ;
-  Protected FpointSize.f
+  Protected FpointSize
   ;
   If IsFont(FontID)
     FontID = FontID(FontID)
   EndIf
   ;
   CompilerIf #PB_Compiler_OS = #PB_OS_MacOS
-    ; returns the font size of FontID
-    ;
+    ; Return the font size of FontID:
     Protected pointSize.CGFloat = 0.0
-    ;
     If FontID
-       CocoaMessage(@pointSize, FontID, "pointSize")
+      CocoaMessage(@pointSize, FontID, "pointSize")
     EndIf
-    FpointSize = pointSize
-    ProcedureReturn FpointSize
+    FpointSize = Round(pointSize, #PB_Round_Nearest)
   CompilerElseIf #PB_Compiler_OS = #PB_OS_Windows
-    ; Get gadget font height in points (to the nearest integer)
-    Protected finfo.LOGFONT
-    Protected hdc = GetDC_(#Null) ; Obtenir le contexte de périphérique
-    If GetObject_(FontID, SizeOf(LOGFONT), @finfo.LOGFONT)
-      FpointSize = -finfo\lfHeight * 72 / GetDeviceCaps_(hdc, #LOGPIXELSY)
+    ; Get the font height in points (rounded to the nearest integer):
+    Protected finfo.LOGFONT, tm.TEXTMETRIC
+    Protected hdc, oldFont, PixelHeight, LogPixelsY
+    If FontID And GetObject_(FontID, SizeOf(LOGFONT), @finfo)
+      ; Acquire the screen device context:
+      hdc = GetDC_(#Null)
+      If hdc
+        LogPixelsY = GetDeviceCaps_(hdc, #LOGPIXELSY)
+        If finfo\lfHeight < 0
+          PixelHeight = -finfo\lfHeight
+        Else
+          ; Positive or zero lfHeight represents cell or default height: extract character em-height via metrics
+          oldFont = SelectObject_(hdc, FontID)
+          If oldFont
+            If GetTextMetrics_(hdc, @tm)
+              PixelHeight = tm\tmHeight - tm\tmInternalLeading
+            EndIf
+            SelectObject_(hdc, oldFont)
+          EndIf
+          If PixelHeight <= 0
+            PixelHeight = finfo\lfHeight
+          EndIf
+        EndIf
+        ReleaseDC_(#Null, hdc)
+        If LogPixelsY > 0
+          FpointSize = Round(PixelHeight * 72.0 / LogPixelsY, #PB_Round_Nearest)
+        EndIf
+      EndIf
     EndIf
-    ProcedureReturn FpointSize
   CompilerEndIf
   ;
+  ProcedureReturn FpointSize
 EndProcedure
 ;
 Procedure.s GetFontStyles(FontID)
   ;
-  Protected lf.LOGFONT, Purelf.LOGFONT
-  Protected StyleDescription$, FontName$, PureFont
+  ; Role: Returns a comma-separated textual description of the styles applied to 'FontID'.
+  ; Parameters: FontID - Either a PureBasic font number or an OS font handle (HFONT).
+  ;
+  Protected StyleDescription$
   ;
   If IsFont(FontID)
     FontID = FontID(FontID)
   EndIf
   ;
-  ; Récupérer les infos de la police
-  If GetObject_(FontID, SizeOf(LOGFONT), @lf)
-    FontName$ = PeekS(@lf\lfFaceName, -1, #PB_Unicode)
-    PureFont = LoadFont(#PB_Any, FontName$, 9)
-    If GetObject_(FontID(PureFont), SizeOf(LOGFONT), @Purelf)
-      ; Compare the weight of the font to the normal weight:
-      If lf\lfWeight > Purelf\lfWeight
-        StyleDescription$ = "Bold, "
-      ElseIf lf\lfWeight < Purelf\lfWeight
-        StyleDescription$ = "Light, "
+  CompilerIf #PB_Compiler_OS = #PB_OS_Windows
+    Protected lf.LOGFONT, tm.TEXTMETRIC, Puretm.TEXTMETRIC
+    Protected PureFont, hdc, oldFont
+    ;
+    ; Retrieve the font attributes:
+    If FontID And GetObject_(FontID, SizeOf(LOGFONT), @lf)
+      If lf\lfFaceName[0]
+        hdc = GetDC_(#Null)
+        If hdc
+          oldFont = SelectObject_(hdc, FontID)
+          If oldFont
+            If GetTextMetrics_(hdc, @tm)
+              PureFont = LoadFont(#PB_Any, PeekS(@lf\lfFaceName), 9)
+              If PureFont
+                ; Compare the physical weight of the font to the normal physical weight of its family:
+                If SelectObject_(hdc, FontID(PureFont)) And GetTextMetrics_(hdc, @Puretm)
+                  If tm\tmWeight > Puretm\tmWeight
+                    StyleDescription$ + ", Bold"
+                  ElseIf tm\tmWeight < Puretm\tmWeight
+                    StyleDescription$ + ", Light"
+                  EndIf
+                EndIf
+              EndIf
+            EndIf
+            ; Restore the original DC font before freeing PureFont so it is no longer selected in the DC:
+            SelectObject_(hdc, oldFont)
+            If PureFont
+              FreeFont(PureFont)
+            EndIf
+          EndIf
+          ReleaseDC_(#Null, hdc)
+        EndIf
+      EndIf
+      ;
+      If lf\lfItalic
+        StyleDescription$ + ", Italic"
+      EndIf
+      If lf\lfUnderline
+        StyleDescription$ + ", Underline"
+      EndIf
+      If lf\lfStrikeOut
+        StyleDescription$ + ", StrikeOut"
       EndIf
     EndIf
-    FreeFont(PureFont)
-    ;
-    If lf\lfItalic
-      StyleDescription$ + "Italic, "
-    EndIf
-    ;
-    If lf\lfUnderline
-      StyleDescription$ + "Underline, "
-    EndIf
-    ;
-    If lf\lfStrikeOut
-      StyleDescription$ + "StrikeOut, "
-    EndIf
-    ;
-    ProcedureReturn Left(StyleDescription$, Len(StyleDescription$) - 2)
-  EndIf
+  CompilerEndIf
+  ;
+  ProcedureReturn Mid(StyleDescription$, 3)
 EndProcedure
 ;
 Procedure.s GetFontDescription(FontID)
-  Protected FontDescription$ = GetFontName(FontID) + ", " + GetFontSize(FontID)
+  ;
+  ; Role: Builds a simplified textual description ("Name, Size[, Styles]") for an existing font.
+  ; Parameters: FontID - Either a PureBasic font number or an OS font handle (HFONT / NSFont).
+  ;
+  Protected FontDescription$ = GetFontName(FontID) + ", " + Str(GetFontSize(FontID))
   Protected StyleDescription$ = GetFontStyles(FontID)
+  ;
   If StyleDescription$
     FontDescription$ + ", " + StyleDescription$
   EndIf
@@ -560,19 +790,23 @@ Procedure.s GetFontDescription(FontID)
 EndProcedure
 ;
 CompilerIf #PB_Compiler_IsMainFile
-  ; The following won't run when this file is used as 'Included'.
+  ; The following code will not run when this file is included by another source file.
+  ;
+  Define Font, Description$
   ;
   Font = LoadFontFromDescription("arial,12,bold")
   Description$ = GetFontDescription(Font)
   FreeFont(Font)
-  Debug "Simple description:            " + Description$
+  Debug "Simple description:        " + Description$
   Debug "Normalized description:    " + NormalizeFontDescription(Description$)
+  Debug "Re-simplified description: " + SimplifyFontDescription(NormalizeFontDescription(Description$))
   ;
 CompilerEndIf
+;
 
-; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
-; CursorPosition = 285
-; FirstLine = 265
-; Folding = -r-
+; IDE Options = PureBasic 6.41 (Windows - x64)
+; CursorPosition = 58
+; FirstLine = 13
+; Folding = OYg
 ; EnableXP
 ; DPIAware

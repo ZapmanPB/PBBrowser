@@ -39,21 +39,21 @@ Macro FastLeft(FMString, FMLength)
 EndMacro
 ;
 Macro FastFindPrecReturn(FMString, FMStartPos)
-  ; Searches for the carriage return that precedes the position FMStartPos
+  ; Searchs for the carriage return that precedes the position FMStartPos
   While FMStartPos And PeekC(@FMString + (FMStartPos - 1) * SizeOf(CHARACTER)) <> #CR
     FMStartPos - 1
   Wend
 EndMacro
 ;
 Macro FastFindPrecSpaces(FMString, FMStartPos)
-  ; Searches for the first space preceding the position FMStartPos
+  ; Searchs for the first space preceeding the position FMStartPos
   While FMStartPos And PeekC(@FMString + (FMStartPos - 1) * SizeOf(CHARACTER)) <> 32
     FMStartPos - 1
   Wend
 EndMacro
 ;
 Macro FastSkipPrecSpaces(FMString, FMStartPos)
-  ; Searches for the first non-space character upstream of FMStartPos
+  ; Searchs for the first non-space character upstream of FMStartPos
   While FMStartPos And PeekC(@FMString + (FMStartPos - 1) * SizeOf(CHARACTER)) = 32
     FMStartPos - 1
   Wend
@@ -91,8 +91,8 @@ EndMacro
 ; Debug "Timer "+Str(1)+" : "+Str(StageTimer(1))
 ; Debug StrF(mt/StageTimer(1))
 
-; IDE Options = PureBasic 6.21 Beta 2 (Windows - x86)
-; CursorPosition = 10
+; IDE Options = PureBasic 6.41 (Windows - x64)
+; CursorPosition = 15
 ; Folding = -
 ; EnableXP
 ; DPIAware

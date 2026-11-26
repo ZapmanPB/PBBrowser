@@ -1,2649 +1,1 @@
-;
-;**********************************************************************************
-;
-;                             SetMenuItemEx.pbi library
-;                                   Windows only
-;                             Zapman - July 2026 - 6.4
-;
-;          This file should be saved under the name "SetMenuItemEx.pbi".
-;
-;     This library offers functions to overcome the limitations of the current
-;          PureBasic (6.20) functions dedicated to the menu management.
-;
-; • It is not possible to change the icon of a menu item after assigning it.
-;   You have to destroy the menu and rebuild it entirely to be able to change one
-;   of its icons.
-; • It is not possible to retrieve the ImageID of a menu icon. You have to memorize
-;   it in a variable at the time you assign it to be able to retrieve it later.
-; • It is not possible to assign an icon to an item of the menu-bar of a window,
-;   if this item has subitems.
-; • It is not possible to change the menu items font and colors.
-;
-;  Many functions of this library (as SetMenuItemFont()) are simple added to the
-;  original set of PureBasic functions.
-;  Some existing functions (as MenuTitle()) are overrided to win more capacities
-;  and flexibilities.
-;
-;                                 Added functions:
-;
-;  • SetMenuItemFont()   and GetMenuItemFont()
-;  • SetMenuTitleFont()  and GetMenuTitleFont()
-;  • SetMenuItemColor()  and GetMenuItemColor()
-;  • SetMenuTitleColor() and GetMenuTitleColor()
-;  • SetMenuItemImage()  and GetMenuItemImage()
-;  • SetMenuTitleImage() and GetMenuTitleImage()
-;  • CheckMenuItem()     and IsMenuItemChecked()
-;  • SetMenuColor()      ; Apply a color to all existing items of a menu
-;  • SetMenuFont()       ; Apply a font to all existing items of a menu
-;
-;                                Improved functions:
-;
-;  • MenuTitle() can now has an imageID as second parameter. It also returns
-;    the handle of the submenu that this command creates.
-;  • MenuBar() can now has an ID as parameter. This allows you to attribute
-;    particular colors to menu-bars.
-;  • You can now use dynamic allocation for items ID using #PB_Any as usual.
-;    For example:   MyItem = MenuItem(#PB_Any, "Text of my item")
-;  • You can use submenu's handles exactly the same way you would use IDs.
-;    It means that you can change a menu title like this:
-;        MyTitle = MenuTitle("Text of the title")
-;        SetMenuItemText(MyMenu, MyTitle, "New text of the title")
-;    This also means that you no longer need to use functions that start with
-;    "SetMenuTitle..." (but they are still functional).
-;  • The menu ID can be replaced by '#PB_Default' in all functions except
-;    the ones beggining by "SetMenuTitle...". Consequently, you can do:
-;        SetMenuItemText(#PB_Default, MyTitle, "New text of the title")
-;    Item IDs are supposed to be unique and handles are also. Consequently,
-;    the functions of this library will search in which menu or PopupMenu the
-;    ID/handle provided as a parameter is located and they will replace
-;    #PB_Default with the correct menu ID. This can be very usefull to retreive
-;    the text of the command activated by the user in the main loop of the program.
-;    You can do :  If WaitWindowEvent() = #PB_Event_Menu
-;                    Define ItemText$ = GetMenuItemText(#PB_Default, EventMenu())
-;                    MessageRequester("Info", "The user chose: " + ItemText$, 0)
-;                  Endif
-;    
-;
-;   This library is compatible with all other Zapman libraries, including
-;   SetGadgetColorEx.pbi and ApplyColorThemes.pbi
-; 
-;***********************************************************************************
-;
-;                           SOME EXPLANATIONS ABOUT MENUS
-;
-; To understand what is done through the different functions of that library, it is
-; important to know some things about how Windows has organized that part of its
-; interface and how PureBasic manages it.
-;
-;           *---------------- About CreateImageMenu() ----------------*
-;
-; • The Windows API offers a complete set of functionnalities which allow you to add
-;   menus and popup menus to an application without having to manage much.
-;   The menu item text can be stored using the API SetMenuItemInfo_() function and
-;   can be retreived using GetMenuItemInfo_().
-; • The same functions can be used to store a menu item image pointer and the existence
-;   of the CreateImageMenu() function, in addition to CreateMenu(), is not necessary
-;   on Windows. At the very least, these two functions should be strictly equivalent
-;   on this system. However, for reasons that are likely historical (Windows only
-;   supports menu icons since Windows 2000), PureBasic handles menus very differently
-;   depending on whether they are created with CreateMenu() (and CreatePopupMenu())
-;   or with CreateImageMenu() (and CreatePopupImageMenu()). In the first case, menus
-;   use the standard Windows functions for their entire functionality. In the second
-;   case, the menu items are defined as "ownerdrawn" and PureBasic takes care of
-;   drawing each of them.
-; • When a menu item is defined as "ownerdrawn", it is common to associate it with 
-;   a set of data that will define, in addition to the text and image linked to 
-;   the item, the text color, for example, as well as the background color and, 
-;   optionally, the font with which the item should be displayed.
-; • As developers, when we want to add display options to the items of a menu 
-;   created with CreateImageMenu(), we face a difficulty: these items are already 
-;   defined as ownerdrawn by PureBasic, and a set of data is already associated 
-;   with them. When attempting to add data to the existing data and manage the 
-;   display of these items in a customized way, other issues arise: the functions 
-;   GetMenuItemText() and SetMenuItemText() are not designed for such operations 
-;   and lead to malfunctions. Worse yet: if a popup menu is created with the 
-;   CreatePopupImageMenu() function, its management by PureBasic interferes with 
-;   other menus managed as ownerdrawn by our application (which should absolutely 
-;   not be the case).
-; • In summary, the CreateImageMenu() function and the way its features are 
-;   handled by PureBasic create unsolvable issues as soon as we want to add 
-;   functionalities such as SetMenuItemColor(). I have therefore decided to 
-;   override this function, along with many other menu-related functions, in 
-;   order to create a reliable and functional library. One of the advantages of
-;   this choice is that menus, even if they include images, are only ownerdrawn
-;   when it is strictly necessary. (As we will see a bit later, owner-drawn menus
-;   come with a series of drawbacks).
-;   Notice the small arrow on the right that appears on items with a submenu:
-;   —> Without using this library, it does not has the same appearance when
-;      creating the menu with CreateMenu() and CreateImageMenu(). In the first
-;      case, the Windows theme is applied. In the second case, it is not,
-;      because the menu is then ownerdrawn.
-;   —> When using this library, CreateMenu() and CreateImageMenu() are strictly
-;      equivalent and you can add images to items in both cases.
-;      Windows theme is applied until you set a particular color or font
-;      for a menu item. In this case (and only in this case), the menu is
-;      ownerdrawn and the Windows theme cannot be applied (but the menu behavior
-;      comes as close as possible)
-;
-;          *---------------- About ownerdrawn menus ----------------*
-;      All the following comments concern Windows 11 and older versions.
-;
-; • When a menu item is defined as ownerdrawn, its display must be managed by a 
-;   callback procedure associated with the application's window. This procedure 
-;   receives the #WM_INITMENU (or #WM_INITMENUPOPUP) message when the menu is 
-;   about to be drawn for the first time. Then it receives the #WM_MEASUREITEM 
-;   message, which allows it to calculate and record the dimensions of the rectangle 
-;   in which the item will be drawn. Finally, it receives the #WM_DRAWITEM message 
-;   when the item needs to be drawn.
-; • To calculate the width of the menu item during the handling of the
-;   #WM_MEASUREITEM message and to draw it during the handling of the #WM_DRAWITEM
-;   message, the callback procedure needs data defining its text, image, colors,
-;   and font. These data are stored in a structure, and the address of this structure
-;   is associated with the item using the SetMenuItemInfo_() function.
-;   This address can then be retrieved using GetMenuItemInfo_(). It is also available 
-;   in measureItemStruct\itemData at the time of the #WM_MEASUREITEM message, and in
-;   drawItemStruct\itemData, at the time of the #WM_DRAWITEM message.
-; • When an image is associated with an ownerdrawn item using SetMenuItemInfo_()
-;   and #MIIM_BITMAP, the #WM_MEASUREITEM  message is never sent to the callback
-;   procedure. It is very unfortunate, and I personally consider it a mistake on 
-;   Windows' part, but it is a fact that must be taken into account. If you associate
-;   an image to an item using the classical way, Windows takes it upon itself 
-;   to calculate the width required to display the item, but unfortunately, it 
-;   does this incorrectly and only considers the image, without accounting for 
-;   the width needed to display the text.
-; • Consequently, when an item is defined as ownerdrawn, the image associated 
-;   with it must NOT be registered in the standard way using SetMenuItemInfo_(). 
-;   The 'hbmpItem' field of the MenuItemInfo structure must be set to '0' or
-;   '#HBMMENU_CALLBACK' for the #WM_MEASUREITEM message to be sent and handled by
-;   the callback procedure. However, since it will still be necessary to have
-;   the address of the image during the handling of #WM_MEASUREITEM and #WM_DRAWITEM,
-;   this address must be stored in the set of data associated with the item.
-; • The 'ownerdrawn' mode of Windows menu items suffers from other bugs (also reported
-;   by other developers on the web) that I had to discover, understand, and handle:
-;   Since each menu item can be independently defined as ownerdrawn or not, one would
-;   naturally expect everything to continue functioning normally if some items are
-;   ownerdrawn while others are not. But this is not the case. As soon as a single
-;   item in a menu is ownerdrawn, the display of all other items of this menu
-;   encounters issues: they are no longer displayed using the current Windows theme
-;   and are shifted to the right, with the offset oddly depending on the width assigned
-;   to the ownerdrawn item. In short, it doesn't work (except if the ownerdrawn item is
-;   the last of the menu). If you define one menu item as ownerdrawn, then you must
-;   define ALL items in that menu as ownerdrawn, even if you don't need them to be.
-; • When you change the text or the image of a menu-bar item that is not ownerdrawn,
-;   the menu-bar is automatically redrawn. When you change the data of an ownerdrawn
-;   menu-bar item, it is NOT automatically resized and redrawn (it should be!).
-;   The #WM_MEASUREITEM and #WM_DRAWITEM are not automatically sent to it.
-;   And because no explicit 'ResizeMenuItem()' function does exist, you have to use
-;   some sort of 'hack' to get the equivalent: by calling SetMenuItemInfo_()
-;   with fMask = #MIIM_BITMAP and hbmpItem = 0, #WM_MEASUREITEM is resent to the callback
-;   procedure, even if hbmpItem was allready set to zero before the call of SetMenuItemInfo_().
-;   This whole process has something absurd about it.
-; • When you set a MenuBar item as ownerdrawn, the #WM_MEASUREITEM message is normally
-;   sent to the callback procedure, but the #WM_DRAWITEM is not sent if you have not
-;   attributed an ID to the MenuBar. Any positive number can be used, and you can even
-;   attribute an ID allready used by another item (what shouldn't work!). It doesn't
-;   matter. The system never check or use this ID but it needs one to send the #WM_DRAWITEM.
-;   message. This is another absurd aspect of the ownerdrawing system's functions.
-; • When an item is a submenu entry, it's ID should be -1. But the Windows management
-;   of ownerdrawn menus has a very rare but very annoying bug (this is not systematic
-;   as for MenuBars): when the ID of an item is equal to -1, approximately once in 200,
-;   the #WM_DRAWITEM message is not sent to the callback procedure and the item is never
-;   drawn. When an item falls victim to this bug, it's for good: you can send DrawMenuBar_()
-;   repeatedly, the faulty item will never be drawn. Something in its data is apparently
-;   corrupt without it being possible to know exactly why. After numerous and exhausting
-;   tests, it appears that assigning an ID of 1 to all items that are submenu entries
-;   corrects this problem. Notice that, in reality, the ID will not REALLY be assigned
-;   to the item. If you test this with GetMenuItemID_(hmenu, ItemPos) after the operation,
-;   you will see that the item still has an ID equal to -1. But this fixes the malfunction
-;   and the bug will no longer occur.
-; • In modern versions of Windows, menu bar items are activated when the mouse cursor
-;   hovers over them, providing a smooth and intuitive user experience.
-;   Unfortunately, this behavior does not apply to owner-drawn menu items, which are
-;   managed in the "old-fashioned" Windows way. These items do not react to mouse hover
-;   events, and no #WM_DRAWITEM message is sent to the window's callback procedure
-;   in such cases. I address this limitation by explicitly triggering a #WM_DRAWITEM 
-;   message when the mouse cursor hovers over a menu item. This is handled by the
-;   callback procedure (Case #WM_NCMOUSEMOVE).
-; • In modern versions of Windows, the menu bar is grayed out when the window becomes
-;   inactive. However, this behavior typically does not occur with owner-drawn menus
-;   because Windows does not send the #WM_DRAWITEM message to owner-drawn menus when
-;   the window is activated or deactivated. This oversight has been addressed by adding
-;   a snippet of code in the window's callback procedure (Case #WM_ACTIVATE).
-; • These last two points may explain why PureBasic never defines the menu bar as
-;   owner-drawn, even when the menu is created with CreateImageMenu().
-;   This avoids the aforementioned drawbacks but this choice introduces a third one:
-;   it becomes impossible to display an image in the menu bar, even when it is created 
-;   with CreateImageMenu().
-;   By rewriting PureBasic's native functions, this library resolves all these issues:
-;   1- The menu bar can now display images without being owner-drawn.
-;   2- If the menu bar is set as owner-drawn to allow its items to be colored or 
-;      displayed with a specific font, it will still behave like a non-owner-drawn
-;      menu bar. If a theme exists, colors of the theme will be used by default.
-;
-;   *---------------- About the 'MenuTitle()' PureBasic function ----------------*
-;
-; • The native MenuTitle() function in PureBasic is essentially a disguised version
-;   of the OpenSubMenu() function. When you use it to add a title to the main menu,
-;   it actually creates a submenu entry, into which you can then add items with
-;   the MenuItem() function. From your perspective, MenuItem() adds items in the
-;   same menu where you added a title with MenuTitle(). In reality, (i.e. for Window)
-;   these are two separate menus (a menu and a submenu) that are nested. Windows
-;   handle a submenu (or a popumenu) the same way as a menu.
-; • Unlike the 'OpenSubmenu()' function which returns a handle to the created submenu,
-;   PureBasic's native MenuTitle() function does not return a handle. This is why,
-;   when you want to change the title of a menu with SetMenuTitleText(), you are forced
-;   to designate the item by its position in the menu (which is not very practical).
-;   This lack is corrected by this library. Now MenuTitle() returns you a handle and
-;   you can use SetMenuItemText() with this handle to change the menu title. You can
-;   also give it an imageID as second parameter.
-; • The design of the native OpenSubMenu() function can be improved, because if the
-;   user forget to call 'CloseSubmenu()' at the end of the menu creation, in case of
-;   heavy menu usage, including creations and destructions (FreeMenu) of a menu with
-;   an unclosed submenu, this can end up causing a memory error (this happens exactly
-;   on the 64rd iteration of a create/destruct loop). This library fixes this problem
-;   by forcing a call to CloseSubmenu() before each CreateMenu(), CreatePopupMenu()
-;   and FreeMenu().
-;
-;   *---------------- About the 'MenuBar()' PureBasic function ----------------*
-;
-;   PureBasic's native MenuBar() function does not return a handle and you cannot
-;   attribute an ID to it. You can with this library. So you may use this ID to
-;   attribute a particular color to a menu-bar.
-;
-CompilerIf #PB_Compiler_IsMainFile
-  EnableExplicit
-CompilerEndIf
-;
-;**********************************************************************************
-;
-;-               1- STRUCTURES GLOBALS AND CONSTANTES DECLARATIONS
-; 
-Global SMI_MenuHeight = GetSystemMetrics_(#SM_CYMENU)
-#SMI_MenuBulletSize = 4
-;
-EnumerationBinary SMI_ShowSelectionMethod
-  #SMI_SSW_Bullet = 1
-  #SMI_SSW_Borders
-  #SMI_SSW_SystemColor
-  #SMI_SSW_ShadeBackground
-EndEnumeration
-;
-Global SMI_ShowSelectionMethod
-If SMI_ShowSelectionMethod = 0
-  ; By changing the value of SMI_ShowSelectionMethod,
-  ; you change the manner of showing to the user that the mouse
-  ; is over an item of the menu. Usualy, a simple background
-  ; shading is enough to do that, but it can be inefficient
-  ; in a dark mode environment or when each item has its own
-  ; particular color (or both). So, you can choose four different
-  ; methods (see the SMI_ShowSelectionMethod enumeration).
-  ; Try each of them to decide.
-  ;
-  ; Note that your can eventually combine different methods.
-  ; SMI_ShowSelectionMethod = #SMI_SSW_SystemColor | #SMI_SSW_Bullet
-  ;
-  SMI_ShowSelectionMethod =  #SMI_SSW_SystemColor
-EndIf
-;
-#SMI_SubItemSearch = -1
-;
-Structure MENUITEMINFO_Fixed Align #PB_Structure_AlignC
-  ; The MENUITEMINFO structure described in PureBasic 6.20
-  ; and olders is uncomplete.
-  ; Great thanks to 'idle' from english PureBasic forum,
-  ; for the right form of this structure.
-  cbSize.l
-  fMask.l
-  fType.l
-  fState.l
-  wID.l
-  hSubMenu.i
-  hbmpChecked.i
-  hbmpUnchecked.i
-  dwItemData.i
-  *dwTypeData
-  cch.l
-  hbmpItem.i ; This field is missing in the PureBasic 6.20 (and older) description of MENUITEMINFO.
-EndStructure
-;
-
-#MENU_BARITEM         = 8
-#MENU_POPUPITEM       = 14
-#MBI_HOT              = 2
-#MPI_HOT              = 2
-#MBI_NORMAL           = 1
-#MPI_NORMAL           = 1
-#MENU_BARBACKGROUND   = 7
-#MENU_POPUPBACKGROUND = 9
-#MENU_POPUPCHECK      = 11
-#MC_CHECKMARKNORMAL   = 1
-#TMT_FILLCOLOR        = 3802
-#TMT_TEXTCOLOR        = 3803
-;
-#MIM_MENUDATA         = 8
-#HBMMENU_CALLBACK     = -1
-;
-CompilerIf Not Defined(MENUINFO, #PB_Structure) ; Necessary for version 6.4 of PureBasic
-  Structure MENUINFO Align #PB_Structure_AlignC ; The structure definition stays usefull for older versions.
-    cbSize.l           ; Size of the structure (in bytes).
-    fMask.l            ; Mask specifying which members are being set or retrieved.
-    dwStyle.l          ; Style of the menu.
-    cyMax.l            ; Maximum height of the menu, in pixels.
-    hbrBack.i          ; Handle to the brush used to paint the menu background.
-    dwContextHelpID.l  ; Context help ID for the menu.
-    dwMenuData.i       ; Custom data associated with the menu.
-  EndStructure
-CompilerEndIf
-;
-CompilerIf Not Defined(MENUBARINFO, #PB_Structure) ; Necessary for version 6.4 of PureBasic
-  Structure MENUBARINFO Align #PB_Structure_AlignC ; The structure definition stays usefull for older versions.
-    cbSize.l
-    rcBar.RECT
-    hMenu.i
-    hwndMenu.i
-    fBarFocused.b
-    fFocused.b
-    fUnused.b
-    Padding_1.b
-  EndStructure
-CompilerEndIf
-;
-Enumeration MustBeOwnerdrawn
-  #SMI_NOT_Ownerdrawn
-  #SMI_Ownerdrawn
-EndEnumeration
-;
-Structure OwnerdrawnMenuItemDataStruct
-  ;
-  ; As the Windows documentation says : "The menu item data can represent
-  ; any information that is meaningful to your application, and that will
-  ; be available to your application when the item is to be displayed.
-  ; For example, the value could contain a pointer to a structure;
-  ; the structure, in turn, might contain a text string and a handle to the
-  ; logical font your application will use to draw the string."
-  ; The data of this structure can be accessed through the field
-  ; *drawItem\itemData when the #WM_DRAWITEM message is sent to the main
-  ; window of the program. It can also be accessed with the GetMenuItemInfo_()
-  ; API function. See SMI_FillMenuItemData() as an example about how to do that.
-  ;
-  *MenuItemTextPtr      ; This field contains a pointer to the text of
-                        ;    the menu item. To be compatible with the way
-                        ;    PureBasic handles ownedrawn items, the text
-                        ;    must be stored in memory with the
-                        ;    SysAllocString_(ItemText$) function.
-  *MenuItemImgHandle    ; This field contains a pointer to the image
-                        ;   illustrating the menu item.
-  MenuItemImgNum.i      ; This field is used to store the PureBasic
-                        ;   imageID of the image.
-  MustBeOwnerdrawn.i    ; Equal to #SMI_Ownerdrawn when the item must be ownerdrawn.
-  IsItemOwnerdrawn.i    ; Equal to #SMI_Ownerdrawn when the item is ownerdrawn.
-  IsItemSeparator.i     ; Equal to #True when the item is a separator.
-  *ParentMenuHandle     ; Handle of the menu owning the item.
-  MenuItemPos.i         ; Position of the item in the menu.
-  MenuItemID.i          ; ID of the item, if it gets one.
-                        ;   (submenu entries has not ID).
-  *MenuItemFont         ; Font to use when drawing the item.
-  MenuItemBackColor.l   ; BackColor to use when drawing the item.
-  MenuItemTextColor.l   ; TextColor to use when drawing the item.
-  MenuItemState.l       ; Check or UnCheck state of the item.
-EndStructure
-;
-Global NewList MenuItemData.OwnerdrawnMenuItemDataStruct()
-;
-Define SMI_MemMenuNum = -1, SMI_MemMenuHandle = 0
-;
-;*******************************************************************************
-;
-;-                             2- GENERAL FUNCTIONS
-;                     (possibly reusable in other programs)
-;
-;*******************************************************************************
-;
-Procedure LoadMenuFont()
-  #SPI_GETNONCLIENTMETRICS = $0029
-  Protected ncm.NONCLIENTMETRICS
-  ncm\cbSize = SizeOf(NONCLIENTMETRICS)
-  ;
-  If SystemParametersInfo_(#SPI_GETNONCLIENTMETRICS, ncm\cbSize, @ncm, 0)
-    Protected FontName$ = PeekS(@ncm\lfMenuFont\lfFaceName)
-    Protected FontSize = ncm\lfMenuFont\lfHeight / DesktopResolutionY()
-    ProcedureReturn LoadFont(#PB_Any, FontName$, FontSize)
-  EndIf
-EndProcedure
-;
-Global DefaultMenuFont = LoadMenuFont()
-;
-CompilerIf Not(Defined(GetImageFromShell32, #PB_Procedure))
-  Procedure GetImageFromShell32(IconNum, ImgWidth, ImgHeight)
-    ;
-    Protected TransparentImage = CreateImage(#PB_Any, ImgWidth, ImgHeight, 32, #PB_Image_Transparent)
-    Protected hIcon = ExtractIcon_(0, "shell32.dll", IconNum)
-    ;
-    If IsImage(TransparentImage) And hIcon
-      Protected Dest_hDC = StartDrawing(ImageOutput(TransparentImage))
-      If Dest_hDC
-        DrawingMode(#PB_2DDrawing_AlphaBlend)
-        Box(0, 0, ImgWidth, ImgHeight, RGBA(0, 0, 0, 0))
-        DrawIconEx_(Dest_hDC, 0, 0, hIcon, ImgWidth, ImgHeight, 0, #Null, #DI_NORMAL)
-        StopDrawing()
-        DeleteDC_(Dest_hDC)
-      EndIf
-    EndIf
-    DestroyIcon_(hIcon)
-    ;
-    ProcedureReturn TransparentImage
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(ResizeImageToIconSize, #PB_Procedure))
-  Procedure ResizeImageToIconSize(SourceImage)
-    ;
-    If SourceImage
-      If IsImage(SourceImage)
-        SourceImage = ImageID(SourceImage)
-      EndIf
-      ;
-      Protected ResizedImage = CreateImage(#PB_Any, GetSystemMetrics_(#SM_CXSMICON), GetSystemMetrics_(#SM_CYSMICON), 32, #PB_Image_Transparent)
-      If ResizedImage
-        If StartDrawing(ImageOutput(ResizedImage))
-          DrawingMode(#PB_2DDrawing_AlphaBlend)
-          DrawImage(SourceImage, 0, 0, GetSystemMetrics_(#SM_CXSMICON), GetSystemMetrics_(#SM_CYSMICON))
-          StopDrawing()
-          ProcedureReturn ResizedImage
-        EndIf
-      EndIf
-    EndIf
-    ProcedureReturn #Null
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(CreateIconFromImage, #PB_Procedure))
-  Procedure CreateIconFromImage(hBitmap)
-    ;
-    Protected iconInfo.ICONINFO, bitmap.BITMAP
-    ;
-    If IsImage(hBitmap)
-      hBitmap = ImageID(hBitmap)
-    EndIf
-    ;
-    If GetObject_(hBitmap, SizeOf(BITMAP), @bitmap)
-      ;
-      ; Fill the ICONINFO Structure
-      iconInfo\fIcon = #True
-      iconInfo\xHotspot = 0
-      iconInfo\yHotspot = 0
-      iconInfo\hbmMask = CreateBitmap_(bitmap\bmWidth, bitmap\bmHeight, 1, 1, #Null)
-      iconInfo\hbmColor = hBitmap
-      Protected hIcon = CreateIconIndirect_(@iconInfo)
-      ;
-      ; Free the mask
-      DeleteObject_(iconInfo\hbmMask)
-      ;
-      ProcedureReturn hIcon
-    EndIf
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(DrawTransparentRectangle, #PB_Procedure))
-  Procedure DrawTransparentRectangle(Dest_hDC, *rect.RECT, CoverColor, Opacity)
-    ;
-    Protected TempRect.Rect, hBrush
-    Protected Srce_hDC = CreateCompatibleDC_(Dest_hDC)
-    ;
-    If CoverColor = 0 : CoverColor = 1 : EndIf ; There is a bug when color = 0
-    ;
-    If Srce_hDC
-      Protected ImgWidth = *rect\right - *rect\left
-      Protected ImgHeight = *rect\bottom - *rect\top
-      Protected hbmTemp = CreateCompatibleBitmap_(Dest_hDC, ImgWidth, ImgHeight)
-      If hbmTemp
-        Protected oldBitmap = SelectObject_(Srce_hDC, hbmTemp)
-        If oldBitmap
-          Protected blend, *blend.BLENDFUNCTION = @blend
-          ;
-          If OpenLibrary(0, "Msimg32.dll")
-            ;
-            ; Fill hbmTemp with CoverColor
-            TempRect\left = 0 : TempRect\top = 0
-            TempRect\right = ImgWidth : TempRect\bottom = ImgHeight
-            hBrush = CreateSolidBrush_(CoverColor)
-            FillRect_(Srce_hDC, TempRect, hBrush)
-            DeleteObject_(hBrush)
-            ;
-            ; Copy hbmTemp from Srce_hDC to Dest_hDC, respecting AlphaBlend:
-            *blend\BlendOp = #AC_SRC_OVER
-            *blend\BlendFlags = 0
-            *blend\AlphaFormat = 0
-            *blend\SourceConstantAlpha = Opacity
-            CallFunction(0, "AlphaBlend", Dest_hDC, *rect\left, *rect\top, ImgWidth, ImgHeight, Srce_hDC, 0, 0, ImgWidth, ImgHeight, blend)
-            ;
-            CloseLibrary(0)
-          EndIf
-          ;
-          SelectObject_(Srce_hDC, oldBitmap)
-        EndIf
-        DeleteObject_(hbmTemp)
-      EndIf
-      DeleteDC_(Srce_hDC)
-    EndIf
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(DrawRightPointingTriangle, #PB_Procedure))
-  Procedure DrawRightPointingTriangle(hDC, *rc.Rect, tSize, FrontColor, BackColor)
-    ;
-    Protected *points = AllocateMemory(3 * SizeOf(POINT))
-    Protected vCenter = *rc\top + (*rc\bottom - *rc\top) / 2 - 1
-    ;
-    ; Calculate the coordinates of the triangle
-    PokeL(*points + 0, *rc\left + tSize) ; Point for the tip of the triangle
-    PokeL(*points + 4, vCenter)  ; Centered vertically within the triangle
-    ;
-    PokeL(*points + 8, *rc\left)
-    PokeL(*points + 12, vCenter + tSize) ; Bottom of the triangle
-    ;
-    PokeL(*points + 16, *rc\left);
-    PokeL(*points + 20, vCenter - tSize) ; Top of the triangle
-    ;
-    Protected hPen = CreatePen_(#PS_SOLID, 1, FrontColor) ; Pen with 1-pixel thickness
-    Protected hBrush = CreateSolidBrush_(BackColor)
-    SelectObject_(hDC, hPen)
-    SelectObject_(hDC, hBrush)
-    ;
-    Polygon_(hDC, *points, 3) ; Draw the triangle
-    ;
-    ; CleanUp
-    DeleteObject_(hPen)
-    DeleteObject_(hBrush)
-    FreeMemory(*points)
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(DrawCheckmark, #PB_Procedure))
-  Procedure DrawCheckmark(hDC, *rc.Rect, Size, Color)
-    Protected pt.POINT, hPen
-    
-    ; Calcul de la position du rectangle 10x10 à l'intérieur de rc
-    pt\x = *rc\left  ; Aligné à gauche
-    pt\y = *rc\top + (*rc\bottom - *rc\top - Size) / 2; Centrage vertical
-    
-    ; Création d'un stylo pour dessiner la checkmark
-    hPen = CreatePen_(#PS_SOLID, 2, Color)
-    SelectObject_(hDC, hPen)
-    
-    ; Dessiner la checkmark (?) avec MoveToEx_ et LineTo_
-    MoveToEx_(hDC, pt\x + Size/5, pt\y + Size * 2 / 5, 0)
-    LineTo_(hDC, pt\x + Size * 3 / 5, pt\y + Size * 4 / 5)
-    LineTo_(hDC, pt\x + Size * 7 / 5, pt\y)
-    
-    ; Nettoyage
-    DeleteObject_(hPen)
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(GetTextWidthInWindowContext, #PB_Procedure))
-  Procedure GetTextWidthInWindowContext(hWnd, FontID, Text$)
-    If IsWindow(hWnd) : hWnd = WindowID(hWnd) : EndIf
-    If IsFont(FontID) : FontID = FontID(FontID) : EndIf
-    Protected hDC = GetDC_(hWnd), hOldFont, Size.SIZE
-    If hDC
-      hOldFont = SelectObject_(hDC, FontID) ; Apply the specified font
-      GetTextExtentPoint32_(hDC, Text$, Len(Text$), @Size) ; Get the text width
-      SelectObject_(hDC, hOldFont) ; Restore the previous font
-      ReleaseDC_(hWnd, hDC) ; Release the drawing context
-      ProcedureReturn Size\cx
-    EndIf
-    ProcedureReturn 0
-  EndProcedure
-CompilerEndIf
-; Prototype for the DwmSetWindowAttribute_ function
-CompilerIf Not(Defined(DwmSetWindowAttribute, #PB_Prototype))
-  Prototype.i DwmSetWindowAttribute(hWnd.i, dwAttribute.i, pvAttribute.i, cbAttribute.i)
-CompilerEndIf
-;
-CompilerIf Not(Defined(IsDarkModeEnabled, #PB_Procedure))
-  Procedure IsDarkModeEnabled()
-    ;
-    ; Detects if dark mode is enabled in Windows
-    ;
-    Protected key = 0
-    Protected darkModeEnabled = 0
-    ;
-    If RegOpenKeyEx_(#HKEY_CURRENT_USER, "Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", 0, #KEY_READ, @key) = #ERROR_SUCCESS
-      Protected value = 1
-      Protected valueSize = SizeOf(value)
-      If RegQueryValueEx_(key, "AppsUseLightTheme", 0, #Null, @value, @valueSize) = #ERROR_SUCCESS
-        darkModeEnabled = Abs(value - 1) ; 0 = dark, 1 = light
-      EndIf
-      RegCloseKey_(key)
-    EndIf
-    ;
-    ProcedureReturn darkModeEnabled
-  EndProcedure
-CompilerEndIf
-;
-CompilerIf Not(Defined(ApplyDarkModeToWindow, #PB_Procedure))
-  Procedure ApplyDarkModeToWindow(Window = 0)
-    ;
-    ; Applies dark theme to a window if dark theme is enabled in Windows.
-    ;
-    Protected hWnd = WindowID(Window)
-    ;
-    If hWnd And OSVersion() >= #PB_OS_Windows_10
-      Protected hDwmapi = OpenLibrary(#PB_Any, "dwmapi.dll")
-      ;
-      If hDwmapi
-        Protected DwmSetWindowAttribute_.DwmSetWindowAttribute = GetFunction(hDwmapi, "DwmSetWindowAttribute")
-        ; Enable dark mode if possible
-        If DwmSetWindowAttribute_
-          Protected darkModeEnabled = IsDarkModeEnabled()
-          If darkModeEnabled
-            #DWMWA_USE_IMMERSIVE_DARK_MODE = 20
-            DwmSetWindowAttribute_(hWnd, #DWMWA_USE_IMMERSIVE_DARK_MODE, @darkModeEnabled, SizeOf(darkModeEnabled))
-            SetWindowColor(Window, $202020)
-            ;
-            ; Force the window to repaint:
-            If IsWindowVisible_(hWnd)
-              HideWindow(Window, #True)
-              HideWindow(Window, #False)
-            EndIf
-          EndIf
-        EndIf
-        ;
-        CloseLibrary(hDwmapi)
-      EndIf
-    EndIf
-  EndProcedure
-CompilerEndIf
-;
-; *****************************************************************************
-;
-;-                 3. SPECIALIZED PROCEDURES OF THE LIBRARY
-;
-;      The following procedure are subroutines of the library functions.
-;
-; *****************************************************************************
-;
-Procedure   SMI_GetLastMenuItem(hMenu)
-  ;
-  ; Return the position of the last menu item of hMenu.
-  ;
-  Protected LastMenuItem = GetMenuItemCount_(hMenu) - 1
-  ;
-  If LastMenuItem < 0 Or LastMenuItem > 65535
-    ProcedureReturn -1
-  EndIf
-  ProcedureReturn LastMenuItem
-EndProcedure
-;
-Procedure   SMI_InitMenuItemInfoData(*MenuItemInfo.MENUITEMINFO_Fixed)
-  FillMemory(*MenuItemInfo, SizeOf(MENUITEMINFO_Fixed), 0)
-  *MenuItemInfo\cbSize     = SizeOf(MENUITEMINFO_Fixed)
-EndProcedure
-;
-Procedure.s SMI_GetClassicMenuStringFromPosition(hMenu, Position)
-  ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed, ItemString$
-  ;
-  ; Get the size of the string (the number of chars):
-  SMI_InitMenuItemInfoData(@MenuItemInfo)
-  MenuItemInfo\fMask      = #MIIM_STRING
-  MenuItemInfo\dwTypeData = 0
-  ; The first call to GetMenuItemInfo_ with dwTypeData set to zero
-  ; allows to get the string size (returned in cch):
-  GetMenuItemInfo_(hMenu, Position, #MF_BYPOSITION, @MenuItemInfo)
-  ;
-  If MenuItemInfo\cch
-    ; Allocate memory for a unicode string:
-    ItemString$ = Space(MenuItemInfo\cch)
-    MenuItemInfo\cch + 1 ; Add room for the ending character.
-    ; Put the item string buffer address in MenuItemInfo\dwTypeData:
-    MenuItemInfo\dwTypeData = @ItemString$
-    ; Retreive the string:
-    GetMenuItemInfo_(hMenu, Position, #MF_BYPOSITION, @MenuItemInfo)
-  EndIf
-  ProcedureReturn ItemString$
-EndProcedure
-;
-Procedure   SMI_GetMenuItemPos(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, *ItemPos.Integer, RecursiveSearch = #True)
-  ;
-  ; Explore a menu and, eventually,  its submenus, looking for an item
-  ; having an ID corresponding to ItemPosOrIdOrSubmenuHandle, or being
-  ; a submenu entry for the submenu having the ItemPosOrIdOrSubmenuHandle
-  ; handle.
-  ;
-  ; ByPosOrIdOrSubMenuHandle decides what type of search must be done.
-  ;
-  ; The menu handle of the menu or submenu containing the item is returned.
-  ; *ItemPos is then set with the position of the item in hMenu.
-  ;
-  ; If RecursiveSearch = #True, all the submenus will be explored. Else
-  ; only the menu designated by the hMenu entry parameter will be explored.
-  ;
-  Protected LastItem, Counter, hSubMenu, Result
-  ;
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  ;
-  If IsMenu_(ItemPosOrIdOrSubmenuHandle)
-    ByPosOrIdOrSubMenuHandle = #SMI_SubItemSearch
-    ; When using the Windows API, items that are submenu entries
-    ; has no ID. So, in the callback procedure, when receiving
-    ; an identifier for that type of item, it can't be an ID!
-    ; Instead of that, the handle of the corresponding submenu
-    ; is given. If IsMenu_(ItemPosOrIdOrSubmenuHandle) returns
-    ; a non-zero value, it means that the ItemPosOrIdOrSubmenuHandle
-    ; parameter is a submenu handle.
-    ; We will exlore all the menu items and subitems until we
-    ; found the submenu entry.
-    ; You might be wondering "What happens if an Item ID is equal
-    ; to a Submenu handle?" This theoretically cannot happen,
-    ; because IDs are normally always less than #FFFF, and handles
-    ; are always greater.
-  EndIf
-  ;
-  If ByPosOrIdOrSubMenuHandle = #MF_BYPOSITION
-    *ItemPos\i = ItemPosOrIdOrSubmenuHandle
-    ProcedureReturn hMenu
-  Else
-    LastItem = SMI_GetLastMenuItem(hMenu)
-    For Counter = 0 To LastItem
-      hSubMenu = GetSubMenu_(hMenu, Counter)
-      If hSubMenu = 0 And ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND And GetMenuItemID_(hMenu, Counter) = ItemPosOrIdOrSubmenuHandle
-        *ItemPos\i = Counter
-        ProcedureReturn hMenu
-      Else
-        If hSubMenu
-          If ByPosOrIdOrSubMenuHandle = #SMI_SubItemSearch And hSubMenu = ItemPosOrIdOrSubmenuHandle
-            *ItemPos\i = Counter
-            ProcedureReturn hMenu
-          ElseIf RecursiveSearch
-            Result = SMI_GetMenuItemPos(hSubMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, *ItemPos, RecursiveSearch)
-            If Result
-              ProcedureReturn Result
-            EndIf
-          EndIf
-        EndIf
-      EndIf
-    Next
-  EndIf
-EndProcedure
-;
-Procedure   SMI_FillMenuItemData(hMenu, ItemPosOrIdOrSubmenuHandle, *MyMenuItemData.OwnerdrawnMenuItemDataStruct, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND, RecursiveSearch = #True)
-  ;
-  ; Retreive the item designated by the entry parameters and copy its
-  ; data into *MyMenuItemData, whether the item is ownerdrawn or not.
-  ; This allows the program to deal with a unic type of data storing.
-  ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed
-  Protected ItemString$, ItemPos
-  Protected bitmap.bitmap
-  ;
-  MenuItemInfo\dwItemData = 0
-  ;
-  hMenu = SMI_GetMenuItemPos(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos, RecursiveSearch)
-  ;  
-  If hMenu And *MyMenuItemData
-    ; The item has been found. hMenu will be the returned value.
-    ;
-    ; CAUTION: If the searched item is an ID or a SubMenu handle, the returned
-    ; hMenu may be different from the hmenu value given as parameter because
-    ; the item may be found in a submenu of hMenu.
-    ;
-    ; Check if the menu item is #MFT_OWNERDRAW:
-    SMI_InitMenuItemInfoData(@MenuItemInfo)
-  	MenuItemInfo\fMask      = #MIIM_FTYPE
-  	GetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-  	;
-  	If MenuItemInfo\fType & #MFT_SEPARATOR
-  	  *MyMenuItemData\IsItemSeparator = #True
-  	EndIf
-  	;
-  	If MenuItemInfo\fType & #MFT_OWNERDRAW
-  	  ;
-  	  ; MenuItem is ownerDraw. Get its data:
-  	  SMI_InitMenuItemInfoData(@MenuItemInfo)
-      MenuItemInfo\fMask      = #MIIM_DATA
-      GetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-    EndIf
-    ;
-    If MenuItemInfo\dwItemData = 0
-      ; MenuItem has no data. It is not ownerDraw.
-      *MyMenuItemData\IsItemOwnerdrawn    = #SMI_NOT_Ownerdrawn
-      ;
-      ; Retreive the item data using the classical API functions:
-      SysFreeString_(*MyMenuItemData\MenuItemTextPtr)
-      ItemString$ = SMI_GetClassicMenuStringFromPosition(hMenu, ItemPos)
-      *MyMenuItemData\MenuItemTextPtr = SysAllocString_(ItemString$)
-      ;
-      SMI_InitMenuItemInfoData(@MenuItemInfo)
-      MenuItemInfo\fMask      = #MIIM_BITMAP | #MIIM_STATE
-      GetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-      ; Check if the image is valid:
-      If GetObject_(MenuItemInfo\hbmpItem, SizeOf(BITMAP), @bitmap)
-        *MyMenuItemData\MenuItemImgHandle = MenuItemInfo\hbmpItem
-      EndIf
-      *MyMenuItemData\MenuItemState     = MenuItemInfo\fState 
-      ;
-    Else
-      If MenuItemInfo\dwItemData <> *MyMenuItemData
-        ; The data pointed by dwItemData is not the same that data
-        ; pointed by the *MyMenuItemData parameter.
-        CopyStructure(MenuItemInfo\dwItemData, *MyMenuItemData, OwnerdrawnMenuItemDataStruct)
-      EndIf
-    EndIf
-    ;
-    *MyMenuItemData\ParentMenuHandle = hMenu
-    *MyMenuItemData\MenuItemPos      = ItemPos
-    *MyMenuItemData\MenuItemID       = GetMenuItemID_(hMenu, ItemPos)
-    If GetSubMenu_(hMenu, ItemPos)
-      *MyMenuItemData\MenuItemID     = -1
-    EndIf
-    ;
-  EndIf
-  ;
-  ProcedureReturn hMenu
-  ;
-EndProcedure
-;
-Procedure   SMI_SaveMenuWindow(hMenu, WindowID)
-  Protected MenuInfo.MenuInfo
-  ;
-  MenuInfo\cbSize = SizeOf(MenuInfo)
-  MenuInfo\fMask  = #MIM_MENUDATA
-  MenuInfo\dwMenuData = WindowID
-  SetMenuInfo_(hMenu, @MenuInfo)
-EndProcedure
-;
-Procedure   SMI_RetreiveMenuWindow(hMenu)
-  ;
-  Protected MenuInfo.MenuInfo
-  ;
-  MenuInfo\cbSize = SizeOf(MenuInfo)
-  MenuInfo\fMask  = #MIM_MENUDATA
-  GetMenuInfo_(hMenu, @MenuInfo)
-  ;
-  ProcedureReturn MenuInfo\dwMenuData
-EndProcedure
-;
-Procedure   SMI_CheckID(*ItemID.Integer)
-  Static IDNum = $AFFF
-  If *ItemID\i > $AFFF
-    MessageRequester("Error", "ID upper that 45055 ($AFFF) are reserved for dynamic allocation.")
-  EndIf
-  If *ItemID\i = #PB_Any Or *ItemID\i > $AFFF
-    IDNum + 1
-    *ItemID\i = IDNum
-  EndIf
-  ProcedureReturn *ItemID\i
-EndProcedure
-;
-Procedure   SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND, *ItemPos.Integer = 0, RecursiveSearch = #True)
-  ;
-  ; An element of MenuItemData() is created for each encountered menu item,
-  ; regardless it is ownerdrawn or not.
-  ; This allows the program to deal with a unic type of data storing.
-  ;
-  Protected Found = 0, ItemPos, SearchType$, ErrorDetails$
-  ;
-  If hMenu = #PB_Default And (ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND Or IsMenu_(ItemPosOrIdOrSubmenuHandle))
-    ; No menu is specified. Explore all existing items to find the searched one
-    ForEach MenuItemData()
-      If MenuItemData()\MenuItemID = ItemPosOrIdOrSubmenuHandle Or GetSubMenu_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos) = ItemPosOrIdOrSubmenuHandle
-        hMenu = MenuItemData()\ParentMenuHandle
-        ItemPos = MenuItemData()\MenuItemPos
-        Found = 1
-        Break
-      EndIf
-    Next
-  Else
-    ; Retreive the exact menu handle and the position of the searched item:
-    hMenu = SMI_GetMenuItemPos(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos, RecursiveSearch)
-  EndIf
-  If hMenu And hMenu <> #PB_Default
-    If Found = 0
-      ; Look for an existing element representing the item data:
-      ForEach MenuItemData()
-        If MenuItemData()\ParentMenuHandle = hMenu And MenuItemData()\MenuItemPos = ItemPos
-          Found = 1
-          Break
-        EndIf
-      Next
-    EndIf
-    If Found = 0
-      ; Create a new element:
-      AddElement(MenuItemData())
-      MenuItemData()\MenuItemFont = #PB_Default
-      MenuItemData()\MenuItemBackColor = #PB_Default
-      MenuItemData()\MenuItemTextColor = #PB_Default
-    EndIf
-    ;
-    ; Fill the element with the item data:
-    SMI_FillMenuItemData(hMenu, ItemPos, @MenuItemData(), #MF_BYPOSITION)
-    ;
-  Else
-    If ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND
-      SearchType$ = "BY COMMAND"
-    Else
-      SearchType$ = "BY POSITION" + #CR$ + #CR$ + "You should try to call 'SetMenuItem...()' instead of 'SetMenuTitle...()'."
-    EndIf
-    If IsMenu_(ItemPosOrIdOrSubmenuHandle)
-      ErrorDetails$ = #CR$ + " • " + Str(ItemPosOrIdOrSubmenuHandle) + " is a menu handle."
-    ElseIf ItemPosOrIdOrSubmenuHandle > 20 And ItemPosOrIdOrSubmenuHandle < $FFFF
-      ErrorDetails$ = #CR$ + " • " + Str(ItemPosOrIdOrSubmenuHandle) + " seems to be an item ID."
-    EndIf
-    MessageRequester("Error", "Unable to retreive the item " + Str(ItemPosOrIdOrSubmenuHandle) + #CR$ + ErrorDetails$ + #CR$ + " • The search was: " + SearchType$)
-  EndIf
-  ;
-  If *ItemPos
-    *ItemPos\i = ItemPos
-  EndIf
-  ;
-  ProcedureReturn hMenu
-EndProcedure
-;
-Procedure   SMI_HasMenuImage(hMenu)
-  ; When drawing a menu item from a vertical parent menu
-  ; (all menus except the window main one), it is necessary
-  ; to know if one of the other items of the parent menu
-  ; has an image, in order to reserve the left necessary room
-  ; to draw the image.
-  Protected LastItem, Counter, Result = #False
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  LastItem = SMI_GetLastMenuItem(hMenu)
-  For Counter = 0 To LastItem
-    SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION, 0, #False)
-    If MenuItemData()\MenuItemImgHandle
-      Result = #True
-      Break
-    EndIf
-  Next
-  ;
-  PopListPosition(MenuItemData())
-  ;
-  ProcedureReturn Result
-  ;
-EndProcedure
-;
-Procedure   SMI_HasMenuSubmenu(hMenu)
-  ; When drawing a menu item from a vertical parent menu
-  ; (all menus except the window main one), it is necessary
-  ; to know if one of the other items of the parent menu
-  ; has a submenu, in order to reserve the right necessary room
-  ; to draw the arrow.
-  Protected LastItem, Counter
-  ;
-  LastItem = SMI_GetLastMenuItem(hMenu)
-  For Counter = 0 To LastItem
-    If GetSubMenu_(hMenu, Counter)
-      ProcedureReturn #True
-    EndIf
-  Next
-  ProcedureReturn #False
-  ;
-EndProcedure
-;
-Procedure   SMI_HasMenuOwnerdrawnItems(hMenu, RecursiveSearch = #False)
-  ;
-  Protected Counter, hSubMenu, Result
-  ;
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  Protected LastItem = SMI_GetLastMenuItem(hMenu)
-  For Counter = 0 To LastItem
-    SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION)
-  	If MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn
-  	  Result = #True
-  	  Break
-  	EndIf
-  	;
-  	If RecursiveSearch
-  	  hSubMenu = GetSubMenu_(hMenu, Counter)
-  	  Protected *CurrentElement = @MenuItemData()
-      If hSubMenu And SMI_HasMenuOwnerdrawnItems(hSubMenu)
-        Result = #True
-        Break
-      Else
-        ChangeCurrentElement(MenuItemData(), *CurrentElement)
-      EndIf
-    EndIf
-  Next
-  ;
-  PopListPosition(MenuItemData())
-  ;
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure   SMI_HasMenuItemChecked(hMenu)
-  ; When drawing a menu item from a vertical parent menu
-  ; (all menus except the window main one), it is necessary
-  ; to know if one of the other items of the parent menu
-  ; is checked, in order to reserve the left necessary room
-  ; to draw the check mark.
-  Protected LastItem, Counter, Result = #False
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  LastItem = SMI_GetLastMenuItem(hMenu)
-  For Counter = 0 To LastItem
-    SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION, 0, #False)
-    If MenuItemData()\MenuItemState & #MF_CHECKED
-      Result = #True
-      Break
-    EndIf
-  Next
-  ;
-  PopListPosition(MenuItemData())
-  ;
-  ProcedureReturn Result
-  ;
-EndProcedure
-;
-Declare     SMI_OwnerDrawnCallback(hWnd, uMsg, wParam, lParam)
-;
-Procedure   SMI_AttachCallbackToWindow(WindowID)
-  If GetProp_(WindowID, "SMI_OldCallBack") = 0
-    Protected SMI_OldCallBack = SetWindowLongPtr_(WindowID, #GWL_WNDPROC, @SMI_OwnerDrawnCallback())
-    SetProp_(WindowID, "SMI_ActualCallBack", @SMI_OwnerDrawnCallback())
-    SetProp_(WindowID, "SMI_OldCallBack", SMI_OldCallBack)
-    SetProp_(WindowID, "SMI_MustBeinitialized", 1)
-  EndIf
-EndProcedure
-;
-Procedure   SMI_PrepareItemToBeOwnerDrawn(hMenu = #PB_Default, ItemPos = #PB_Default)
-  ;
-  ; If the program has not yet entered its main loop and has not started executing
-  ; WaitWindowEvent() or WindowEvent(), the item will not really be converted to 
-  ; ownerdrawn until the #WM_INITMENU or #WM_INITMENUPOPUP is sent to the callback
-  ; procedure, but its data will be prepared to that.
-  ; Once the program enters its main loop and starts executing WaitWindowEvent()
-  ; or WindowEvent(), then the items are directly converted to ownerdrawing.
-  ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed
-  Protected LastItem, Counter
-  ;
-  If hMenu <> #PB_Default And ItemPos <> #PB_Default
-    SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPos, #MF_BYPOSITION)
-  EndIf
-  ;
-  MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn
-  ;
-  If MenuItemData()\IsItemOwnerdrawn <> #SMI_Ownerdrawn And IsWindow(EventWindow())
-    ; The menu item is #SMI_NOT_Ownerdrawn.
-    ; It must be set to #SMI_Ownerdrawn to handle colors and/or font.
-    ; More than that: due to a Windows bug affecting the ownerdrawn system,
-    ; ALL items in this menu must be set as ownerdrawn. To avoid display
-    ; issues, a menu must either be entirely non-ownerdrawn or entirely
-    ; ownerdrawn. Mixed menus do not work properly.
-    PushListPosition(MenuItemData())
-    hMenu = MenuItemData()\ParentMenuHandle
-    LastItem = SMI_GetLastMenuItem(hMenu)
-    For Counter = 0 To LastItem
-      SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION)
-      ;
-      MenuItemData()\IsItemOwnerdrawn = #SMI_Ownerdrawn
-      SMI_InitMenuItemInfoData(@MenuItemInfo)
-      ; When an item is ownerdrawn, the field hbmpItem of its MenuItemInfo
-      ; MUST be set to zero or #HBMMENU_CALLBACK, otherwise, Windows does not send
-      ; the #WM_MEASUREITEM message for this item, and it sizes it itself by taking
-      ; into account only the size of the image (without taking into account the text).
-      ; This field must be set to get a correct display.
-      MenuItemInfo\fMask      = #MIIM_FTYPE | #MIIM_BITMAP | #MIIM_DATA
-      MenuItemInfo\fType      = #MFT_OWNERDRAW
-      MenuItemInfo\hbmpItem   = #HBMMENU_CALLBACK
-      If MenuItemData()\IsItemSeparator
-        MenuItemInfo\fType | #MFT_SEPARATOR
-      EndIf
-      If GetSubMenu_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos)
-        ; When an item is a submenu entry, it's ID should be -1.
-        ; But the Windows management of ownerdrawn menus has a very rare but very
-        ; annoying bug: when the ID of an item is equal to -1, approximately once
-        ; in 200, the #WM_DRAWITEM message is not sent to the callback procedure
-        ; and the item is never drawn. When an item falls victim to this bug,
-        ; it's for good: you can send DrawMenuBar_ repeatedly, it will never be
-        ; drawn. Something in the item data is apparently malfunctioning.
-        ; After numerous and exhausting tests, it appears that assigning an ID of 1
-        ; to the item corrects this problem. This hack cancels the bug.
-        ; Notice that, in reality, the ID will not really be assigned to the item.
-        ; If you test this with 
-        ; GetMenuItemID_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos)
-        ; after the operation, you will see that the item still has an ID equal to -1.
-        ; But the malfunction is then fixed and the bug will no longer occur.
-        ; 
-        MenuItemInfo\fMask | #MIIM_ID
-        MenuItemInfo\wID  = 1
-      EndIf
-      MenuItemInfo\dwItemData = @MenuItemData()
-      SetMenuItemInfo_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos, #MF_BYPOSITION, @MenuItemInfo)
-      ;
-    Next
-    PopListPosition(MenuItemData())
-    ;
-  EndIf
-  ;
-  ; Retreive the windows handle of the menu (if any):
-  Protected WindowID = SMI_RetreiveMenuWindow(MenuItemData()\ParentMenuHandle)
-  If WindowID
-    SMI_AttachCallbackToWindow(WindowID)
-  EndIf
-  ;
-EndProcedure
-;
-Declare     SMI_FreeMenu(hMenu)
-Declare     SMI_CloseSubMenu()
-;
-Procedure   SMI_OwnerDrawnCallback(hWnd, uMsg, wParam, lParam)
-  ;
-  ; Callback procedure for the main window hosting the gadgets or menu
-  ; whose items must be colored or set with a particular font.
-  ;
-  Protected *drawItem.DRAWITEMSTRUCT
-  Protected *measureItem.MEASUREITEMSTRUCT
-  Protected hDC, rc.RECT, rc2.RECT, Text$, ImgAddress
-  Protected BackColor, TextColor, hBrush, ImgVerticalMargin
-  Protected hMenu, ItemNum, ODTType, ObjectTheme
-  Protected SelectedFont, BackLuminosity, TextLuminosity
-  Protected HasMenuImage, HasCheckedItem, Selected, Disabled, Opacity, CoverColor, hTheme
-  Protected ItemThemePart, ItemHotState, ItemNormalState, ItemBackGround, ApplySelectionEffect
-  Protected HasSubMenu = 0, ItemPos, menuItemRect.RECT, cont
-  Protected MenuItemInfo.MENUITEMINFO_Fixed, TWidth
-  Protected *MyMenuItemData.OwnerdrawnMenuItemDataStruct
-  Static ItemPosOver = #PB_Default, ItemPosHOTLIGHT = #PB_Default, DisableMainMenu = #WA_ACTIVE
-  ;
-  If GetProp_(hWnd, "SMI_MustBeinitialized") = 1 And IsWindow(EventWindow()) And WindowID(EventWindow()) = hWnd
-    ;
-    ; While the command 'WindowEvent()' or 'WaitWindowEvent()' have not been
-    ; executed, the value of 'EventWindow()' is not valid.
-    ; Therefore, by testing 'IsWindow(EventWindow())', we have the opportunity to know
-    ; the precise moment when the main loop of the program begins. This moment is
-    ; the good one to make some check or to initialize something.
-    ;
-    ;
-    If GetMenu_(hWnd)
-      ; For the main menu of the window, PureBasic send the #WM_INITMENU message when
-      ; the menu is created by CreateMenu(). At this moment, our callback procedure is
-      ; generally not installed, so, it never receive the #WM_INITMENU for this menu.
-      ; The following will resend this message at the moment the program enters into
-      ; the main loop and begin to call 'WindowEvent()'.
-      ;
-      SetProp_(hWnd, "SMI_MustBeinitialized", 2)
-      SendMessage_(hWnd, #WM_INITMENU, GetMenu_(hWnd), 0)
-    EndIf
-  EndIf
-  ;
-  Select uMsg
-      ;
-    Case #WM_DESTROY
-      ; Clean the memory when the main window is destroyed:
-      SMI_FreeMenu(GetMenu_(hWnd))
-      ;
-    Case #WM_INITMENU, #WM_INITMENUPOPUP
-      ; Before #WM_INITMENU or  #WM_INITMENUPOPUP, the menus are not really
-      ; set to Ownerdrawn. All their data is ready, but the ownerdrawn flags
-      ; of their items is not set, to avoid unnecessary redrawing of items
-      ; before all menu settings are completed.
-      ; When the program enters in its main loop for the first time and then
-      ; execute 'WindowEvent()' or 'WaitWindowEvent()', it's time to finish
-      ; the work. SMI_PrepareItemToBeOwnerDrawn(hMenu, 0) will set the
-      ; ownerdrawn flag of all items configured for ownerdrawing.
-      hMenu = wParam
-      If SMI_HasMenuOwnerdrawnItems(hMenu)
-        SMI_PrepareItemToBeOwnerDrawn(hMenu, 0)
-        BackColor = #PB_Default
-        CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)
-          ; Manage compatibility with the ApplyColorThemes.pbi library
-          ; by painting the menu bar with the background color:
-          If ListSize(InterfaceColorPresets()) > 0
-            BackColor = GetRealColorFromType("BackgroundColor", InterfaceColorPresets()\BackgroundColor)
-          EndIf
-        CompilerElseIf Defined(ObjectTheme, #PB_Module)
-          ; Manage compatibility with the ObjectTheme.pbi library
-          ; by painting the menu bar with the background color:
-          BackColor = ObjectTheme::GetObjectThemeAttribute(0, #PB_Gadget_BackColor)
-        CompilerEndIf
-        If BackColor <> #PB_Default
-          #MIM_BACKGROUND = $2
-          #MIM_APPLYTOSUBMENUS = $80000000
-          Protected menuInfo.MENUINFO
-          hBrush = CreateSolidBrush_(BackColor)
-          menuInfo\cbSize = SizeOf(MENUINFO)
-          menuInfo\hbrBack = hBrush
-          menuInfo\fMask = #MIM_BACKGROUND ;| #MIM_APPLYTOSUBMENUS
-          SetMenuInfo_(hMenu, @menuInfo)
-        EndIf
-        If hMenu = GetMenu_(hWnd) And GetProp_(hWnd, "SMI_MustBeinitialized")
-          DrawMenuBar_(hWnd)
-        EndIf
-      EndIf
-      SetProp_(hWnd, "SMI_MustBeinitialized", 0)
-      ;
-    Case #WM_ACTIVATE
-      ; Check if the window is active or not and redraw menu
-      ; to gray or degray it.
-      If wParam <> DisableMainMenu
-        DisableMainMenu = wParam
-        DrawMenuBar_(hwnd)
-      EndIf
-      ;
-    Case #WM_MEASUREITEM
-      *measureItem = lParam
-      ;
-      ODTType = *measureItem\CtlType
-      ;
-      If ODTType = #ODT_MENU
-        ;
-        *MyMenuItemData = *measureItem\itemData
-        hMenu = *MyMenuItemData\ParentMenuHandle
-        ;
-        If hMenu
-          ;
-          If *MyMenuItemData\IsItemSeparator = #False
-            ; Compute the width of the text:
-            Text$ = PeekS(*MyMenuItemData\MenuItemTextPtr)
-            
-            If IsFont(*MyMenuItemData\MenuItemFont)
-              TWidth = GetTextWidthInWindowContext(hWnd, *MyMenuItemData\MenuItemFont, Text$)
-            Else
-              TWidth = GetTextWidthInWindowContext(hWnd, DefaultMenuFont, Text$)
-            EndIf
-            ;
-            If SMI_ShowSelectionMethod & #SMI_SSW_Bullet
-              TWidth + DesktopScaledX(#SMI_MenuBulletSize)
-            EndIf
-            ;
-        		If hMenu = GetMenu_(hWnd)
-              ; If the menu is the main window menu, look if the current
-              ; item has an image (because the menu is horizontal and each
-              ; item can be independently aligned).
-        		  HasMenuImage = *MyMenuItemData\MenuItemImgHandle
-        		  If *MyMenuItemData\MenuItemState & #MF_CHECKED
-        		    HasCheckedItem = 1
-        		  EndIf
-        		  TWidth + DesktopScaledX(6) ; Left + Right margins for menu bar items
-            Else
-              ; If the menu is not the main window menu, look if any of
-              ; its items has an image (because the menu is vertical and
-              ; all items must be aligned the same way).
-              HasMenuImage   = SMI_HasMenuImage(hMenu)
-              HasSubMenu     = SMI_HasMenuSubmenu(hMenu)
-              HasCheckedItem = SMI_HasMenuItemChecked(hMenu)
-              TWidth + DesktopScaledX(18) ; Left + Right margins for normal items
-            EndIf
-            ;
-            If HasMenuImage
-              ; If the menu has an image, the width must be increased to draw the image.
-              TWidth + GetSystemMetrics_(#SM_CXSMICON) + DesktopScaledX(5)
-            EndIf
-            ; If the menu has a submenu, it also necessary to increase the width
-            ; in order to print the small right triangle indicating the submenu.
-            If HasSubMenu  : TWidth + DesktopScaledX(25) : EndIf
-           ; If the menu has a checked item, it also necessary to increase the width
-           ; in order to print the check mark.
-            If HasCheckedItem
-              TWidth + DesktopScaledX(15)
-              If SMI_ShowSelectionMethod & #SMI_SSW_Bullet
-                TWidth + DesktopScaledX(#SMI_MenuBulletSize)
-              EndIf
-            EndIf
-            ;
-            If FindString(Text$, #TAB$)
-              TWidth + DesktopScaledX(15)
-            EndIf
-            ;
-            ; Save measures:
-            *measureItem\itemWidth = TWidth
-            *measureItem\itemHeight = GetSystemMetrics_(#SM_CYMENU) + 2
-          Else
-            ; Mesures for menu separator:
-            *measureItem\itemWidth = DesktopScaledX(10)
-            *measureItem\itemHeight = DesktopScaledY(8)
-          EndIf
-          ;
-        EndIf
-        ;
-      EndIf
-      ;
-    Case #WM_DRAWITEM
-      ;- Callback: #WM_DRAWITEM
-      If lParam
-        *drawItem = lParam
-        ItemNum = *drawItem\itemID
-        ODTType = *drawItem\CtlType
-        If ODTType = #ODT_MENU
-          ;
-          ; _________________________________________
-          ;
-          ;              Layout settings
-          ;
-          hMenu = *drawItem\hwndItem
-          *MyMenuItemData = *drawItem\itemData
-          ;
-          ImgVerticalMargin = (GetSystemMetrics_(#SM_CYMENU) - GetSystemMetrics_(#SM_CYSMICON)) / 2
-          If *drawItem\itemState & #ODS_SELECTED Or *drawItem\itemState & #ODS_HOTLIGHT Or ItemPosHOTLIGHT = *MyMenuItemData\MenuItemPos
-            If ItemPosHOTLIGHT <> *MyMenuItemData\MenuItemPos
-              ItemPosHOTLIGHT = #PB_Default
-            EndIf
-            Selected = 1
-          EndIf
-          If DisableMainMenu = #WA_INACTIVE Or *drawItem\itemState & #ODS_GRAYED
-            Disabled = 1
-            Selected = 0
-          EndIf
-          ;
-          hDC = *drawItem\hdc
-          rc = *drawItem\rcItem
-          hTheme = OpenThemeData_(#Null, @"MENU")
-          If hTheme
-            If hMenu = GetMenu_(hWnd)
-              ItemThemePart = #MENU_BARITEM
-              ItemBackGround = #MENU_BARBACKGROUND
-              ItemHotState = #MBI_HOT
-              ItemNormalState = #MBI_NORMAL
-            Else
-              ItemThemePart = #MENU_POPUPITEM
-              ItemBackGround = #MENU_POPUPBACKGROUND
-              ItemHotState = #MPI_HOT
-              ItemNormalState = #MPI_NORMAL
-            EndIf
-          EndIf
-          ;
-          Text$ = PeekS(*MyMenuItemData\MenuItemTextPtr)
-          ImgAddress = *MyMenuItemData\MenuItemImgHandle
-          ;
-          If *MyMenuItemData\IsItemSeparator Or Text$ = "" : Disabled = 0 : EndIf
-          ;
-          If IsFont(*MyMenuItemData\MenuItemFont)
-            SelectedFont = FontID(*MyMenuItemData\MenuItemFont)
-          Else
-            SelectedFont = FontID(DefaultMenuFont)
-          EndIf
-          SelectObject_(hDC, SelectedFont)
-          ;
-          ; _________________________________________
-          ;
-          ; Define colors for text and background:
-          ;
-          Protected BackGroundMustBePainted = 1
-          Protected TextMustBePainted = 1
-          ;
-          BackColor = *MyMenuItemData\MenuItemBackColor
-          If BackColor = #PB_Default
-            CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)
-              ; Manage compatibility with the ApplyColorThemes.pbi library
-              If ListSize(InterfaceColorPresets()) > 0
-                BackColor = GetRealColorFromType("BackgroundColor", InterfaceColorPresets()\BackgroundColor)
-              EndIf
-            CompilerElseIf Defined(ObjectTheme, #PB_Module)
-              ; Manage compatibility with the ObjectTheme.pbi library:
-              BackColor = ObjectTheme::GetObjectThemeAttribute(0, #PB_Gadget_BackColor)
-            CompilerEndIf
-            If BackColor = #PB_Default
-              If hTheme
-                BackGroundMustBePainted = DrawThemeBackground_(hTheme, hDC, ItemBackGround, ItemNormalState, @rc, 0)
-                ; BackGroundMustBePainted will be equal to zero (#S_OK) if DrawThemeBackground_ works.
-                If GetThemeColor_(hTheme, ItemThemePart, ItemNormalState, #TMT_FILLCOLOR, @BackColor) <> #S_OK
-                  ; If GetThemeColor_ doesn't work, mesure the color at the center of the drawn rectangle:
-                  BackColor = GetPixel_(hDC, (rc\left + rc\right) / 2, (rc\top + rc\bottom) / 2)
-                EndIf
-              EndIf
-              If BackColor = #PB_Default
-                ; If the theme functions didn't work, use GetSysColor_:
-                If hMenu = GetMenu_(hWnd)
-                  BackColor = GetSysColor_(#COLOR_MENUBAR)
-                Else
-                  BackColor = GetSysColor_(#COLOR_MENU)
-                EndIf
-              EndIf
-            EndIf
-          EndIf
-          ;
-          TextColor = *MyMenuItemData\MenuItemTextColor
-          Protected KeepTextColorDefault = 1
-          If TextColor = #PB_Default
-            CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)
-              ; Manage compatibility with the ApplyColorThemes.pbi library:
-              If ListSize(InterfaceColorPresets()) > 0
-                TextColor = GetRealColorFromType("TextColor", InterfaceColorPresets()\TextColor)
-                KeepTextColorDefault = 0
-              EndIf
-            CompilerElseIf Defined(ObjectTheme, #PB_Module)
-              ; Manage compatibility with the ObjectTheme.pbi library:
-              TextColor = ObjectTheme::GetObjectThemeAttribute(#PB_GadgetType_Button, #PB_Gadget_FrontColor)
-            CompilerEndIf
-            If TextColor = #PB_Default
-              TextColor = GetSysColor_(#COLOR_MENUTEXT)
-              If hTheme
-                If GetThemeColor_(hTheme, ItemThemePart, ItemNormalState, #TMT_TEXTCOLOR, @TextColor) <> #S_OK
-                  ; If GetThemeColor_ doesn't work, use GetSysColor_
-                  TextColor = GetSysColor_(#COLOR_MENUTEXT)
-                EndIf
-              EndIf
-            EndIf
-          EndIf
-          ;
-          ; Based on Human perception of color
-          TextLuminosity = Red(TextColor)*0.299 + Green(TextColor)*0.587 + Blue(TextColor)*0.114
-          BackLuminosity = Red(BackColor)*0.299 + Green(BackColor)*0.587 + Blue(BackColor)*0.114
-          ;
-          ; _________________________________________
-          ;
-          ; Paint the background if its not allready painted by DrawThemeBackground_:
-          ;
-          If BackGroundMustBePainted <> #S_OK
-            hBrush = CreateSolidBrush_(BackColor)
-            FillRect_(hDC, @rc, hBrush)
-            DeleteObject_(hBrush)
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Shade the background (eventually):
-          ;
-          If Selected And (SMI_ShowSelectionMethod & #SMI_SSW_ShadeBackground)
-            ;
-            If BackLuminosity > 128
-              CoverColor = #Black
-              Opacity = 40
-            Else
-              CoverColor = #White
-              Opacity = 60
-            EndIf
-            ;
-            DrawTransparentRectangle(hDC, rc, CoverColor, Opacity)
-            ;
-            If BackLuminosity < 128
-              TextColor = #White
-            Else
-              TextColor = #Black
-            EndIf
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Draw borders (eventually):
-          ;
-          If Selected And (SMI_ShowSelectionMethod & #SMI_SSW_Borders)
-            hBrush   = CreateSolidBrush_(GetSysColor_(#COLOR_HIGHLIGHT))
-            FrameRect_(hDC, @rc, hBrush)
-            DeleteObject_(hBrush)
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Draw the separation line if the item is a separator:
-          ;
-          If *MyMenuItemData\IsItemSeparator
-            If *MyMenuItemData\MenuItemTextColor <> #PB_Default
-              hBrush = CreateSolidBrush_(*MyMenuItemData\MenuItemTextColor)
-            Else
-              If BackLuminosity > 128
-                hBrush = CreateSolidBrush_($A0A0A0)
-              Else
-                hBrush = CreateSolidBrush_($505050)
-              EndIf
-            EndIf
-            CopyMemory(@rc, @rc2, SizeOf(RECT))
-            rc2\top = (rc2\top + rc2\bottom) / 2
-            rc2\bottom = rc2\top + 1
-            rc2\left + DesktopScaledX(7)
-            rc2\right - DesktopScaledX(7)
-            FillRect_(hDC, @rc2, hBrush)
-            DeleteObject_(hBrush)
-          EndIf
-          ; _________________________________________
-          ;
-          ; Apply 'HotState' when SMI_ShowSelectionMethod & #SMI_SSW_SystemColor
-          ;
-          If Selected And (SMI_ShowSelectionMethod & #SMI_SSW_SystemColor)
-            ApplySelectionEffect = 1
-            If hTheme And (*MyMenuItemData\MenuItemBackColor = #PB_Default Or BackLuminosity > 128)
-              ApplySelectionEffect = DrawThemeBackground_(hTheme, hDC, ItemThemePart, ItemHotState, @rc,0)
-            EndIf
-            If ApplySelectionEffect <> #S_OK
-              If hMenu = GetMenu_(hWnd)
-                Opacity = 40
-              Else
-                Opacity = 100
-              EndIf
-              CoverColor = GetSysColor_(#COLOR_HIGHLIGHT)
-              If BackLuminosity < 128
-                Opacity = 150
-              EndIf
-              ;
-              DrawTransparentRectangle(hDC, rc, CoverColor, Opacity)
-            EndIf
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Draw a checkmark (eventually):
-          ;
-          If *MyMenuItemData\MenuItemState & #MF_CHECKED
-            CopyMemory(@rc, @rc2, SizeOf(RECT))
-            rc2\left + DesktopScaledX(3)
-            rc2\right = rc2\left + DesktopScaledX(16)
-           ; DrawThemeBackground_(hTheme, hDC, #MENU_POPUPCHECK, #MC_CHECKMARKNORMAL, @rc2, 0)
-            ;DrawFrameControl_(hDC, @rc2, #DFC_MENU, #DFCS_MENUCHECK)
-            DrawCheckmark(hDC, @rc2, DesktopScaledX(10), TextColor)
-          EndIf
-          ;
-          If *MyMenuItemData\MenuItemState & #MF_CHECKED Or (hMenu <> GetMenu_(hWnd) And SMI_HasMenuItemChecked(hMenu))
-            rc\left + DesktopScaledX(18)
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Draw a bullet (eventually):
-          ;
-          If SMI_ShowSelectionMethod & #SMI_SSW_Bullet
-            rc\Left + DesktopScaledX(5)
-            If Selected
-              DrawRightPointingTriangle(hDC, rc, DesktopScaledX( #SMI_MenuBulletSize), TextColor, BackColor)
-              rc\left + DesktopScaledX(#SMI_MenuBulletSize + 5)
-            Else
-              rc\left + DesktopScaledX(#SMI_MenuBulletSize + 5) / 2
-            EndIf
-          Else
-            If hMenu = GetMenu_(hWnd)
-              rc\Left + DesktopScaledX(8)
-            Else
-              rc\Left + DesktopScaledX(6)
-            EndIf
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Draw an icon (eventually):
-          ;
-          If ImgAddress ; Image illustrating the menu line
-            ;
-            Protected icone = CreateIconFromImage(ImgAddress)
-            If icone <> 0
-              DrawIconEx_(hDC, rc\left, rc\top + ImgVerticalMargin, icone, 0, 0, 0, #Null, #DI_NORMAL)
-            EndIf
-            ;
-          EndIf
-          ;
-          If ImgAddress Or (hMenu <> GetMenu_(hWnd) And SMI_HasMenuImage(hMenu))
-            rc\left + GetSystemMetrics_(#SM_CXSMICON) + DesktopScaledX(5)
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Draw the item text:
-          ;
-          rc\Left + DesktopScaledX(2)
-          ;
-          Protected PosTab = FindString(Text$, #TAB$)
-          If PosTab
-            Protected AfterTab$ = Mid(Text$, PosTab + 1)
-            Text$ = Left(Text$, PosTab - 1)
-            rc\right - DesktopScaledX(7)
-          EndIf
-          If hTheme And TextColor = #PB_Default And KeepTextColorDefault
-            TextMustBePainted = DrawThemeText_(hTheme, hDC, ItemThemePart, ItemNormalState, @Text$, Len(Text$),#DT_LEFT | #DT_VCENTER | #DT_SINGLELINE,0,@rc)
-            If TextMustBePainted = #S_OK And AfterTab$
-              DrawThemeText_(hTheme, hDC, ItemThemePart, ItemNormalState, @AfterTab$, Len(AfterTab$),#DT_RIGHT | #DT_VCENTER | #DT_SINGLELINE,0,@rc)
-            EndIf
-          EndIf
-          If TextMustBePainted <> #S_OK
-            SetTextColor_(hDC, TextColor)
-            SetBkMode_(hDC, #TRANSPARENT)
-            DrawText_(hDC, Text$, Len(Text$), @rc, #DT_LEFT | #DT_VCENTER | #DT_SINGLELINE)
-            If AfterTab$
-              DrawText_(hDC, AfterTab$, Len(AfterTab$), @rc, #DT_RIGHT | #DT_VCENTER | #DT_SINGLELINE)
-            EndIf
-          EndIf
-          ;
-          ; _________________________________________
-          ;
-          ; Gray the item if it is Disabled:
-          ;
-          If Disabled
-            ; Item is grayed. Recover the drawing with a semi-transparent rectangle:
-            If BackLuminosity > 128
-              CoverColor = #White
-            Else
-              CoverColor = #Black
-            EndIf
-            rc = *drawItem\rcItem
-            DrawTransparentRectangle(hDC, rc, CoverColor, 128)
-          EndIf
-          ;
-          If hTheme
-            CloseThemeData_(hTheme)
-          EndIf
-          ;
-        EndIf
-        ;
-      EndIf
-    Case #WM_NCMOUSEMOVE
-      ; In modern versions of Windows, menu bar items are activated when the mouse cursor
-      ; hovers over them, providing a smooth and intuitive user experience.
-      ; Unfortunately, this behavior does not apply to owner-drawn menu items, which are
-      ; managed in the "old-fashioned" Windows way. These items do not react to mouse hover
-      ; events, and no #WM_DRAWITEM message is sent to the window's callback procedure
-      ; in such cases. The following code addresses this limitation by explicitly
-      ; triggering a #WM_DRAWITEM message when the mouse cursor hovers over a menu item,
-      ; ensuring consistent behavior for owner-drawn menus.
-      hMenu = GetMenu_(hwnd)
-      If hMenu ; Checks if the window has a menu
-        ; Gets the coordinates of the menu bar:
-        Protected mbi.MENUBARINFO\cbSize = SizeOf(MENUBARINFO)
-        GetMenuBarInfo_(hwnd, $FFFFFFFD, 0, @mbi) ; #OBJID_MENU = $FFFFFFFD
-        If mbi And PtInRect_(@mbi\rcBar, ((lParam & $FFFF0000) << 16) + (lParam & $FFFF))
-          ; The mouse cursor is over the menu bar:
-          Cont = 1
-          If ItemPosOver <> 0 And GetMenuItemRect_(hwnd, hMenu, ItemPosOver, @menuItemRect)
-            If PtInRect_(@menuItemRect, ((lParam & $FFFF0000) << 16) + (lParam & $FFFF))
-              ; The cursor is on the same item as in the previous test.
-              Cont = 0
-            EndIf
-          EndIf
-          If Cont
-            Protected LastMenuItem = SMI_GetLastMenuItem(hMenu)
-            ; Iterates through the menu items to check which one is hovered over
-            For ItemPos = 0 To LastMenuItem
-              If ItemPos <> ItemPosOver
-                GetMenuItemRect_(hwnd, hMenu, ItemPos, @menuItemRect)
-                ; If the mouse is within the boundaries of this item
-                If PtInRect_(@menuItemRect, ((lParam & $FFFF0000) << 16) + (lParam & $FFFF))
-                  ItemPosOver = ItemPos
-                  ; Checks if the item is ownerdrawn:
-                  SMI_InitMenuItemInfoData(@MenuItemInfo.MENUITEMINFO_Fixed)
-                  MenuItemInfo\fMask      = #MIIM_FTYPE
-                	GetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-                	If MenuItemInfo\fType & #MFT_OWNERDRAW
-                	  ItemPosHOTLIGHT = ItemPos
-                	  DrawMenuBar_(hWnd)
-                	ElseIf ItemPosHOTLIGHT > #PB_Default
-                	  ; If the mouse cursor has left the area of an ownerdrawn item
-                    ; and the item is still selected, deselect it:
-                	  ItemPosHOTLIGHT = #PB_Default
-                	  DrawMenuBar_(hWnd)
-                  EndIf
-                EndIf
-              EndIf
-            Next
-          EndIf
-        Else
-          ItemPosOver = #PB_Default
-          ; If the mouse cursor has left the menu bar area while
-          ; leaving an item selected, deselect it:
-          If ItemPosHOTLIGHT > #PB_Default
-        	  ItemPosHOTLIGHT = #PB_Default
-        	  DrawMenuBar_(hWnd)
-        	EndIf
-        EndIf
-      EndIf
-      ;
-    Case #WM_MOUSEMOVE, #WM_NCLBUTTONDOWN
-      ; If the mouse cursor has quickly left the menu bar area while
-      ; leaving an item selected, or if the user click onto a menuitem,
-      ; deselect the old one.
-      ItemPosOver = #PB_Default
-      If ItemPosHOTLIGHT > #PB_Default
-        ItemPosHOTLIGHT = #PB_Default
-    	  DrawMenuBar_(hWnd)
-    	EndIf
-
-  EndSelect
-  ;
-  ; Normal callback for all other messages:
-  Protected SMI_OldCallBack = GetProp_(hWnd, "SMI_OldCallBack")
-  ProcedureReturn CallWindowProc_(SMI_OldCallBack, hWnd, uMsg, wParam, lParam)
-EndProcedure
-;
-Procedure   SMI_RedrawMenuIfMainMenu(hMenu)
-  ;
-  ; Update the menu, If it is the window main menu:
-  ;
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  If IsWindow(EventWindow()) And GetMenu_(WindowID(EventWindow())) = hMenu
-    DrawMenuBar_(WindowID(EventWindow()))
-    ProcedureReturn #True
-  EndIf
-EndProcedure
-;
-Procedure   SMI_ResizeMenu(hMenu, RecursiveSearch = #False)
-  ;
-  ; When an image is added to or removed from an item of the main menu,
-  ; or when the font or the text of the item is modified, it is necessary
-  ; to resize it, and not only to redraw it.
-  ; By calling SetMenuItemInfo_ with fMask = #MIIM_BITMAP and
-  ; hbmpItem = #HBMMENU_CALLBACK, we force a #WM_MEASUREITEM to be sent
-  ; to the item.
-  ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed
-  Protected LastMenuItem, Counter, hSubMenu
-  ;
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  ;
-  If hMenu
-    If IsWindow(EventWindow())
-      LastMenuItem  = SMI_GetLastMenuItem(hMenu)
-      ; Force item(s) to be redrawn:
-      For Counter = 0 To LastMenuItem
-        If SMI_HasMenuOwnerdrawnItems(hMenu)
-          SMI_InitMenuItemInfoData(@MenuItemInfo)
-          MenuItemInfo\fMask    = #MIIM_BITMAP
-          MenuItemInfo\hbmpItem = #HBMMENU_CALLBACK
-          SetMenuItemInfo_(hMenu, Counter, #MF_BYPOSITION, @MenuItemInfo)
-        EndIf
-        hSubMenu = GetSubMenu_(hMenu, Counter)
-        If RecursiveSearch And hSubMenu
-          SMI_ResizeMenu(hSubMenu, RecursiveSearch)
-        EndIf
-      Next
-      If GetMenu_(WindowID(EventWindow())) = hMenu
-        DrawMenuBar_(WindowID(EventWindow()))
-      EndIf
-      ProcedureReturn #True
-    EndIf
-  EndIf
-EndProcedure
-;
-; *****************************************************************************
-;
-;-                         4. LIBRARY NEW FUNCTIONS
-;
-;          Functions added to the native set of PureBasic functions
-;
-; *****************************************************************************
-;
-Procedure ApplyThemesToMenu(hMenu, RecursiveSearch = #True)
-  ;
-  ; Will force a menu to be ownerdrawn, even if none of its items
-  ; uses a particular font or color. This will allow the library
-  ; to apply color themes from 'ObjectTheme.pbi' or 'ApplyColorThemes.pbi'
-  ; to the menus.
-  ;
-  Protected LastMenuItem, Counter, hSubMenu
-  ;
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  ;
-  If hMenu
-    LastMenuItem  = SMI_GetLastMenuItem(hMenu)
-    ; Force item(s) to be redrawn:
-    For Counter = 0 To LastMenuItem
-      SMI_PrepareItemToBeOwnerDrawn(hMenu, Counter)
-      hSubMenu = GetSubMenu_(hMenu, Counter)
-      If RecursiveSearch And hSubMenu
-        ApplyThemesToMenu(hSubMenu, RecursiveSearch)
-      EndIf
-    Next
-    If IsWindow(EventWindow()) And GetMenu_(WindowID(EventWindow())) = hMenu
-      DrawMenuBar_(WindowID(EventWindow()))
-    EndIf
-    ProcedureReturn #True
-  EndIf
-EndProcedure
-;
-Procedure SetMenuItemImage(hMenu, ItemPosOrIdOrSubmenuHandle, *ItemImagePtr, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed
-  Protected ItemPos, Result
-  ;
-  If *ItemImagePtr <> #PB_Default
-    PushListPosition(MenuItemData())
-    ;
-    hMenu = SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)
-    ;
-    If IsImage(*ItemImagePtr)
-      *ItemImagePtr = ImageID(*ItemImagePtr)
-    EndIf
-    ;
-    If hMenu
-      ;
-      If IsImage(MenuItemData()\MenuItemImgNum)
-        FreeImage(MenuItemData()\MenuItemImgNum)
-      EndIf
-      MenuItemData()\MenuItemImgHandle = 0
-      ;
-      If *ItemImagePtr
-        MenuItemData()\MenuItemImgNum = ResizeImageToIconSize(*ItemImagePtr)
-        If MenuItemData()\MenuItemImgNum
-          MenuItemData()\MenuItemImgHandle = ImageID(MenuItemData()\MenuItemImgNum)
-        EndIf
-      EndIf
-      ;
-      If MenuItemData()\IsItemOwnerdrawn = #SMI_NOT_Ownerdrawn
-        ; Records information using classic Windows API functions.
-        ; The item is automatically redrawn.
-        SMI_InitMenuItemInfoData(@MenuItemInfo)
-        MenuItemInfo\fMask      = #MIIM_BITMAP
-        MenuItemInfo\hbmpItem   = MenuItemData()\MenuItemImgHandle
-        SetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-        ;
-      ElseIf MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn
-        ; The item is NOT automatically resized and redrawn.
-        SMI_ResizeMenu(hMenu)
-      EndIf
-      ;
-      Result = #True
-    EndIf
-    ;
-    PopListPosition(MenuItemData())
-  EndIf
-  ;
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure SetMenuTitleImage(hMenu, ItemPos, *ItemImagePtr)
-  ProcedureReturn SetMenuItemImage(hMenu, ItemPos, *ItemImagePtr, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure GetMenuItemImage(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  PushListPosition(MenuItemData())
-  ;
-  If SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)
-    Protected Result = MenuItemData()\MenuItemImgHandle
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure GetMenuTitleImage(hMenu, ItemPos)
-  ProcedureReturn GetMenuItemImage(hMenu, ItemPos, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure SetMenuItemColor(hMenu, ItemPosOrIdOrSubmenuHandle, ColorType, ItemColor, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  ;
-  ; This function is similar to the PureBasic native function SetMenuItemText()
-  ; except it manages the case of program's ownerdrawn menu item texts.
-  ;
-  Protected ItemPos, Result
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  hMenu = SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)
-  ;
-  If hMenu
-    ;
-    SMI_PrepareItemToBeOwnerDrawn()
-    ;
-    If ColorType = #PB_Gadget_FrontColor
-      MenuItemData()\MenuItemTextColor = ItemColor
-    Else
-      MenuItemData()\MenuItemBackColor = ItemColor
-    EndIf
-    ;
-    ; Now, update the menu, if it is the window main menu:
-    SMI_RedrawMenuIfMainMenu(hMenu)
-    ;
-    Result = #True
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure SetMenuTitleColor(hMenu, ItemPos, ColorType, ItemColor)
-  ProcedureReturn SetMenuItemColor(hMenu, ItemPos, ColorType, ItemColor, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure GetMenuItemColor(hMenu, ItemPosOrIdOrSubmenuHandle, ColorType, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  PushListPosition(MenuItemData())
-  ;
-  If SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)
-    If ColorType = #PB_Gadget_FrontColor
-      Protected Result = MenuItemData()\MenuItemTextColor
-    Else
-      Result = MenuItemData()\MenuItemBackColor
-    EndIf
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure GetMenuTitleColor(hMenu, ItemPos, ColorType)
-  ProcedureReturn GetMenuItemColor(hMenu, ItemPos, ColorType, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure SetMenuColor(hMenu, ColorType, ItemColor, RecursiveSearch = #True)
-  ;
-  ; Apply a color to all existing items of a menu
-  ;
-  Protected LastItem, Counter, hSubMenu
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  LastItem = SMI_GetLastMenuItem(hMenu)
-  For Counter = 0 To LastItem
-    SetMenuItemColor(hMenu, Counter, ColorType, ItemColor, #MF_BYPOSITION)
-    hSubMenu = GetSubMenu_(hMenu, Counter)
-    If RecursiveSearch And hSubMenu
-      SetMenuColor(hSubMenu, ColorType, ItemColor, #True)
-    EndIf
-  Next
-  If IsWindow(EventWindow())
-    SetProp_(WindowID(EventWindow()), "SMI_MustBeinitialized", 1)
-  EndIf
-EndProcedure
-;
-Procedure SetMenuItemFont(hMenu, ItemPosOrIdOrSubmenuHandle, Font, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  ;
-  ; This function is similar to the PureBasic native function SetMenuItemText()
-  ; except it manages the case of program's ownerdrawn menu item texts.
-  ;
-  Protected ItemPos, Result
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  hMenu = SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)
-  ;
-  If hMenu
-    ;
-    SMI_PrepareItemToBeOwnerDrawn()
-    ;
-    MenuItemData()\MenuItemFont = Font
-    ;
-    ; Now, update the menu:
-    SMI_ResizeMenu(hMenu)
-    ;
-    Result = #True
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure SetMenuTitleFont(hMenu, ItemPosOrIdOrSubmenuHandle, Font)
-  ProcedureReturn SetMenuItemFont(hMenu, ItemPosOrIdOrSubmenuHandle, Font, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure GetMenuItemFont(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  PushListPosition(MenuItemData())
-  ;
-  If SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)
-    Protected Result = MenuItemData()\MenuItemFont
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure GetMenuTitleFont(hMenu, ItemPosOrIdOrSubmenuHandle)
-  ProcedureReturn GetMenuItemFont(hMenu, ItemPosOrIdOrSubmenuHandle, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure SetMenuFont(hMenu, Font, RecursiveSearch = #True)
-  ;
-  ; Apply a font to all existing items of a menu
-  ;
-  Protected LastItem, Counter, hSubMenu
-  If IsMenu(hMenu)
-    hMenu = MenuID(hMenu)
-  EndIf
-  LastItem = SMI_GetLastMenuItem(hMenu)
-  For Counter = 0 To LastItem
-    SetMenuItemFont(hMenu, Counter, Font, #MF_BYPOSITION)
-    hSubMenu = GetSubMenu_(hMenu, Counter)
-    If RecursiveSearch And hSubMenu
-      SetMenuColor(hSubMenu, Font, #True)
-    EndIf
-  Next
-  If IsWindow(EventWindow())
-    SetProp_(WindowID(EventWindow()), "SMI_MustBeinitialized", 1)
-  EndIf
-EndProcedure
-;
-Procedure CheckMenuItem(hMenu, ItemPosOrIdOrSubmenuHandle, State = #True, Style = #PB_Default, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  ;
-  Protected ItemPos, Result
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  hMenu = SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)
-  ;
-  If hMenu
-    ;
-    If State
-      MenuItemData()\MenuItemState | #MF_CHECKED
-      CheckMenuItem_(hMenu, ItemPos, #MF_BYPOSITION | #MF_CHECKED)
-    Else
-      MenuItemData()\MenuItemState & ~#MF_CHECKED
-      CheckMenuItem_(hMenu, ItemPos, #MF_BYPOSITION | #MF_UNCHECKED)
-    EndIf
-    ;
-    SMI_ResizeMenu(hMenu)
-    ;
-    Result = #True
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure IsMenuItemChecked(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  PushListPosition(MenuItemData())
-  ;
-  If SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)
-    If MenuItemData()\MenuItemState & #MF_CHECKED
-      Protected Result = #True
-    EndIf
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-;
-; *****************************************************************************
-;
-;-         5. FUNCTIONS THAT WILL OVERRIDE PUREBASIC NATIVE FUNCTIONS
-;
-; *****************************************************************************
-;
-Procedure.s SMI_GetMenuItemText(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  PushListPosition(MenuItemData())
-  ;
-  If SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)
-    Protected Result$ = PeekS(MenuItemData()\MenuItemTextPtr)
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result$
-EndProcedure
-
-Procedure.s SMI_GetMenuTitleText(hMenu, ItemPos)
-  ProcedureReturn SMI_GetMenuItemText(hMenu, ItemPos, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure   SMI_SetMenuItemText(hMenu, ItemPosOrIdOrSubmenuHandle, ItemText$, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)
-  ;
-  Protected MenuItemInfo.MENUITEMINFO_Fixed
-  Protected ItemPos, Result
-  ;
-  PushListPosition(MenuItemData())
-  ;
-  hMenu = SMI_RetreiveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)
-  ;
-  If hMenu
-    ;
-    SysFreeString_(MenuItemData()\MenuItemTextPtr)
-    MenuItemData()\MenuItemTextPtr = SysAllocString_(ItemText$)
-    ;
-    If MenuItemData()\IsItemOwnerdrawn = #SMI_NOT_Ownerdrawn
-      ; Records information using classic Windows API functions.
-      ; The item is automatically redrawn.
-      SMI_InitMenuItemInfoData(@MenuItemInfo)
-      MenuItemInfo\fMask      = #MIIM_STRING
-      MenuItemInfo\dwTypeData = @ItemText$
-      SetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-      ;
-    ElseIf MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn
-      ; The item is NOT automatically redrawn.
-      ; Update the menu.
-      SMI_ResizeMenu(hMenu)
-    EndIf
-    ;
-    Result = #True
-  EndIf
-  ;
-  PopListPosition(MenuItemData())
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure   SMI_SetMenuTitleText(hMenu, ItemPos, ItemText$)
-  ProcedureReturn SMI_SetMenuItemText(hMenu, ItemPos, ItemText$, #MF_BYPOSITION)
-EndProcedure
-;
-Procedure   SMI_CloseSubMenu()
-  ;
-  Shared SMI_MemMenuNum, SMI_MemMenuHandle
-  Protected hMenu, ItemPos
-  ;
-  ; Finds the menu to which the submenu belongs:
-  If IsMenu(SMI_MemMenuNum) And SMI_MemMenuHandle And MenuID(SMI_MemMenuNum) <> SMI_MemMenuHandle
-    hMenu = SMI_GetMenuItemPos(SMI_MemMenuNum, SMI_MemMenuHandle, #MF_BYCOMMAND, @ItemPos)
-    If hMenu
-      ; Updates SMI_MemMenuHandle with the top menu handle:
-      CloseSubMenu()
-      SMI_MemMenuHandle = hMenu
-    EndIf
-    ProcedureReturn #True
-  Else
-    If IsMenu(SMI_MemMenuNum)
-      SMI_MemMenuHandle = MenuID(SMI_MemMenuNum)
-    EndIf
-  EndIf
-  ;
-EndProcedure
-;
-Procedure   SMI_OpenSubMenu(ItemText$, ItemImage)
-  ;
-  Shared SMI_MemMenuHandle
-  ;
-  Protected Result = OpenSubMenu(ItemText$)
-  If ItemImage <> #PB_Default
-    SetMenuItemImage(SMI_MemMenuHandle, Result, ItemImage)
-  Else
-    SMI_RetreiveOrCreateMenuItemDataListElement(SMI_MemMenuHandle, Result)
-  EndIf
-  ;
-  If SMI_HasMenuOwnerdrawnItems(SMI_MemMenuHandle)
-    SMI_PrepareItemToBeOwnerDrawn(SMI_MemMenuHandle, SMI_GetLastMenuItem(SMI_MemMenuHandle))
-  EndIf
-  ;
-  SMI_MemMenuHandle = Result
-  ;
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure   SMI_MenuTitle(ItemText$, ItemImage)
-  ; The native PureBasic MenuTitle() function can't be used with PopupMenu,
-  ; it cannot has an image as second parameter and it doesn't return
-  ; the created submenu handle. This function cancels this limitations.
-  ;
-  Shared SMI_MemMenuNum, SMI_MemMenuHandle
-  ;
-  While SMI_CloseSubMenu() : Wend
-  ProcedureReturn SMI_OpenSubMenu(ItemText$, ItemImage)
-EndProcedure
-;
-Procedure   SMI_CreateMenu(MenuNum, WindowID)
-  ;
-  ; This function intercept the CreateMenu() and CreateImageMenu()
-  ; calls to register the menu PureBasic number (MenuNum. It also simplify
-  ; the menu management by replacing CreateImageMenu() by CreateMenu().
-  ;
-  Shared SMI_MemMenuNum, SMI_MemMenuHandle
-  Protected Result
-  ;
-  While SMI_CloseSubMenu() : Wend
-  ;
-  If MenuNum = #PB_Any
-    Result = CreateMenu(#PB_Any, WindowID)
-    MenuNum = Result
-  Else
-    Result = CreateMenu(MenuNum, WindowID)
-  EndIf
-  ;
-  SMI_MemMenuNum = MenuNum
-  SMI_MemMenuHandle = MenuID(MenuNum)
-  
-  SMI_SaveMenuWindow(SMI_MemMenuHandle, WindowID)
-  ;
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure   SMI_CreatePopUpMenu(MenuNum)
-  ;
-  ; This function intercept the CreatePopupMenu() and CreatePopupImageMenu()
-  ; calls to register the menu PureBasic number. It also simplify
-  ; the menu management by replacing CreatePopupImageMenu() by CreatePopupMenu().
-  ;
-  Shared SMI_MemMenuNum, SMI_MemMenuHandle
-  Protected Result
-  ;
-  While SMI_CloseSubMenu() : Wend
-  ;
-  If MenuNum = #PB_Any
-    Result = CreatePopupMenu(#PB_Any)
-    MenuNum = Result
-  Else
-    Result = CreatePopupMenu(MenuNum)
-  EndIf
-  ;
-  SMI_MemMenuNum = MenuNum
-  SMI_MemMenuHandle = MenuID(MenuNum)
-  ;
-  ProcedureReturn Result
-EndProcedure
-;
-Procedure   SMI_MenuItem(ItemID, ItemText$, ItemImage)
-  ;
-  Shared SMI_MemMenuHandle
-  ;
-  SMI_CheckID(@ItemID)
-  ;
-  MenuItem(ItemID, ItemText$)
-  ;
-  If ItemImage <> #PB_Default
-    SetMenuItemImage(SMI_MemMenuHandle, ItemID, ItemImage)
-  Else
-    SMI_RetreiveOrCreateMenuItemDataListElement(SMI_MemMenuHandle, ItemID)
-  EndIf
-  ;
-  ; Set the item to ownerdrawn if its menu is allready ownerdrawn:
-  If SMI_HasMenuOwnerdrawnItems(SMI_MemMenuHandle)
-    SMI_PrepareItemToBeOwnerDrawn(SMI_MemMenuHandle, SMI_GetLastMenuItem(SMI_MemMenuHandle))
-  EndIf
-  ProcedureReturn ItemID
-EndProcedure
-;
-Procedure   SMI_MenuBar(ItemID)
-  ;
-  Shared SMI_MemMenuHandle
-  Protected MenuItemInfo.MENUITEMINFO_Fixed, ItemPos
-  ;
-  MenuBar()
-  ;
-  ItemPos = SMI_GetLastMenuItem(SMI_MemMenuHandle)
-  ;
-  SMI_CheckID(@ItemID)
-  ;
-  ; The ID must not be null if we want the separator-item to be drawn
-  ; as an ownerdrawn items.
-  SMI_InitMenuItemInfoData(@MenuItemInfo)
-  MenuItemInfo\fMask = #MIIM_ID
-  MenuItemInfo\wID = ItemID
-  SetMenuItemInfo_(SMI_MemMenuHandle, ItemPos, #MF_BYPOSITION, @MenuItemInfo)
-  ;
-  ; Set the menubar item to ownerdrawn if its menu is allready ownerdrawn:
-  If SMI_HasMenuOwnerdrawnItems(SMI_MemMenuHandle)
-    SMI_PrepareItemToBeOwnerDrawn(SMI_MemMenuHandle, ItemPos)
-  EndIf
-  ProcedureReturn ItemID
-EndProcedure
-;
-Procedure   SMI_FreeMenu(hMenu)
-  ;
-  Shared SMI_MemMenuNum, SMI_MemMenuHandle
-  ;
-  While SMI_CloseSubMenu() : Wend
-  ;
-  If IsMenu(hMenu)
-    Protected MenuNum = hMenu
-    hMenu = MenuID(hMenu)
-  Else
-    MenuNum = #PB_Default
-  EndIf
-  ;
-  ForEach MenuItemData()
-    If MenuItemData()\ParentMenuHandle = hMenu
-      If IsImage(MenuItemData()\MenuItemImgNum)
-        FreeImage(MenuItemData()\MenuItemImgNum)
-      EndIf
-      SysFreeString_(MenuItemData()\MenuItemTextPtr)
-      Protected hSubMenu = GetSubMenu_(hMenu, MenuItemData()\MenuItemPos)
-      If hSubMenu
-        Protected *CurrentElement = @MenuItemData()
-        SMI_FreeMenu(hSubMenu)
-        ChangeCurrentElement(MenuItemData(), *CurrentElement)
-      EndIf
-      DeleteElement(MenuItemData())
-    EndIf
-  Next
-  If MenuNum <> #PB_Default
-    FreeMenu(MenuNum)
-  EndIf
-  ;
-EndProcedure
-;
-Procedure   SMI_DisplayPopupMenu(MenuNum, WindowID, X, Y)
-  ;
-  SMI_SaveMenuWindow(MenuID(MenuNum), WindowID)
-  ;
-  If SMI_HasMenuOwnerdrawnItems(MenuNum, #True)
-    ; Set the callback procedure of the window showing the menu:
-    SMI_AttachCallbackToWindow(WindowID)
-  EndIf
-  ;
-  If X = #PB_Ignore Or Y = #PB_Ignore
-    ProcedureReturn DisplayPopupMenu(MenuNum, WindowID)
-  Else
-    ProcedureReturn DisplayPopupMenu(MenuNum, WindowID, X, Y)
-  EndIf
-EndProcedure
-;
-;
-; *****************************************************************************
-;
-;-                   6. OVERRIDE PUREBASIC NATIVE FUNCTIONS
-;
-; The native PureBasic functions dedicated to menu management are not designed
-; to work in a context where not all menu items are handled the same way
-; (some being owner-drawn and others not).
-; They also encounter several issues when an image is assigned to a menu bar item:
-; • GetMenuItemText() And GetMenuTitleText() are then unable to retrieve the
-;   item's text, while SetMenuItemText() and SetMenuTitleText() erase the image
-;   assigned to the item.
-; • Simply displaying a popup menu created With CreatePopupImageMenu() can
-;   disrupt the main menu's data.
-;
-; Consequently, to allow the use of these functions in the usual way while
-; benefiting from the additional features of this library, the following functions
-; have been overridden (i.e., replaced) by the library's functions.
-; For example, when you include GetMenuItemText() in your program, it is actually
-; SMI_GetMenuItemText() that will be called.
-; This replacement is transparent for the library user.
-;
-; *****************************************************************************
-;
-;
-Macro GetMenuItemText(MenuNum, MenuPos)
-  ; Override GetMenuItemText
-  SMI_GetMenuItemText(MenuNum, MenuPos)
-EndMacro
-Macro SetMenuItemText(MenuNum, MenuPos, MenuItemText)
-  ; Override SetMenuItemText
-  SMI_SetMenuItemText(MenuNum, MenuPos, MenuItemText)
-EndMacro
-Macro GetMenuTitleText(MenuNum, MenuPos)
-  ; Override GetMenuTitleText
-  SMI_GetMenuTitleText(MenuNum, MenuPos)
-EndMacro
-Macro SetMenuTitleText(MenuNum, MenuPos, MenuItemText)
-  ; Override SetMenuTitleText
-  SMI_SetMenuTitleText(MenuNum, MenuPos, MenuItemText)
-EndMacro
-Macro OpenSubMenu(MenuNum, MenuItemImage = #PB_Default)
-  ; Override OpenSubMenu
-  SMI_OpenSubMenu(MenuNum, MenuItemImage)
-EndMacro
-Macro CloseSubMenu
-  ; Override CloseSubMenu
-  SMI_CloseSubMenu()
-EndMacro
-Macro MenuTitle(MenuNum, MenuItemImage = #PB_Default)
-  ; Override MenuTitle
-  SMI_MenuTitle(MenuNum, MenuItemImage)
-EndMacro
-Macro MenuItem(MenuItemID, MenuItemText, MenuItemImage = #PB_Default)
-  ; Override MenuItem
-  SMI_MenuItem(MenuItemID, MenuItemText, MenuItemImage)
-EndMacro
-Macro MenuBar(MenuItemID = #PB_Any)
-  ; Override MenuBar
-  SMI_MenuBar(MenuItemID)
-EndMacro
-Macro CreateMenu(MenuNum, WindowID)
-  ; Override CreateMenu
-  SMI_CreateMenu(MenuNum, WindowID)
-EndMacro
-Macro CreateImageMenu(MenuNum, WindowID, Options = 0)
-  ; Override CreateImageMenu
-  SMI_CreateMenu(MenuNum, WindowID)
-EndMacro
-Macro CreatePopupMenu(MenuNum)
-  ; Override CreatePopupMenu
-  SMI_CreatePopupMenu(MenuNum)
-EndMacro
-Macro CreatePopupImageMenu(MenuNum, Options = 0)
-  ; Override CreatePopupImageMenu
-  SMI_CreatePopupMenu(MenuNum)
-EndMacro
-Macro FreeMenu(MenuNum)
-  ; Override FreeMenu
-  SMI_FreeMenu(MenuNum)
-EndMacro
-Macro DisplayPopupMenu(MenuNum, WindowID, X = #PB_Ignore, Y = #PB_Ignore)
-  ; Override DisplayPopupMenu
-  SMI_DisplayPopupMenu(MenuNum, WindowID, X, Y)
-EndMacro
-;
-;
-; ********************************************************************************
-;
-;-                                   7- DEMO
-;
-; ********************************************************************************
-;
-CompilerIf #PB_Compiler_IsMainFile
-  Define MainWindowNum = OpenWindow(#PB_Any, 100, 100, 500, 350, "SetMenuItemEx library demo", #PB_Window_SystemMenu | #PB_Window_ScreenCentered)
-  If MainWindowNum
-    ApplyDarkModeToWindow(MainWindowNum)
-    ;
-    Define ArialFont    = LoadFont(#PB_Any, "Arial", 9)
-    Define CourierFont  = LoadFont(#PB_Any, "Courier New", 9)
-    Define SegoeFont    = LoadFont(#PB_Any, "Segoe UI", 9)
-    Define ComicFont    = LoadFont(#PB_Any, "Comic Sans MS", 9)
-    Define ImpactFont   = LoadFont(#PB_Any, "Impact", 10)
-    Define JokermanFont = LoadFont(#PB_Any, "Jokerman", 9)
-    Define CurlzMTFont  = LoadFont(#PB_Any, "Curlz MT", 9)
-    Define GabriolaFont = LoadFont(#PB_Any, "Gabriola", 12)
-
-    Define VioletColor        = $FF00FF
-    Define DarkBlueColor      = $B00000
-    Define DarkRedColor       = $0000D0
-    Define DarkTurquoise      = $807000
-    Define PaleOrangeColor    = $60A0FF
-    Define PaleRedColor       = $8080FF
-    Define PaleVioletColor    = $F685FF
-    Define PaleBlueColor      = $FF9090
-    Define PaleTurquoiseColor = $FFFF80
-    Define PaleGreenColor     = $80FF80
-    Define PaleYellowColor    = $80FFFF
-    ;
-    Define img1 = GetImageFromShell32(13, 32, 32)
-    Define img2 = GetImageFromShell32(43, 32, 32)
-    Define img3 = GetImageFromShell32(22, 32, 32)
-    Define img4 = GetImageFromShell32(259, 32, 32)
-    Define img5 = GetImageFromShell32(134, 32, 32)
-    ;
-    ;
-    Define MainMenu = CreateMenu(#PB_Any, WindowID(MainWindowNum))
-    ;
-    ; You can now get a handle for a title and attribute an image to it:
-    Define Menu1 = MenuTitle("Menu1", ImageID(img1))
-    ; Before, you should select the title item by its position (still functionnal):
-    ;     SetMenuTitleColor(MainMenu, 0, #PB_Gadget_FrontColor, #White)
-    ;     SetMenuTitleColor(MainMenu, 0, #PB_Gadget_BackColor, 0)
-    ; Now, you can use its handle (more simple):
-    SetMenuTitleColor(MainMenu, Menu1, #PB_Gadget_FrontColor, #White)
-    SetMenuTitleColor(MainMenu, Menu1, #PB_Gadget_BackColor, DarkTurquoise)
-    ;
-    ; Now, you can allocate a dynamic ID to an item with #PB_Any:
-    Define Menu1_Command1 = MenuItem(#PB_Any, "Menu1_Command1", ImageID(img2))
-    SetMenuItemColor(MainMenu, Menu1_Command1, #PB_Gadget_BackColor, DarkTurquoise)
-    SetMenuItemColor(MainMenu, Menu1_Command1, #PB_Gadget_FrontColor, #White)
-    ; Now, you can get a handle for a MenuBar
-    Define Menu1_MenuBar = MenuBar()
-    ; So, you can set colors to a MenuBar!
-    SetMenuItemcolor(MainMenu, Menu1_MenuBar, #PB_Gadget_BackColor, DarkTurquoise)
-    SetMenuItemcolor(MainMenu, Menu1_MenuBar, #PB_Gadget_FrontColor, #Red)
-    ;   
-    Define Menu1_Submenu = OpenSubMenu("Non-ownerdrawn Submenu", ImageID(img3))
-    SetMenuItemColor(MainMenu, Menu1_Submenu, #PB_Gadget_BackColor, DarkTurquoise)
-    SetMenuItemColor(MainMenu, Menu1_Submenu, #PB_Gadget_FrontColor, #White)
-      Define Menu1_Submenu_Command1 = MenuItem(#PB_Any, "Menu1_Submenu_Command1")
-      Define Menu1_SubSubmenu = OpenSubMenu("Ownerdrawn Sub-Submenu", ImageID(img3))
-        Define Menu1_SubSubmenu_Command1 = MenuItem(#PB_Any, "Menu1_SubSubmenu_Command1")
-        Define Menu1_SubSubmenu_Command2 = MenuItem(#PB_Any, "Menu1_SubSubmenu_Command2")
-        ;
-        ; You can omit specifying the menu number when using the SetMenuItem...
-        ; and GetMenuItem.... commands. The item ID is sufficient to identify it:        
-        SetMenuItemColor(#PB_Default, Menu1_SubSubmenu_Command2, #PB_Gadget_FrontColor, VioletColor)
-      CloseSubMenu()
-      Define Menu1_Submenu_Command2 = MenuItem(#PB_Any, "Menu1_Submenu_Command2")
-    CloseSubMenu()
-    ;
-    Define Menu1_Command2 = MenuItem(#PB_Any, "Menu1_Command2")
-    SetMenuItemImage(MainMenu, Menu1_Command2, ImageID(img5))
-    SetMenuItemColor(MainMenu, Menu1_Command2, #PB_Gadget_BackColor, DarkTurquoise)
-    SetMenuItemColor(MainMenu, Menu1_Command2, #PB_Gadget_FrontColor, #White)
-    ;
-    Define Colors = MenuTitle("Color")
-    SetMenuTitleImage(MainMenu, Colors, ImageID(img4))
-    SetMenuTitleColor(MainMenu, Colors, #PB_Gadget_FrontColor, DarkRedColor)
-    SetMenuTitleColor(MainMenu, Colors, #PB_Gadget_BackColor, PaleYellowColor)
-    Define Orange = MenuItem(#PB_Any, "Orange")
-    SetMenuItemColor(MainMenu, Orange, #PB_Gadget_BackColor, PaleOrangeColor)
-    Define Red = MenuItem(#PB_Any, "Red")
-    SetMenuItemColor(MainMenu, Red, #PB_Gadget_BackColor, PaleRedColor)
-    Define Violet = MenuItem(#PB_Any, "Violet")
-    SetMenuItemColor(MainMenu, Violet, #PB_Gadget_BackColor, PaleVioletColor)
-    Define Blue = MenuItem(#PB_Any, "Blue")
-    SetMenuItemColor(MainMenu, Blue, #PB_Gadget_BackColor, PaleBlueColor)
-    Define Turquoise = MenuItem(#PB_Any, "Turquoise")
-    SetMenuItemColor(MainMenu, Turquoise, #PB_Gadget_BackColor, PaleTurquoiseColor)
-    Define Green = MenuItem(#PB_Any, "Green")
-    SetMenuItemColor(MainMenu, Green, #PB_Gadget_BackColor, PaleGreenColor)
-    Define Yellow = MenuItem(#PB_Any, "Yellow")
-    SetMenuItemColor(MainMenu, Yellow, #PB_Gadget_BackColor, PaleYellowColor)
-    CheckMenuItem(MainMenu, Yellow, #True)
-    Define OldCheckedColor = Yellow
-    ;
-    Define Fonts = MenuTitle("Choose your font")
-    SetMenuTitleFont(MainMenu, Fonts, ImpactFont)
-    Define Arial = MenuItem(#PB_Any, "Arial")
-    SetMenuItemFont(MainMenu, Arial, ArialFont)
-    Define Courier = MenuItem(#PB_Any, "Courier New")
-    SetMenuItemFont(MainMenu, Courier, CourierFont)
-    Define Comic = MenuItem(#PB_Any, "Comic Sans MS")
-    SetMenuItemFont(MainMenu, Comic, ComicFont)
-    Define Jokerman = MenuItem(#PB_Any, "Jokerman")
-    SetMenuItemFont(MainMenu, Jokerman, JokermanFont)
-    Define CurlzMT = MenuItem(#PB_Any, "Curlz MT")
-    SetMenuItemFont(MainMenu, CurlzMT, CurlzMTFont)
-    Define Gabriola = MenuItem(#PB_Any, "Gabriola")
-    SetMenuItemFont(MainMenu, Gabriola, GabriolaFont)
-    ;
-    ; You can check or uncheck an item:
-    MenuTitle("Check/Unchek my item")
-    Define CheckMe = MenuItem(#PB_Any, "Click on me")
-    CheckMenuItem(MainMenu, CheckMe)
-    SetMenuItemColor(MainMenu, CheckMe, #PB_Gadget_FrontColor, 0)
-    SetMenuItemImage(MainMenu, CheckMe, ImageID(img5))
-    MenuItem(#PB_Any, "Alignement witness")
-    ;
-    ; Styled PopupMenu
-    ;
-    ; You can do exactly the same for PopupMenu items:
-    Define StyledPopUpMenu = CreatePopupMenu(#PB_Any)
-    MenuItem(#PB_Any, "PopUpMenu", ImageID(img5))
-    Define PopupSubMenu = OpenSubMenu("PopupSubMenu", ImageID(img1))
-    SetMenuItemColor(StyledPopUpMenu, PopupSubMenu, #PB_Gadget_BackColor, PaleOrangeColor)
-      Define PopupSubMenu_Command1 = MenuItem(#PB_Any, "PopupSubMenu_Command1")
-      Define PopupSubMenu_Command2 = MenuItem(#PB_Any, "PopupSubMenu_Command2")
-      SetMenuItemColor(StyledPopUpMenu, PopupSubMenu_Command2, #PB_Gadget_FrontColor, PaleOrangeColor)
-      SetMenuItemColor(StyledPopUpMenu, PopupSubMenu_Command2, #PB_Gadget_BackColor, DarkRedColor)
-      SetMenuItemImage(StyledPopUpMenu, PopupSubMenu_Command2, ImageID(img5))
-    CloseSubMenu()
-    ;
-    Define PUCourier = MenuItem(#PB_Any, "PopUpMenu Courier New")
-    SetMenuItemFont(StyledPopUpMenu, PUCourier, CourierFont)
-    Define PUImpact = MenuItem(#PB_Any, "PopUpMenu Impact")
-    SetMenuItemFont(StyledPopUpMenu, PUImpact, ImpactFont)
-    ;
-    ;* ----------------------------- Buttons -----------------------------
-    ;
-    Define Msg$ = "By changing the value of SMI_ShowSelectionMethod, you change the manner"
-    Msg$ + " of showing to the user that the mouse is over an item of the menu. Usualy, a "
-    Msg$ + "simple background shading is enough to do that, but it can be inefficient in a "
-    Msg$ + "dark mode environment or when each item has its own particular color (or both). "
-    Msg$ + "So, you can choose four different methods (see the SMI_ShowSelectionMethod enumeration)."
-    Msg$ + " Try each of them to decide. Note that your can eventually combine different methods:"
-    ;
-    TextGadget(#PB_Any, 10, 25, WindowWidth(MainWindowNum) - 20, 100, Msg$, #PB_Text_Center)
-    Define VPos = 120
-    Define HPos = 40
-    Define BulletButton = CheckBoxGadget(#PB_Any, HPos, VPos, 60, 25, "Bullet")
-    HPos + 85
-    Define BordersButton = CheckBoxGadget(#PB_Any, HPos, VPos, 60, 25, "Framing")
-    HPos + 100
-    Define SystemColorButton = CheckBoxGadget(#PB_Any, HPos, VPos, 90, 25, "SystemColor")
-    HPos + 120
-    SetGadgetState(SystemColorButton, #True)
-    SMI_ShowSelectionMethod = #SMI_SSW_SystemColor
-    Define ShadeButton = CheckBoxGadget(#PB_Any, HPos, VPos, 120, 25, "Shade background")
-    ;
-    Msg$ = "This library requires no special skills to use. No initialization is needed. "
-    Msg$ + "You don't need to install a callback procedure (this will be done automatically "
-    Msg$ + "if necessary)." + #CR$
-    Msg$ + "The only thing you need to do is include the library file in your program's code"
-    Msg$ + " by using 'XIncludeFile (path)/SetMenuItemEx.pbi'." + #CR$ +"From then on, you can call"
-    Msg$ + " functions like 'SetMenuItemColor()', 'SetMenuItemFont()', etc."
-    ;
-    TextGadget(#PB_Any, 10, 180, WindowWidth(MainWindowNum) - 20, 100, Msg$, #PB_Text_Center)
-    ;
-    VPos = WindowHeight(MainWindowNum) - 55
-    Define PopUpMenuButton = ButtonGadget(#PB_Any, 10, VPos, 115, 25, "Open Styled PopUp")
-    Define DisableButton = CheckBoxGadget(#PB_Any, 140, VPos, 165, 25, "Disable Menu1_Command2")
-    Define HideMenu = CheckBoxGadget(#PB_Any, 320, VPos, 135, 25, "Hide menu")
-    ;
-    ; Main loop
-    Repeat
-      Select WaitWindowEvent()
-        Case #PB_Event_Gadget
-          Select EventGadget()
-            Case PopUpMenuButton
-              DisplayPopupMenu(StyledPopUpMenu, WindowID(MainWindowNum))
-            Case DisableButton
-              DisableMenuItem(MainMenu, Menu1_Command2, GetGadgetState(DisableButton))
-            Case HideMenu
-              HideMenu(MainMenu, GetGadgetState(HideMenu))
-            Case BulletButton
-              If GetGadgetState(BulletButton)
-                SMI_ShowSelectionMethod | #SMI_SSW_Bullet
-              Else
-                SMI_ShowSelectionMethod & ~(#SMI_SSW_Bullet)
-              EndIf
-              ; CAUTION : If you modifiy SMI_ShowSelectionMethod
-              ; on the fly, you need to resize menus:
-              SMI_ResizeMenu(MainMenu, #True)
-              SMI_ResizeMenu(StyledPopUpMenu, #True)
-            Case BordersButton
-              If GetGadgetState(BordersButton)
-                SMI_ShowSelectionMethod | #SMI_SSW_Borders
-              Else
-                SMI_ShowSelectionMethod & ~(#SMI_SSW_Borders)
-              EndIf
-            Case SystemColorButton
-              If GetGadgetState(SystemColorButton)
-                SMI_ShowSelectionMethod | #SMI_SSW_SystemColor
-              Else
-                SMI_ShowSelectionMethod & ~(#SMI_SSW_SystemColor)
-              EndIf
-            Case ShadeButton
-              If GetGadgetState(ShadeButton)
-                SMI_ShowSelectionMethod | #SMI_SSW_ShadeBackground
-              Else
-                SMI_ShowSelectionMethod & ~(#SMI_SSW_ShadeBackground)
-              EndIf
-          EndSelect
-          ;
-        Case #PB_Event_Menu
-          ; Now, you can find an item from its ID, without knowing the menu
-          ; to which it belongs:
-          Define ItemText$ = GetMenuItemText(#PB_Default, EventMenu())
-          Msg$ = "The user chose: " + ItemText$
-          Select EventMenu()
-            Case CheckMe
-              If IsMenuItemChecked(#PB_Default, CheckMe)
-                CheckMenuItem(#PB_Default, CheckMe, #False)
-                Msg$ + #CR$ + "The item is now unchecked"
-              Else
-                CheckMenuItem(#PB_Default, CheckMe, #True)
-                Msg$ + #CR$ + "The item is now checked"
-              EndIf
-            Case Orange, Red, Violet, Blue, Turquoise, Green, Yellow
-              CheckMenuItem(#PB_Default, OldCheckedColor, #False)
-              CheckMenuItem(#PB_Default, EventMenu(), #True)
-              OldCheckedColor = EventMenu()
-              Define TitleColor = GetMenuItemColor(#PB_Default, EventMenu(), #PB_Gadget_BackColor)
-              SetMenuTitleColor(#PB_Default, Colors, #PB_Gadget_BackColor, TitleColor)
-          EndSelect
-          MessageRequester("Info", Msg$, 0)
-          ;
-        Case #PB_Event_CloseWindow
-          Break
-      EndSelect
-    ForEver
-    CloseWindow(MainWindowNum)
-  EndIf
-  ;
-CompilerEndIf
-; IDE Options = PureBasic 6.40 (Windows - x64)
-; CursorPosition = 338
-; FirstLine = 321
-; Folding = qqKvz1vAAIAA+
-; EnableXP
-; DPIAware
+ï»¿;;**********************************************************************************;;                             SetMenuItemEx.pbi library;                                   Windows only;                             Zapman - Nov 2026 - 6.5;;          This file should be saved under the name "SetMenuItemEx.pbi".;;     This library offers functions to overcome the limitations of the current;          PureBasic (6.20) functions dedicated to menu management.;; â€¢ It is not possible to change the icon of a menu item after assigning it.;   You have to destroy the menu and rebuild it entirely to be able to change one;   of its icons.; â€¢ It is not possible to retrieve the ImageID of a menu icon. You have to memorize;   it in a variable at the time you assign it to be able to retrieve it later.; â€¢ It is not possible to assign an icon to an item of the menu bar of a window;   if this item has subitems.; â€¢ It is not possible to change the font and colors of menu items.;;  Many functions of this library (such as SetMenuItemFont()) are simply added to;  the original set of PureBasic functions.;  Some existing functions (such as MenuTitle()) are overridden to gain more;  capabilities and flexibility.;;                                 Added functions:;;  â€¢ SetMenuItemFont()   and GetMenuItemFont();  â€¢ SetMenuTitleFont()  and GetMenuTitleFont();  â€¢ SetMenuItemColor()  and GetMenuItemColor();  â€¢ SetMenuTitleColor() and GetMenuTitleColor();  â€¢ SetMenuItemImage()  and GetMenuItemImage();  â€¢ SetMenuTitleImage() and GetMenuTitleImage();  â€¢ CheckMenuItem()     and IsMenuItemChecked();  â€¢ SetMenuColor()        ; Apply a color to all existing items of a menu;  â€¢ SetMenuFont()         ; Apply a font to all existing items of a menu;  â€¢ ApplyThemesToMenu()   ; Force owner-drawing to apply external color themes;;                                Improved functions:;;  â€¢ MenuTitle() can now have an ImageID as second parameter. It also returns;    the handle of the submenu created by this command.;  â€¢ MenuBar() can now have an ID as parameter. This allows you to assign;    specific colors to menu separators.;  â€¢ You can now use dynamic allocation for item IDs using #PB_Any as usual.;    For example:   MyItem = MenuItem(#PB_Any, "Text of my item");  â€¢ You can use submenu handles in exactly the same way as item IDs.;    This means that you can change a menu title like this:;        MyTitle = MenuTitle("Text of the title");        SetMenuItemText(MyMenu, MyTitle, "New text of the title");    This also means that you no longer need to use functions starting with;    "SetMenuTitle..." (although they remain functional).;  â€¢ The menu ID can be replaced by '#PB_Default' whenever the target item is;    identified by a unique item ID or submenu handle (rather than a numeric;    position). Consequently, you can write:;        SetMenuItemText(#PB_Default, MyTitle, "New text of the title");    Item IDs are expected to be unique, and submenu handles are as well.;    Consequently, the functions of this library will search in which menu or;    popup menu the ID/handle provided as a parameter is located and will replace;    #PB_Default with the matching menu handle. This is very useful to retrieve;    the text of the command activated by the user in the main event loop:;        If WaitWindowEvent() = #PB_Event_Menu;          Define ItemText$ = GetMenuItemText(#PB_Default, EventMenu());          MessageRequester("Info", "The user chose: " + ItemText$, 0);        EndIf;;   This library is compatible with all other Zapman libraries, including;   SetGadgetColorEx.pbi and ApplyColorThemes.pbi.;;***********************************************************************************;;                           SOME EXPLANATIONS ABOUT MENUS;; To understand what is done through the different functions of this library, it is; important to know how Windows organizes this part of its interface and how; PureBasic manages it.;;           *---------------- About CreateImageMenu() ----------------*;; â€¢ The Windows API offers a complete set of functionalities that allow you to add;   menus and popup menus to an application without much manual management.;   The menu item text can be stored using the SetMenuItemInfo_() API function and;   can be retrieved using GetMenuItemInfo_().; â€¢ The same functions can be used to store a menu item image handle, so the existence;   of the CreateImageMenu() function alongside CreateMenu() is not necessary on;   Windows. At the very least, these two functions should be strictly equivalent;   on this system. However, for reasons that are likely historical (Windows has only;   supported menu icons natively since Windows 2000), PureBasic handles menus very;   differently depending on whether they are created with CreateMenu() (and;   CreatePopupMenu()) or with CreateImageMenu() (and CreatePopupImageMenu()). In the;   first case, menus rely entirely on standard Windows rendering. In the second case,;   the menu items are defined as "owner-drawn" and PureBasic takes care of drawing;   each of them.; â€¢ When a menu item is defined as "owner-drawn", it is common to associate it with;   a data structure that defines, in addition to the text and image linked to the;   item, its text color, its background color, and optionally the font with which;   the item should be displayed.; â€¢ As developers, when we want to add display options to the items of a menu;   created with CreateImageMenu(), we face a difficulty: these items are already;   defined as owner-drawn by PureBasic, and an internal data structure is already;   associated with them. Attempting to append custom fields to that internal data and;   manage the display of these items in a customized way raises further issues:;   GetMenuItemText() and SetMenuItemText() are not designed for such operations and;   lead to malfunctions. Worse yet, if a popup menu is created with;   CreatePopupImageMenu(), PureBasic's internal management interferes with other;   owner-drawn menus managed by our application (which should never happen).; â€¢ In summary, CreateImageMenu() and the way its features are handled by PureBasic;   create unsolvable conflicts as soon as we want to add functionalities such as;   SetMenuItemColor(). I have therefore decided to override this function, along;   with many other menu-related functions, in order to build a reliable and;   functional library. One of the advantages of this choice is that menus, even if;   they include images, are only owner-drawn when strictly necessary (as we will;   see shortly, owner-drawn menus come with a series of drawbacks).;   Notice the small arrow on the right that appears on items opening a submenu:;   â€”> Without this library, it does not have the same appearance when creating the;      menu with CreateMenu() versus CreateImageMenu(). In the first case, the;      Windows theme is applied. In the second case, it is not, because the menu is;      owner-drawn.;   â€”> When using this library, CreateMenu() and CreateImageMenu() are strictly;      equivalent and you can add images to items in both cases. The Windows theme;      is preserved until you set a custom color or font on a menu item. In that;      case (and only in that case), the menu becomes owner-drawn and the native;      Windows theme can no longer be applied directly (though the library reproduces;      its behavior as closely as possible).;;          *---------------- About owner-drawn menus ----------------*;      All the following comments apply to Windows 11 and older versions.;; â€¢ When a menu item is defined as owner-drawn, its display must be managed by a;   callback procedure associated with the application's window. This procedure;   receives the #WM_INITMENU (or #WM_INITMENUPOPUP) message when the menu is;   about to be drawn for the first time. Next, it receives the #WM_MEASUREITEM;   message, which allows it to calculate and record the dimensions of the rectangle;   in which the item will be drawn. Finally, it receives the #WM_DRAWITEM message;   whenever the item needs to be rendered.; â€¢ To calculate the width of the menu item while handling #WM_MEASUREITEM and to;   draw it while handling #WM_DRAWITEM, the callback procedure needs data defining;   its text, image, colors, and font. These data are stored in a structure whose;   address is associated with the item via SetMenuItemInfo_(). This address can;   later be retrieved via GetMenuItemInfo_(). It is also provided directly in;   measureItemStruct\itemData during #WM_MEASUREITEM, and in;   drawItemStruct\itemData during #WM_DRAWITEM.; â€¢ When an image is associated with an owner-drawn item using SetMenuItemInfo_();   and #MIIM_BITMAP, the #WM_MEASUREITEM message is never sent to the callback;   procedure. This is a regrettable quirk of Windows that must be worked around:;   if you associate an image with an owner-drawn item in the standard way, Windows;   computes the item width on its own, taking only the image into account while;   ignoring the width required to display the text.; â€¢ Consequently, when an item is defined as owner-drawn, its image must NOT be;   registered directly via hbmpItem in SetMenuItemInfo_(). The 'hbmpItem' field of;   MENUITEMINFO must be set to '0' or '#HBMMENU_CALLBACK' so that #WM_MEASUREITEM;   is sent and handled by the callback procedure. Because the image handle is still;   needed during #WM_MEASUREITEM and #WM_DRAWITEM, it is stored inside the custom;   data structure associated with the item.; â€¢ The owner-drawn mode of Windows menu items suffers from additional bugs (also;   reported by other developers) that had to be identified and handled:;   Although each menu item has its own independent owner-drawn flag, mixing;   owner-drawn and standard items within the same menu breaks rendering: as soon;   as a single item in a menu is owner-drawn, all sibling items lose the Windows;   theme and are shifted to the right by an offset depending on the width of the;   owner-drawn item (unless the owner-drawn item happens to be the very last one).;   Therefore, as soon as one item in a menu requires owner-drawing, ALL items in;   that menu must be switched to owner-drawn mode.; â€¢ When you change the text or image of a standard menu bar item, the menu bar is;   automatically redrawn. When you change the data of an owner-drawn menu bar item,;   it is NOT automatically resized and redrawn: neither #WM_MEASUREITEM nor;   #WM_DRAWITEM is resent automatically. Since no 'ResizeMenuItem()' API exists, a;   workaround is required: calling SetMenuItemInfo_() with fMask = #MIIM_BITMAP and;   hbmpItem = #HBMMENU_CALLBACK (or 0) forces Windows to resend #WM_MEASUREITEM to;   the callback procedure, even if hbmpItem already held that value beforehand.; â€¢ When you set a MenuBar separator item as owner-drawn, #WM_MEASUREITEM is sent;   normally to the callback procedure, whereas #WM_DRAWITEM is never sent unless a;   non-zero ID has been assigned to the separator. Any positive number works (even;   an ID already used elsewhere, since the system never dispatches commands for a;   separator, yet requires a non-zero wID to trigger #WM_DRAWITEM).; â€¢ When an item is a submenu entry, its standard ID is -1. However, Windows';   handling of owner-drawn menus exhibits a rare (~1 in 200) but permanent bug:;   when wID equals -1, #WM_DRAWITEM is occasionally never sent for that item, and;   even repeated calls to DrawMenuBar_() will never make it appear. Extensive;   testing revealed that passing wID = 1 via SetMenuItemInfo_() eliminates this;   bug completely. Note that Windows does not actually overwrite the submenu item's;   ID (GetMenuItemID_(hMenu, ItemPos) still returns -1 afterwards), yet doing so;   prevents the internal corruption from ever occurring.; â€¢ In modern versions of Windows, menu bar items highlight when the mouse cursor;   hovers over them. Owner-drawn menu bar items do not receive this modern hover;   tracking natively, and no #WM_DRAWITEM message is sent on mouse hover. This;   library restores hover highlighting by tracking the cursor inside the window;   callback procedure (Case #WM_NCMOUSEMOVE) and triggering a menu bar redraw.; â€¢ Similarly, Windows normally grays out the menu bar when a window becomes;   inactive, but does not send #WM_DRAWITEM to owner-drawn menu bars upon window;   activation changes. This is handled explicitly in the window callback procedure;   (Case #WM_ACTIVATE).; â€¢ These last two points likely explain why PureBasic never sets the main menu bar;   as owner-drawn, even when created with CreateImageMenu(): doing so avoids the;   above pitfalls, at the cost of making it impossible to display icons in the;   menu bar. By overriding PureBasic's native menu functions, this library solves;   both sides:;   1- The menu bar can display images natively without becoming owner-drawn.;   2- When the menu bar is switched to owner-drawn mode to support custom colors;      or fonts, it retains native hover and activation behavior, and automatically;      adopts active theme colors by default if a theme library is present.;;   *---------------- About PureBasic's 'MenuTitle()' function ----------------*;; â€¢ PureBasic's native MenuTitle() function is essentially a specialized wrapper;   around OpenSubMenu(). Adding a title to the main menu bar actually inserts a;   submenu entry into which subsequent MenuItem() calls append items. For Windows,;   the menu bar and each dropdown title are separate nested HMENU objects handled;   uniformly.; â€¢ Unlike OpenSubMenu(), which returns the handle of the created submenu, native;   MenuTitle() returns nothing, forcing developers to reference menu titles by;   their 0-based position in SetMenuTitleText(). With this library, MenuTitle();   accepts an optional ImageID as second parameter and returns the submenu handle,;   which can be passed directly to SetMenuItemText() and all other item functions.; â€¢ Native OpenSubMenu() also leaks internal stack slots if the caller forgets to;   call CloseSubMenu() before recreating or freeing menus in a loop (crashing on;   the 64th create/destroy iteration). This library prevents that error by;   automatically closing any open submenus before CreateMenu(), CreatePopupMenu(),;   MenuTitle(), and FreeMenu().;;   *---------------- About PureBasic's 'MenuBar()' function ----------------*;;   PureBasic's native MenuBar() function returns nothing and accepts no ID. With;   this library, MenuBar() accepts an optional ID (defaulting to #PB_Any) and;   returns it so you can assign custom colors to menu separators.;;CompilerIf #PB_Compiler_IsMainFile  EnableExplicitCompilerEndIf;;**********************************************************************************;;-               1- STRUCTURES, GLOBALS, AND CONSTANTS DECLARATIONS;#SMI_MenuBulletSize = 4;EnumerationBinary SMI_ShowSelectionMethod  #SMI_SSW_Bullet = 1  #SMI_SSW_Borders  #SMI_SSW_SystemColor  #SMI_SSW_ShadeBackgroundEndEnumeration;Global SMI_ShowSelectionMethodIf SMI_ShowSelectionMethod = 0  ; By changing the value of SMI_ShowSelectionMethod, you change how the menu  ; indicates that the mouse cursor is hovering over an item. Usually, simple  ; background shading is sufficient, but it can lack contrast in dark mode or  ; when each item defines its own custom background color (or both). Four  ; distinct methods are available (see the SMI_ShowSelectionMethod enumeration)  ; and can optionally be combined, e.g.:  ; SMI_ShowSelectionMethod = #SMI_SSW_SystemColor | #SMI_SSW_Bullet  ;  SMI_ShowSelectionMethod = #SMI_SSW_SystemColorEndIf;#SMI_SubItemSearch = -1;Structure MENUITEMINFO_Fixed Align #PB_Structure_AlignC  ; The MENUITEMINFO structure defined in PureBasic 6.20 and older is incomplete.  ; Many thanks to 'idle' from the English PureBasic forum for the complete layout.  cbSize.l  fMask.l  fType.l  fState.l  wID.l  hSubMenu.i  hbmpChecked.i  hbmpUnchecked.i  dwItemData.i  *dwTypeData  cch.l  hbmpItem.i ; Missing in PureBasic 6.20 and older definitions of MENUITEMINFO.EndStructure;#MENU_BARITEM         = 8#MENU_POPUPITEM       = 14#MBI_HOT              = 2#MPI_HOT              = 2#MBI_NORMAL           = 1#MPI_NORMAL           = 1#MENU_BARBACKGROUND   = 7#MENU_POPUPBACKGROUND = 9#MENU_POPUPCHECK      = 11#MC_CHECKMARKNORMAL   = 1#TMT_FILLCOLOR        = 3802#TMT_TEXTCOLOR        = 3803;#MIM_MENUDATA         = 8#HBMMENU_CALLBACK     = -1;CompilerIf Not Defined(MENUINFO, #PB_Structure) ; Built-in starting with PureBasic 6.4; kept for older versions  Structure MENUINFO Align #PB_Structure_AlignC    cbSize.l           ; Size of the structure (in bytes).    fMask.l            ; Mask specifying which members are being set or retrieved.    dwStyle.l          ; Style of the menu.    cyMax.l            ; Maximum height of the menu, in pixels.    hbrBack.i          ; Handle to the brush used to paint the menu background.    dwContextHelpID.l  ; Context help ID for the menu.    dwMenuData.i       ; Custom application data associated with the menu.  EndStructureCompilerEndIf;CompilerIf Not Defined(MENUBARINFO, #PB_Structure) ; Built-in starting with PureBasic 6.4; kept for older versions  Structure MENUBARINFO Align #PB_Structure_AlignC    cbSize.l    rcBar.RECT    hMenu.i    hwndMenu.i    Flags.l            ; Bitfield packing fBarFocused:1, fFocused:1, and fUnused:30.  EndStructureCompilerEndIf;Enumeration MustBeOwnerdrawn  #SMI_NOT_Ownerdrawn  #SMI_OwnerdrawnEndEnumeration;Structure OwnerdrawnMenuItemDataStruct  ;  ; As documented by Microsoft: "The menu item data can represent any information  ; that is meaningful to your application, and that will be available to your  ; application when the item is to be displayed."  ; A pointer to this structure is stored in MENUITEMINFO\dwItemData and received  ; via *measureItem\itemData (#WM_MEASUREITEM) and *drawItem\itemData (#WM_DRAWITEM),  ; or retrieved via GetMenuItemInfo_() (see SMI_FillMenuItemData()).  ;  *MenuItemTextPtr      ; BSTR pointer to the menu item text, allocated via SysAllocString_()                        ;   for compatibility with PureBasic's internal owner-drawn item format.  MenuItemImgHandle.i   ; OS bitmap handle (HBITMAP) illustrating the menu item.  MenuItemImgNum.i      ; PureBasic image number of the resized icon copy owned by this library.  MustBeOwnerdrawn.i    ; Set to #SMI_Ownerdrawn when custom colors, fonts, or themes require owner-drawing.  IsItemOwnerdrawn.i    ; Set to #SMI_Ownerdrawn once Windows has been notified of #MFT_OWNERDRAW.  IsItemSeparator.i     ; Set to #True when the item is a menu separator (#MFT_SEPARATOR).  ParentMenuHandle.i    ; OS handle (HMENU) of the menu or submenu directly containing the item.  MenuItemPos.i         ; 0-based position of the item within ParentMenuHandle.  MenuItemID.i          ; Command ID of the item (-1 for submenu entries).  MenuItemFont.i        ; PureBasic font number used to render the item, or #PB_Default.  MenuItemBackColor.l   ; Background color used to render the item, or #PB_Default.  MenuItemTextColor.l   ; Foreground text color used to render the item, or #PB_Default.  MenuItemState.l       ; Item state flags (such as #MF_CHECKED).EndStructure;Global NewList MenuItemData.OwnerdrawnMenuItemDataStruct();;*******************************************************************************;;-                             2- GENERAL FUNCTIONS;                     (possibly reusable in other programs);;*******************************************************************************;;*******************************************************************************;;-                             2- GENERAL FUNCTIONS;                     (possibly reusable in other programs);;*******************************************************************************;Procedure LoadMenuFont()  ;  ; Role: Loads the current Windows system menu font as a PureBasic font object.  ; Output: PureBasic font number matching the system menu face, point size, and style.  ;  #SPI_GETNONCLIENTMETRICS = $0029  Protected ncm.NONCLIENTMETRICS  Protected FontName$, hdc, LogPixelsY, FontSize = 9, FontStyle = 0  ;  ncm\cbSize = SizeOf(NONCLIENTMETRICS)  If SystemParametersInfo_(#SPI_GETNONCLIENTMETRICS, ncm\cbSize, @ncm, 0)    FontName$ = PeekS(@ncm\lfMenuFont\lfFaceName)    hdc = GetDC_(#Null)    If hdc      LogPixelsY = GetDeviceCaps_(hdc, #LOGPIXELSY)      ReleaseDC_(#Null, hdc)    EndIf    If LogPixelsY > 0 And ncm\lfMenuFont\lfHeight <> 0      FontSize = Round(Abs(ncm\lfMenuFont\lfHeight) * 72.0 / LogPixelsY, #PB_Round_Nearest)    EndIf    If FontSize <= 0      FontSize = 9    EndIf    If ncm\lfMenuFont\lfWeight >= #FW_BOLD      FontStyle | #PB_Font_Bold    EndIf    If ncm\lfMenuFont\lfItalic      FontStyle | #PB_Font_Italic    EndIf    If ncm\lfMenuFont\lfUnderline      FontStyle | #PB_Font_Underline    EndIf    If ncm\lfMenuFont\lfStrikeOut      FontStyle | #PB_Font_StrikeOut    EndIf    ProcedureReturn LoadFont(#PB_Any, FontName$, FontSize, FontStyle)  EndIf  ProcedureReturn LoadFont(#PB_Any, "Segoe UI", 9)EndProcedure;Global DefaultMenuFont = LoadMenuFont();CompilerIf Not(Defined(GetImageFromShell32, #PB_Procedure))  Procedure GetImageFromShell32(IconNum, ImgWidth, ImgHeight)    ;    ; Role: Extracts an icon from shell32.dll and renders it into a 32-bit transparent PureBasic image.    ; Output: PureBasic image number, or #Null on failure.    ;    Protected TransparentImage, Dest_hDC    Protected hIcon = ExtractIcon_(0, "shell32.dll", IconNum)    ;    If hIcon      TransparentImage = CreateImage(#PB_Any, ImgWidth, ImgHeight, 32, #PB_Image_Transparent)      If IsImage(TransparentImage)        Dest_hDC = StartDrawing(ImageOutput(TransparentImage))        If Dest_hDC          DrawingMode(#PB_2DDrawing_AlphaBlend)          Box(0, 0, ImgWidth, ImgHeight, RGBA(0, 0, 0, 0))          DrawIconEx_(Dest_hDC, 0, 0, hIcon, ImgWidth, ImgHeight, 0, #Null, #DI_NORMAL)          StopDrawing()        Else          FreeImage(TransparentImage)          TransparentImage = #Null        EndIf      EndIf      DestroyIcon_(hIcon)    EndIf    ;    ProcedureReturn TransparentImage  EndProcedureCompilerEndIf;CompilerIf Not(Defined(ResizeImageToIconSize, #PB_Procedure))  Procedure ResizeImageToIconSize(SourceImage)    ;    ; Role: Creates a 32-bit transparent copy of 'SourceImage' scaled to system small-icon dimensions.    ; Parameters: SourceImage - Either a PureBasic image number or an OS HBITMAP handle.    ; Output: PureBasic image number of the resized copy, or #Null on failure.    ;    Protected ResizedImage, IconWidth, IconHeight    ;    If SourceImage      If IsImage(SourceImage)        SourceImage = ImageID(SourceImage)      EndIf      IconWidth = GetSystemMetrics_(#SM_CXSMICON)      IconHeight = GetSystemMetrics_(#SM_CYSMICON)      ResizedImage = CreateImage(#PB_Any, IconWidth, IconHeight, 32, #PB_Image_Transparent)      If ResizedImage        If StartDrawing(ImageOutput(ResizedImage))          DrawingMode(#PB_2DDrawing_AlphaBlend)          DrawImage(SourceImage, 0, 0, IconWidth, IconHeight)          StopDrawing()          ProcedureReturn ResizedImage        EndIf        FreeImage(ResizedImage)      EndIf    EndIf    ProcedureReturn #Null  EndProcedureCompilerEndIf;CompilerIf Not(Defined(CreateIconFromImage, #PB_Procedure))  Procedure CreateIconFromImage(hBitmap)    ;    ; Role: Creates an OS HICON from a PureBasic image number or HBITMAP handle.    ; Output: HICON handle (caller is responsible for calling DestroyIcon_()), or 0 on failure.    ;    Protected iconInfo.ICONINFO, bitmap.BITMAP, hIcon    ;    If IsImage(hBitmap)      hBitmap = ImageID(hBitmap)    EndIf    ;    If hBitmap And GetObject_(hBitmap, SizeOf(BITMAP), @bitmap)      ; Fill the ICONINFO structure:      iconInfo\fIcon = #True      iconInfo\xHotspot = 0      iconInfo\yHotspot = 0      iconInfo\hbmMask = CreateBitmap_(bitmap\bmWidth, bitmap\bmHeight, 1, 1, #Null)      iconInfo\hbmColor = hBitmap      If iconInfo\hbmMask        hIcon = CreateIconIndirect_(@iconInfo)        ; Free the temporary monochrome mask bitmap:        DeleteObject_(iconInfo\hbmMask)      EndIf    EndIf    ProcedureReturn hIcon  EndProcedureCompilerEndIf;CompilerIf Not(Defined(DrawTransparentRectangle, #PB_Procedure))  Import "msimg32.lib"    CompilerIf #PB_Compiler_Processor = #PB_Processor_x86      SMI_AlphaBlend(hdcDest.i, xoriginDest.l, yoriginDest.l, wDest.l, hDest.l, hdcSrc.i, xoriginSrc.l, yoriginSrc.l, wSrc.l, hSrc.l, ftn.l) As "_AlphaBlend@44"    CompilerElse      SMI_AlphaBlend(hdcDest.i, xoriginDest.l, yoriginDest.l, wDest.l, hDest.l, hdcSrc.i, xoriginSrc.l, yoriginSrc.l, wSrc.l, hSrc.l, ftn.l) As "AlphaBlend"    CompilerEndIf  EndImport  ;  Procedure DrawTransparentRectangle(Dest_hDC, *rect.RECT, CoverColor, Opacity)    ;    ; Role: Alpha-blends a solid color overlay rectangle onto 'Dest_hDC'.    ; Parameters: Opacity - Constant alpha value ranging from 0 (transparent) to 255 (opaque).    ;    Protected ImgWidth, ImgHeight, Srce_hDC, hbmTemp, oldBitmap    Protected blend.l, *blend.BLENDFUNCTION = @blend    ;    If Dest_hDC And *rect      ImgWidth = *rect\right - *rect\left      ImgHeight = *rect\bottom - *rect\top      If ImgWidth > 0 And ImgHeight > 0        Srce_hDC = CreateCompatibleDC_(Dest_hDC)        If Srce_hDC          ; Allocate a minimal 1x1 pixel source surface and stretch it across the target rectangle:          hbmTemp = CreateCompatibleBitmap_(Dest_hDC, 1, 1)          If hbmTemp            oldBitmap = SelectObject_(Srce_hDC, hbmTemp)            If oldBitmap              If (CoverColor & $FFFFFF) = 0                ; Workaround for a Windows GDI AlphaBlend bug on 32-bit DDBs: an all-zero pixel ($00000000)                ; corrupts blending over GDI-drawn text and turns surrounding areas white; $000001 prevents it.                CoverColor = 1              EndIf              SetPixelV_(Srce_hDC, 0, 0, CoverColor & $FFFFFF)              ; Blend the 1x1 colored pixel onto Dest_hDC using constant alpha:              *blend\BlendOp = #AC_SRC_OVER              *blend\BlendFlags = 0              *blend\SourceConstantAlpha = Opacity & $FF              *blend\AlphaFormat = 0              SMI_AlphaBlend(Dest_hDC, *rect\left, *rect\top, ImgWidth, ImgHeight, Srce_hDC, 0, 0, 1, 1, blend)              SelectObject_(Srce_hDC, oldBitmap)            EndIf            DeleteObject_(hbmTemp)          EndIf          DeleteDC_(Srce_hDC)        EndIf      EndIf    EndIf  EndProcedureCompilerEndIf;CompilerIf Not(Defined(DrawRightPointingTriangle, #PB_Procedure))  Procedure DrawRightPointingTriangle(hDC, *rc.RECT, tSize, FrontColor, BackColor)    ;    ; Role: Draws a right-pointing filled triangle vertically centered at the left edge of '*rc'.    ;    Protected Dim pts.POINT(2)    Protected vCenter, hPen, hBrush, oldPen, oldBrush    ;    If hDC And *rc      vCenter = *rc\top + (*rc\bottom - *rc\top) / 2 - 1      ; Compute the three vertices of the triangle (tip, bottom-left, top-left):      pts(0)\x = *rc\left + tSize      pts(0)\y = vCenter      pts(1)\x = *rc\left      pts(1)\y = vCenter + tSize      pts(2)\x = *rc\left      pts(2)\y = vCenter - tSize      ;      hPen = CreatePen_(#PS_SOLID, 1, FrontColor)      hBrush = CreateSolidBrush_(BackColor)      oldPen = SelectObject_(hDC, hPen)      oldBrush = SelectObject_(hDC, hBrush)      ;      Polygon_(hDC, @pts(), 3)      ;      ; Restore previous GDI objects before deleting our pen and brush:      SelectObject_(hDC, oldPen)      SelectObject_(hDC, oldBrush)      DeleteObject_(hPen)      DeleteObject_(hBrush)    EndIf  EndProcedureCompilerEndIf;CompilerIf Not(Defined(DrawCheckmark, #PB_Procedure))  Procedure DrawCheckmark(hDC, *rc.RECT, Size, Color)    ;    ; Role: Draws a checkmark glyph vertically centered inside '*rc'.    ;    Protected pt.POINT, hPen, oldPen    ;    If hDC And *rc      ; Compute the top-left origin of the checkmark box vertically centered inside *rc:      pt\x = *rc\left      pt\y = *rc\top + (*rc\bottom - *rc\top - Size) / 2      ;      hPen = CreatePen_(#PS_SOLID, 2, Color)      oldPen = SelectObject_(hDC, hPen)      ;      ; Stroke the two segments of the checkmark:      MoveToEx_(hDC, pt\x + Size / 5, pt\y + Size * 2 / 5, #Null)      LineTo_(hDC, pt\x + Size * 3 / 5, pt\y + Size * 4 / 5)      LineTo_(hDC, pt\x + Size * 7 / 5, pt\y)      ;      ; Restore the previous pen before deleting hPen:      SelectObject_(hDC, oldPen)      DeleteObject_(hPen)    EndIf  EndProcedureCompilerEndIf;CompilerIf Not(Defined(GetTextWidthInWindowContext, #PB_Procedure))  Procedure GetTextWidthInWindowContext(hWnd, FontID, Text$)    ;    ; Role: Measures the pixel width of 'Text$' rendered with 'FontID' in the device context of 'hWnd'.    ; Parameters: hWnd   - PureBasic window number, OS HWND, or #Null for the screen DC.    ;             FontID - PureBasic font number or OS HFONT handle.    ; Output: Pixel width of the string, or 0 on failure.    ;    Protected hDC, hOldFont, Size.SIZE    ;    If IsWindow(hWnd)      hWnd = WindowID(hWnd)    EndIf    If IsFont(FontID)      FontID = FontID(FontID)    EndIf    hDC = GetDC_(hWnd)    If hDC      If FontID        hOldFont = SelectObject_(hDC, FontID)      EndIf      GetTextExtentPoint32_(hDC, Text$, Len(Text$), @Size)      If hOldFont        SelectObject_(hDC, hOldFont)      EndIf      ReleaseDC_(hWnd, hDC)      ProcedureReturn Size\cx    EndIf    ProcedureReturn 0  EndProcedureCompilerEndIf;; Prototype for the DwmSetWindowAttribute_ functionCompilerIf Not(Defined(DwmSetWindowAttribute, #PB_Prototype))  Prototype.i DwmSetWindowAttribute(hWnd.i, dwAttribute.i, pvAttribute.i, cbAttribute.i)CompilerEndIf;CompilerIf Not(Defined(IsDarkModeEnabled, #PB_Procedure))  Procedure IsDarkModeEnabled()    ;    ; Role: Detects whether app dark mode is enabled in the Windows registry.    ; Output: Returns 1 if dark mode is active, 0 otherwise.    ;    Protected key = 0    Protected darkModeEnabled = 0    ;    If RegOpenKeyEx_(#HKEY_CURRENT_USER, "Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", 0, #KEY_READ, @key) = #ERROR_SUCCESS      Protected value = 1      Protected valueSize = SizeOf(value)      If RegQueryValueEx_(key, "AppsUseLightTheme", 0, #Null, @value, @valueSize) = #ERROR_SUCCESS        darkModeEnabled = Bool(value = 0) ; 0 = dark, 1 = light      EndIf      RegCloseKey_(key)    EndIf    ;    ProcedureReturn darkModeEnabled  EndProcedureCompilerEndIf;CompilerIf Not(Defined(ApplyDarkModeToWindow, #PB_Procedure))  Procedure ApplyDarkModeToWindow(Window = 0)    ;    ; Role: Applies the dark theme to a window title bar if dark mode is enabled in Windows.    ;    Protected hWnd = WindowID(Window)    ;    If hWnd And OSVersion() >= #PB_OS_Windows_10      Protected hDwmapi = OpenLibrary(#PB_Any, "dwmapi.dll")      ;      If hDwmapi        Protected DwmSetWindowAttribute_.DwmSetWindowAttribute = GetFunction(hDwmapi, "DwmSetWindowAttribute")        If DwmSetWindowAttribute_          Protected darkModeEnabled.l = IsDarkModeEnabled()          If darkModeEnabled            ; Try attribute 20 (Win10 20H1+ / Win11), fallback to 19 for older Win10 builds            If DwmSetWindowAttribute_(hWnd, 20, @darkModeEnabled, SizeOf(darkModeEnabled)) <> 0              DwmSetWindowAttribute_(hWnd, 19, @darkModeEnabled, SizeOf(darkModeEnabled))            EndIf            If GetWindowColor(Window) = #PB_Default              ; Only alter the client background when a gadget-coloring library is active and no explicit color was set              CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)                If ListSize(InterfaceColorPresets()) > 0                  Protected ThemeBackColor = GetRealColorFromType("BackgroundColor", InterfaceColorPresets()\BackgroundColor)                  If ThemeBackColor <> #PB_Default                    SetWindowColor(Window, ThemeBackColor)                  EndIf                EndIf              CompilerElseIf Defined(SetGadgetColorEx, #PB_Procedure)                SetWindowColor(Window, $202020)              CompilerEndIf            EndIf            ;            ; Force the non-client frame to repaint without hiding or flickering the window            If IsWindowVisible_(hWnd)              SetWindowPos_(hWnd, 0, 0, 0, 0, 0, #SWP_NOMOVE | #SWP_NOSIZE | #SWP_NOZORDER | #SWP_FRAMECHANGED)            EndIf          EndIf        EndIf        ;        CloseLibrary(hDwmapi)      EndIf    EndIf  EndProcedureCompilerEndIf;;; *****************************************************************************;;-                 3. SPECIALIZED PROCEDURES OF THE LIBRARY;;      The following procedures are subroutines of the library functions.;; *****************************************************************************;Procedure SMI_GetLastMenuItem(hMenu)  ;  ; Role: Returns the 0-based index of the last item in 'hMenu', or -1 if empty or invalid.  ;  Protected LastMenuItem = GetMenuItemCount_(hMenu) - 1  ;  If LastMenuItem < 0 Or LastMenuItem > 65535    ProcedureReturn -1  EndIf  ProcedureReturn LastMenuItemEndProcedure;Procedure SMI_InitMenuItemInfoData(*MenuItemInfo.MENUITEMINFO_Fixed)  ;  ; Role: Zero-initializes a MENUITEMINFO_Fixed structure and sets its cbSize field.  ;  FillMemory(*MenuItemInfo, SizeOf(MENUITEMINFO_Fixed), 0)  *MenuItemInfo\cbSize = SizeOf(MENUITEMINFO_Fixed)EndProcedure;Procedure.s SMI_GetClassicMenuStringFromPosition(hMenu, Position)  ;  ; Role: Retrieves the text of a standard (non-owner-drawn) menu item by its 0-based position.  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed, ItemString$  ;  ; Query the character count first by passing a null dwTypeData buffer:  SMI_InitMenuItemInfoData(@MenuItemInfo)  MenuItemInfo\fMask      = #MIIM_STRING  MenuItemInfo\dwTypeData = 0  GetMenuItemInfo_(hMenu, Position, #MF_BYPOSITION, @MenuItemInfo)  ;  If MenuItemInfo\cch    ; Allocate the Unicode string buffer and add room for the terminating null character:    ItemString$ = Space(MenuItemInfo\cch)    MenuItemInfo\cch + 1    MenuItemInfo\dwTypeData = @ItemString$    GetMenuItemInfo_(hMenu, Position, #MF_BYPOSITION, @MenuItemInfo)  EndIf  ProcedureReturn ItemString$EndProcedure;Procedure SMI_GetMenuItemPos(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, *ItemPos.Integer, RecursiveSearch = #True)  ;  ; Role: Searches 'hMenu' (and optionally its submenus) for an item matching a position,  ;       a command ID, or a submenu handle.  ; Parameters: ByPosOrIdOrSubMenuHandle - Search mode (#MF_BYPOSITION, #MF_BYCOMMAND, or #SMI_SubItemSearch).  ;             *ItemPos                 - Receives the 0-based index of the found item within the returned HMENU.  ;             RecursiveSearch          - Explores nested submenus when #True; restricts to 'hMenu' when #False.  ; Output: Returns the HMENU directly containing the found item, or 0 if not found.  ;  Protected LastItem, Counter, hSubMenu, Result  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  ;  If IsMenu_(ItemPosOrIdOrSubmenuHandle)    ByPosOrIdOrSubMenuHandle = #SMI_SubItemSearch    ; In the Windows API, items that open a submenu have no command ID; they are identified    ; by the handle of the submenu they open. When IsMenu_() returns non-zero, the target    ; parameter is a submenu handle rather than an item ID (item IDs stay <= $FFFF, whereas    ; OS menu handles are above $FFFF, preventing collisions).  EndIf  ;  If ByPosOrIdOrSubMenuHandle = #MF_BYPOSITION    If ItemPosOrIdOrSubmenuHandle >= 0 And ItemPosOrIdOrSubmenuHandle <= SMI_GetLastMenuItem(hMenu)      *ItemPos\i = ItemPosOrIdOrSubmenuHandle      ProcedureReturn hMenu    EndIf    ProcedureReturn 0  EndIf  ;  LastItem = SMI_GetLastMenuItem(hMenu)  For Counter = 0 To LastItem    hSubMenu = GetSubMenu_(hMenu, Counter)    If hSubMenu = 0      If ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND And GetMenuItemID_(hMenu, Counter) = ItemPosOrIdOrSubmenuHandle        *ItemPos\i = Counter        ProcedureReturn hMenu      EndIf    Else      If ByPosOrIdOrSubMenuHandle = #SMI_SubItemSearch And hSubMenu = ItemPosOrIdOrSubmenuHandle        *ItemPos\i = Counter        ProcedureReturn hMenu      ElseIf RecursiveSearch        Result = SMI_GetMenuItemPos(hSubMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, *ItemPos, #True)        If Result          ProcedureReturn Result        EndIf      EndIf    EndIf  Next  ProcedureReturn 0EndProcedure;Procedure SMI_FillMenuItemData(hMenu, ItemPosOrIdOrSubmenuHandle, *MyMenuItemData.OwnerdrawnMenuItemDataStruct, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND, RecursiveSearch = #True)  ;  ; Role: Retrieves the item designated by the input parameters and populates '*MyMenuItemData',  ;       whether the item is currently owner-drawn or managed natively by Windows.  ;       This allows the library to rely on a single unified data storage format.  ; Output: Returns the HMENU directly owning the item (which may be a submenu of 'hMenu'), or 0 if not found.  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed  Protected bitmap.BITMAP  Protected *SourceData.OwnerdrawnMenuItemDataStruct  Protected ItemString$, ItemPos, OldTextPtr  ;  hMenu = SMI_GetMenuItemPos(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos, RecursiveSearch)  ;  If hMenu And *MyMenuItemData    ; CAUTION: When searching by ID or submenu handle, the returned hMenu may be a nested    ; submenu rather than the root hMenu passed as parameter.    ;    ; Query item type, state, custom data pointer, and bitmap in a single API call:    SMI_InitMenuItemInfoData(@MenuItemInfo)    MenuItemInfo\fMask = #MIIM_FTYPE | #MIIM_STATE | #MIIM_DATA | #MIIM_BITMAP    GetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)    ;    *MyMenuItemData\IsItemSeparator = Bool(MenuItemInfo\fType & #MFT_SEPARATOR)    ;    If (MenuItemInfo\fType & #MFT_OWNERDRAW) = 0 Or MenuItemInfo\dwItemData = 0      ; Item is managed natively by Windows: synchronize fields via standard API queries      *MyMenuItemData\IsItemOwnerdrawn = #SMI_NOT_Ownerdrawn      SysFreeString_(*MyMenuItemData\MenuItemTextPtr)      ItemString$ = SMI_GetClassicMenuStringFromPosition(hMenu, ItemPos)      *MyMenuItemData\MenuItemTextPtr = SysAllocString_(ItemString$)      ;      ; Keep hbmpItem only when it references an actual GDI bitmap (excluding #HBMMENU_... pseudo-handles):      If MenuItemInfo\hbmpItem And GetObject_(MenuItemInfo\hbmpItem, SizeOf(BITMAP), @bitmap)        *MyMenuItemData\MenuItemImgHandle = MenuItemInfo\hbmpItem      ElseIf IsImage(*MyMenuItemData\MenuItemImgNum) = 0        *MyMenuItemData\MenuItemImgHandle = 0      EndIf      *MyMenuItemData\MenuItemState = MenuItemInfo\fState    ElseIf MenuItemInfo\dwItemData <> *MyMenuItemData      ; Copy from the attached structure while duplicating the BSTR safely to prevent double-free:      *SourceData = MenuItemInfo\dwItemData      OldTextPtr = *MyMenuItemData\MenuItemTextPtr      CopyStructure(*SourceData, *MyMenuItemData, OwnerdrawnMenuItemDataStruct)      SysFreeString_(OldTextPtr)      If *SourceData\MenuItemTextPtr        *MyMenuItemData\MenuItemTextPtr = SysAllocString_(PeekS(*SourceData\MenuItemTextPtr))      Else        *MyMenuItemData\MenuItemTextPtr = 0      EndIf    EndIf    ;    *MyMenuItemData\ParentMenuHandle = hMenu    *MyMenuItemData\MenuItemPos      = ItemPos    If GetSubMenu_(hMenu, ItemPos)      *MyMenuItemData\MenuItemID     = -1    Else      *MyMenuItemData\MenuItemID     = GetMenuItemID_(hMenu, ItemPos)    EndIf  EndIf  ;  ProcedureReturn hMenuEndProcedure;Procedure SMI_SaveMenuWindow(hMenu, WindowID)  ;  ; Role: Stores the host HWND inside 'hMenu' and propagates it automatically to its submenus.  ;  #MIM_APPLYTOSUBMENUS = $80000000  Protected MenuInfo.MENUINFO  ;  If IsWindow(WindowID)    WindowID = WindowID(WindowID)  EndIf  MenuInfo\cbSize     = SizeOf(MENUINFO)  MenuInfo\fMask      = #MIM_MENUDATA | #MIM_APPLYTOSUBMENUS  MenuInfo\dwMenuData = WindowID  SetMenuInfo_(hMenu, @MenuInfo)EndProcedure;Procedure SMI_RetrieveMenuWindow(hMenu)  ;  ; Role: Retrieves the host HWND previously associated with 'hMenu' via SMI_SaveMenuWindow().  ;  Protected MenuInfo.MENUINFO  ;  MenuInfo\cbSize = SizeOf(MENUINFO)  MenuInfo\fMask  = #MIM_MENUDATA  GetMenuInfo_(hMenu, @MenuInfo)  ProcedureReturn MenuInfo\dwMenuDataEndProcedure;Procedure SMI_CheckID(*ItemID.Integer)  ;  ; Role: Validates an item ID or dynamically allocates one in the reserved [$B000..$FFFE] range for #PB_Any.  ;  Static IDNum = $AFFF  Protected Busy  ;  If *ItemID\i > $AFFF    MessageRequester("Error", "IDs higher than 45055 ($AFFF) are reserved for dynamic allocation.")  EndIf  If *ItemID\i = #PB_Any Or *ItemID\i > $AFFF    Repeat      IDNum + 1      If IDNum > $FFFE        IDNum = $B000      EndIf      Busy = #False      ForEach MenuItemData()        If MenuItemData()\MenuItemID = IDNum          Busy = #True          Break        EndIf      Next    Until Busy = #False    *ItemID\i = IDNum  EndIf  ProcedureReturn *ItemID\iEndProcedure;Procedure SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND, *ItemPos.Integer = 0, RecursiveSearch = #True)  ;  ; Role: Locates or creates the MenuItemData() element matching the specified menu item and  ;       makes it the current list element, regardless of whether the item is owner-drawn.  ; Output: Returns the HMENU directly owning the item, or 0 if not found.  ;  Protected Found = 0, ItemPos, SearchType$, ErrorDetails$  ;  If hMenu = #PB_Default And (ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND Or IsMenu_(ItemPosOrIdOrSubmenuHandle))    ; No menu is specified: scan all tracked items to find the matching ID or submenu handle    ForEach MenuItemData()      If MenuItemData()\MenuItemID = ItemPosOrIdOrSubmenuHandle Or GetSubMenu_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos) = ItemPosOrIdOrSubmenuHandle        hMenu = MenuItemData()\ParentMenuHandle        ItemPos = MenuItemData()\MenuItemPos        Found = 1        Break      EndIf    Next  Else    ; Resolve the exact HMENU and 0-based item position:    hMenu = SMI_GetMenuItemPos(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos, RecursiveSearch)  EndIf  ;  If hMenu And hMenu <> #PB_Default    If Found = 0      ForEach MenuItemData()        If MenuItemData()\ParentMenuHandle = hMenu And MenuItemData()\MenuItemPos = ItemPos          Found = 1          Break        EndIf      Next    EndIf    If Found = 0      AddElement(MenuItemData())      MenuItemData()\MenuItemFont      = #PB_Default      MenuItemData()\MenuItemBackColor = #PB_Default      MenuItemData()\MenuItemTextColor = #PB_Default    EndIf    SMI_FillMenuItemData(hMenu, ItemPos, @MenuItemData(), #MF_BYPOSITION, #False)  Else    If ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND      SearchType$ = "BY COMMAND"    Else      SearchType$ = "BY POSITION" + #CR$ + #CR$ + "You should try calling 'SetMenuItem...()' instead of 'SetMenuTitle...()'."    EndIf    If IsMenu_(ItemPosOrIdOrSubmenuHandle)      ErrorDetails$ = #CR$ + " â€¢ " + Str(ItemPosOrIdOrSubmenuHandle) + " is a menu handle."    ElseIf ItemPosOrIdOrSubmenuHandle > 20 And ItemPosOrIdOrSubmenuHandle < $FFFF      ErrorDetails$ = #CR$ + " â€¢ " + Str(ItemPosOrIdOrSubmenuHandle) + " seems to be an item ID."    EndIf    MessageRequester("Error", "Unable to retrieve item " + Str(ItemPosOrIdOrSubmenuHandle) + #CR$ + ErrorDetails$ + #CR$ + " â€¢ The search was: " + SearchType$)    hMenu = 0  EndIf  ;  If *ItemPos    *ItemPos\i = ItemPos  EndIf  ProcedureReturn hMenuEndProcedure;EnumerationBinary SMI_MenuContentFlags  #SMI_Content_HasImage = 1  #SMI_Content_HasSubMenu  #SMI_Content_HasCheckmarkEndEnumeration;Procedure SMI_GetMenuContentFlags(hMenu)  ;  ; Role: Inspects a vertical popup/dropdown menu in a single pass to determine which margin  ;       columns (icon, checkmark, submenu arrow) must be reserved across all sibling items.  ; Output: Bitmask combination of #SMI_Content_HasImage, #SMI_Content_HasSubMenu, and #SMI_Content_HasCheckmark.  ;  Protected LastItem, Counter, Flags = 0, CachedCount = 0  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  LastItem = SMI_GetLastMenuItem(hMenu)  If LastItem < 0    ProcedureReturn 0  EndIf  ;  PushListPosition(MenuItemData())  ; Fast path: scan already-cached MenuItemData() records without issuing Win32 GetMenuItemInfo_ calls  ForEach MenuItemData()    If MenuItemData()\ParentMenuHandle = hMenu      CachedCount + 1      If MenuItemData()\MenuItemImgHandle        Flags | #SMI_Content_HasImage      EndIf      If MenuItemData()\MenuItemState & #MF_CHECKED        Flags | #SMI_Content_HasCheckmark      EndIf    EndIf  Next  ;  For Counter = 0 To LastItem    If GetSubMenu_(hMenu, Counter)      Flags | #SMI_Content_HasSubMenu    EndIf    If CachedCount <= LastItem      ; Fallback if some items of hMenu were not yet registered in MenuItemData()      SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION, 0, #False)      If MenuItemData()\MenuItemImgHandle        Flags | #SMI_Content_HasImage      EndIf      If MenuItemData()\MenuItemState & #MF_CHECKED        Flags | #SMI_Content_HasCheckmark      EndIf    EndIf  Next  PopListPosition(MenuItemData())  ;  ProcedureReturn FlagsEndProcedure;Procedure SMI_HasMenuImage(hMenu)  ;  ; Role: Returns #True if at least one item in 'hMenu' has an associated icon.  ;  ProcedureReturn Bool(SMI_GetMenuContentFlags(hMenu) & #SMI_Content_HasImage)EndProcedure;Procedure SMI_HasMenuSubmenu(hMenu)  ;  ; Role: Returns #True if at least one item in 'hMenu' opens a submenu.  ;  ProcedureReturn Bool(SMI_GetMenuContentFlags(hMenu) & #SMI_Content_HasSubMenu)EndProcedure;Procedure SMI_HasMenuItemChecked(hMenu)  ;  ; Role: Returns #True if at least one item in 'hMenu' is currently checked.  ;  ProcedureReturn Bool(SMI_GetMenuContentFlags(hMenu) & #SMI_Content_HasCheckmark)EndProcedure;Procedure SMI_HasMenuOwnerdrawnItems(hMenu, RecursiveSearch = #False)  ;  ; Role: Checks whether 'hMenu' (and optionally any of its nested submenus) contains  ;       at least one item marked as requiring owner-drawn rendering.  ;  Protected LastItem, Counter, hSubMenu, Result = #False  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  ;  PushListPosition(MenuItemData())  LastItem = SMI_GetLastMenuItem(hMenu)  For Counter = 0 To LastItem    SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION, 0, #False)    If MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn      Result = #True      Break    EndIf    If RecursiveSearch      hSubMenu = GetSubMenu_(hMenu, Counter)      If hSubMenu And SMI_HasMenuOwnerdrawnItems(hSubMenu, #True)        Result = #True        Break      EndIf    EndIf  Next  PopListPosition(MenuItemData())  ;  ProcedureReturn ResultEndProcedure;Declare SMI_OwnerDrawnCallback(hWnd, uMsg, wParam, lParam);Procedure SMI_AttachCallbackToWindow(WindowID)  ;  ; Role: Subclasses 'WindowID' with SMI_OwnerDrawnCallback() if not already installed.  ;  Protected SMI_OldCallBack  ;  If IsWindow(WindowID)    WindowID = WindowID(WindowID)  EndIf  If WindowID And GetProp_(WindowID, "SMI_OldCallBack") = 0    SMI_OldCallBack = SetWindowLongPtr_(WindowID, #GWL_WNDPROC, @SMI_OwnerDrawnCallback())    SetProp_(WindowID, "SMI_ActualCallBack", @SMI_OwnerDrawnCallback())    SetProp_(WindowID, "SMI_OldCallBack", SMI_OldCallBack)    SetProp_(WindowID, "SMI_MustBeinitialized", 1)  EndIfEndProcedure;Procedure SMI_PrepareItemToBeOwnerDrawn(hMenu = #PB_Default, ItemPos = #PB_Default)  ;  ; Role: Marks the target menu item as owner-drawn and, once the program has entered its  ;       event loop, converts all sibling items of the same menu to #MFT_OWNERDRAW.  ;       Before the event loop begins, conversion is deferred until #WM_INITMENU or  ;       #WM_INITMENUPOPUP to avoid redundant intermediate redraws during menu construction.  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed  Protected LastItem, Counter, WindowID  ;  If hMenu <> #PB_Default And ItemPos <> #PB_Default    SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPos, #MF_BYPOSITION, 0, #False)  EndIf  ;  MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn  ;  If MenuItemData()\IsItemOwnerdrawn <> #SMI_Ownerdrawn And IsWindow(EventWindow())    ; Because Windows corrupts layout and theming when mixing standard and owner-drawn items    ; inside the same HMENU, all sibling items in this menu must be switched to owner-drawn mode:    PushListPosition(MenuItemData())    hMenu = MenuItemData()\ParentMenuHandle    LastItem = SMI_GetLastMenuItem(hMenu)    For Counter = 0 To LastItem      SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, Counter, #MF_BYPOSITION, 0, #False)      MenuItemData()\IsItemOwnerdrawn = #SMI_Ownerdrawn      ;      SMI_InitMenuItemInfoData(@MenuItemInfo)      ; hbmpItem MUST be set to #HBMMENU_CALLBACK (or 0) on owner-drawn items; otherwise Windows      ; suppresses #WM_MEASUREITEM and computes width from the icon alone, truncating the text:      MenuItemInfo\fMask    = #MIIM_FTYPE | #MIIM_BITMAP | #MIIM_DATA      MenuItemInfo\fType    = #MFT_OWNERDRAW      MenuItemInfo\hbmpItem = #HBMMENU_CALLBACK      If MenuItemData()\IsItemSeparator        MenuItemInfo\fType | #MFT_SEPARATOR      EndIf      If GetSubMenu_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos)        ; Workaround for a rare (~1 in 200) Windows owner-drawn menu bug where submenu entries        ; (whose ID is -1) permanently stop receiving #WM_DRAWITEM: passing wID = 1 prevents the        ; corruption without altering the actual -1 ID reported by GetMenuItemID_():        MenuItemInfo\fMask | #MIIM_ID        MenuItemInfo\wID = 1      EndIf      MenuItemInfo\dwItemData = @MenuItemData()      SetMenuItemInfo_(MenuItemData()\ParentMenuHandle, MenuItemData()\MenuItemPos, #MF_BYPOSITION, @MenuItemInfo)    Next    PopListPosition(MenuItemData())  EndIf  ;  ; Ensure the host window has the owner-drawn callback installed:  WindowID = SMI_RetrieveMenuWindow(MenuItemData()\ParentMenuHandle)  If WindowID    SMI_AttachCallbackToWindow(WindowID)  EndIfEndProcedure;Declare SMI_FreeMenu(hMenu)Declare SMI_CloseSubMenu();Procedure SMI_OwnerDrawnCallback(hWnd, uMsg, wParam, lParam)  ;  ; Role: Window subclassing callback managing menu initialization, sizing (#WM_MEASUREITEM),  ;       custom rendering (#WM_DRAWITEM), menu bar hover tracking (#WM_NCMOUSEMOVE),  ;       activation state updates (#WM_ACTIVATE), and cleanup on window destruction.  ;  Protected *drawItem.DRAWITEMSTRUCT  Protected *measureItem.MEASUREITEMSTRUCT  Protected *MyMenuItemData.OwnerdrawnMenuItemDataStruct  Protected MenuItemInfo.MENUITEMINFO_Fixed, menuInfo.MENUINFO, mbi.MENUBARINFO  Protected rc.RECT, rc2.RECT, menuItemRect.RECT  Protected Text$, AfterTab$  Protected hDC, ImgAddress, BackColor, TextColor, hBrush, oldFont, icone, hTheme  Protected hMenu, MainMenuHandle, SMI_OldCallBack, ContentFlags, PosTab, TWidth, ImgVerticalMargin  Protected SelectedFont, BackLuminosity, TextLuminosity, Opacity, CoverColor  Protected HasMenuImage, HasCheckedItem, HasSubMenu, Selected, Disabled  Protected BackGroundMustBePainted, TextMustBePainted, KeepTextColorDefault, ApplySelectionEffect  Protected ItemThemePart, ItemHotState, ItemNormalState, ItemBackGround  Protected ItemPos, LastMenuItem, Cont, MouseX, MouseY  Static ItemPosOver = #PB_Default, ItemPosHOTLIGHT = #PB_Default  ;  SMI_OldCallBack = GetProp_(hWnd, "SMI_OldCallBack")  MainMenuHandle = GetMenu_(hWnd)  ;  If GetProp_(hWnd, "SMI_MustBeinitialized") = 1 And IsWindow(EventWindow()) And WindowID(EventWindow()) = hWnd    ; Before WindowEvent() or WaitWindowEvent() runs for the first time, EventWindow() is invalid.    ; Testing IsWindow(EventWindow()) detects the exact start of the main event loop.    ; Because PureBasic sends #WM_INITMENU during CreateMenu() before our callback is attached,    ; we resend it here once the main loop begins so the menu bar gets properly initialized:    If MainMenuHandle      SetProp_(hWnd, "SMI_MustBeinitialized", 2)      SendMessage_(hWnd, #WM_INITMENU, MainMenuHandle, 0)    Else      SetProp_(hWnd, "SMI_MustBeinitialized", 0)    EndIf  EndIf  ;  Select uMsg    Case #WM_DESTROY      ; Free all custom menu allocations when the host window is destroyed:      If MainMenuHandle        SMI_FreeMenu(MainMenuHandle)      EndIf      ;    Case #WM_NCDESTROY      ; Restore the previous window procedure (if still at the top of the chain) and remove properties:      If SMI_OldCallBack And GetWindowLongPtr_(hWnd, #GWL_WNDPROC) = @SMI_OwnerDrawnCallback()        SetWindowLongPtr_(hWnd, #GWL_WNDPROC, SMI_OldCallBack)      EndIf      RemoveProp_(hWnd, "SMI_ActualCallBack")      RemoveProp_(hWnd, "SMI_OldCallBack")      RemoveProp_(hWnd, "SMI_MustBeinitialized")      If SMI_OldCallBack        ProcedureReturn CallWindowProc_(SMI_OldCallBack, hWnd, uMsg, wParam, lParam)      EndIf      ProcedureReturn 0      ;    Case #WM_INITMENU, #WM_INITMENUPOPUP      ; Convert items scheduled for owner-drawing just before the menu is displayed for the first time,      ; avoiding redundant intermediate redraws while menu items are still being configured:      hMenu = wParam      If SMI_HasMenuOwnerdrawnItems(hMenu)        SMI_PrepareItemToBeOwnerDrawn(hMenu, 0)        BackColor = #PB_Default        CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)          ; ApplyColorThemes.pbi compatibility: paint the menu background with the active preset color          If ListSize(InterfaceColorPresets()) > 0            BackColor = GetRealColorFromType("BackgroundColor", InterfaceColorPresets()\BackgroundColor)          EndIf        CompilerElseIf Defined(ObjectTheme, #PB_Module)          ; ObjectTheme.pbi compatibility: paint the menu background with the active theme color          BackColor = ObjectTheme::GetObjectThemeAttribute(0, #PB_Gadget_BackColor)        CompilerEndIf        If BackColor <> #PB_Default          #MIM_BACKGROUND = $2          ; Delete any previously assigned background brush on hMenu before setting the new one:          menuInfo\cbSize = SizeOf(MENUINFO)          menuInfo\fMask  = #MIM_BACKGROUND          If GetMenuInfo_(hMenu, @menuInfo) And menuInfo\hbrBack            DeleteObject_(menuInfo\hbrBack)          EndIf          menuInfo\hbrBack = CreateSolidBrush_(BackColor)          SetMenuInfo_(hMenu, @menuInfo)        EndIf        If hMenu = MainMenuHandle And GetProp_(hWnd, "SMI_MustBeinitialized")          DrawMenuBar_(hWnd)        EndIf      EndIf      SetProp_(hWnd, "SMI_MustBeinitialized", 0)      ;    Case #WM_ACTIVATE      ; Redraw the main menu bar when the window activation state changes so it grays or ungrays properly:      If MainMenuHandle        DrawMenuBar_(hWnd)      EndIf      ;    Case #WM_MEASUREITEM      If lParam        *measureItem = lParam        If *measureItem\CtlType = #ODT_MENU And *measureItem\itemData          *MyMenuItemData = *measureItem\itemData          hMenu = *MyMenuItemData\ParentMenuHandle          If hMenu            If *MyMenuItemData\IsItemSeparator = #False              ; Measure the item text width using its custom font or the system menu font:              Text$ = PeekS(*MyMenuItemData\MenuItemTextPtr)              If IsFont(*MyMenuItemData\MenuItemFont)                TWidth = GetTextWidthInWindowContext(hWnd, *MyMenuItemData\MenuItemFont, Text$)              Else                TWidth = GetTextWidthInWindowContext(hWnd, DefaultMenuFont, Text$)              EndIf              ;              If SMI_ShowSelectionMethod & #SMI_SSW_Bullet                TWidth + DesktopScaledX(#SMI_MenuBulletSize)              EndIf              ;              If hMenu = MainMenuHandle                ; Horizontal menu bar: each item reserves space only for its own icon or checkmark                HasMenuImage   = Bool(*MyMenuItemData\MenuItemImgHandle <> 0)                HasCheckedItem = Bool(*MyMenuItemData\MenuItemState & #MF_CHECKED)                HasSubMenu     = #False                TWidth + DesktopScaledX(6) ; Left + Right margins for menu bar items              Else                ; Vertical dropdown or popup menu: align all sibling items consistently in one pass                ContentFlags   = SMI_GetMenuContentFlags(hMenu)                HasMenuImage   = Bool(ContentFlags & #SMI_Content_HasImage)                HasSubMenu     = Bool(ContentFlags & #SMI_Content_HasSubMenu)                HasCheckedItem = Bool(ContentFlags & #SMI_Content_HasCheckmark)                TWidth + DesktopScaledX(18) ; Left + Right margins for vertical menu items              EndIf              ;              If HasMenuImage                TWidth + GetSystemMetrics_(#SM_CXSMICON) + DesktopScaledX(5)              EndIf              If HasSubMenu                ; Reserve room on the right for the submenu arrow glyph:                TWidth + DesktopScaledX(25)              EndIf              If HasCheckedItem                TWidth + DesktopScaledX(15)                If SMI_ShowSelectionMethod & #SMI_SSW_Bullet                  TWidth + DesktopScaledX(#SMI_MenuBulletSize)                EndIf              EndIf              If FindString(Text$, #TAB$)                TWidth + DesktopScaledX(15)              EndIf              ;              *measureItem\itemWidth  = TWidth              *measureItem\itemHeight = GetSystemMetrics_(#SM_CYMENU) + 2            Else              ; Dimensions for a horizontal separator line:              *measureItem\itemWidth  = DesktopScaledX(10)              *measureItem\itemHeight = DesktopScaledY(8)            EndIf          EndIf ; End of valid hMenu check        EndIf      EndIf      ;    Case #WM_DRAWITEM      ;- Callback: #WM_DRAWITEM      If lParam        *drawItem = lParam        If *drawItem\CtlType = #ODT_MENU And *drawItem\itemData          ; _________________________________________          ;          ;              Layout settings          ;          hMenu = *drawItem\hwndItem          *MyMenuItemData = *drawItem\itemData          ImgVerticalMargin = (GetSystemMetrics_(#SM_CYMENU) - GetSystemMetrics_(#SM_CYSMICON)) / 2          ;          If *drawItem\itemState & #ODS_SELECTED Or *drawItem\itemState & #ODS_HOTLIGHT Or (hMenu = MainMenuHandle And ItemPosHOTLIGHT = *MyMenuItemData\MenuItemPos)            If hMenu = MainMenuHandle And ItemPosHOTLIGHT <> *MyMenuItemData\MenuItemPos              ItemPosHOTLIGHT = #PB_Default            EndIf            Selected = 1          EndIf          If (hMenu = MainMenuHandle And GetActiveWindow_() <> hWnd) Or (*drawItem\itemState & #ODS_GRAYED)            Disabled = 1            Selected = 0          EndIf          ;          Text$ = PeekS(*MyMenuItemData\MenuItemTextPtr)          ImgAddress = *MyMenuItemData\MenuItemImgHandle          If *MyMenuItemData\IsItemSeparator            ; Menu separators must never show hover selection or disabled dimming:            Selected = 0            Disabled = 0          ElseIf Text$ = ""            Disabled = 0          EndIf          ;          hDC = *drawItem\hdc          rc = *drawItem\rcItem          hTheme = OpenThemeData_(#Null, @"MENU")          If hTheme            If hMenu = MainMenuHandle              ItemThemePart   = #MENU_BARITEM              ItemBackGround  = #MENU_BARBACKGROUND              ItemHotState    = #MBI_HOT              ItemNormalState = #MBI_NORMAL            Else              ItemThemePart   = #MENU_POPUPITEM              ItemBackGround  = #MENU_POPUPBACKGROUND              ItemHotState    = #MPI_HOT              ItemNormalState = #MPI_NORMAL            EndIf          Else            ContentFlags = 0          EndIf          If hMenu <> MainMenuHandle            ContentFlags = SMI_GetMenuContentFlags(hMenu)          EndIf          ;          If IsFont(*MyMenuItemData\MenuItemFont)            SelectedFont = FontID(*MyMenuItemData\MenuItemFont)          Else            SelectedFont = FontID(DefaultMenuFont)          EndIf          oldFont = SelectObject_(hDC, SelectedFont)          ;          ; _________________________________________          ;          ; Define colors for text and background:          ;          BackGroundMustBePainted = 1          TextMustBePainted = 1          KeepTextColorDefault = 1          ;          BackColor = *MyMenuItemData\MenuItemBackColor          If BackColor = #PB_Default            CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)              If ListSize(InterfaceColorPresets()) > 0                BackColor = GetRealColorFromType("BackgroundColor", InterfaceColorPresets()\BackgroundColor)              EndIf            CompilerElseIf Defined(ObjectTheme, #PB_Module)              BackColor = ObjectTheme::GetObjectThemeAttribute(0, #PB_Gadget_BackColor)            CompilerEndIf            If BackColor = #PB_Default              If hTheme                ; BackGroundMustBePainted becomes 0 (#S_OK) when DrawThemeBackground_ succeeds:                BackGroundMustBePainted = DrawThemeBackground_(hTheme, hDC, ItemBackGround, ItemNormalState, @rc, 0)                If GetThemeColor_(hTheme, ItemThemePart, ItemNormalState, #TMT_FILLCOLOR, @BackColor) <> #S_OK                  ; Fallback: sample the center pixel of the newly drawn theme background                  BackColor = GetPixel_(hDC, (rc\left + rc\right) / 2, (rc\top + rc\bottom) / 2)                EndIf              EndIf              If BackColor = #PB_Default                If hMenu = MainMenuHandle                  BackColor = GetSysColor_(#COLOR_MENUBAR)                Else                  BackColor = GetSysColor_(#COLOR_MENU)                EndIf              EndIf            EndIf          EndIf          ;          TextColor = *MyMenuItemData\MenuItemTextColor          If TextColor = #PB_Default            CompilerIf Defined(SetGadgetsColorsFromTheme, #PB_Procedure)              If ListSize(InterfaceColorPresets()) > 0                TextColor = GetRealColorFromType("TextColor", InterfaceColorPresets()\TextColor)                KeepTextColorDefault = 0              EndIf            CompilerElseIf Defined(ObjectTheme, #PB_Module)              TextColor = ObjectTheme::GetObjectThemeAttribute(#PB_GadgetType_Button, #PB_Gadget_FrontColor)            CompilerEndIf            If TextColor = #PB_Default              If hTheme = 0 Or GetThemeColor_(hTheme, ItemThemePart, ItemNormalState, #TMT_TEXTCOLOR, @TextColor) <> #S_OK                TextColor = GetSysColor_(#COLOR_MENUTEXT)              EndIf            EndIf          EndIf          ;          ; Perceived luminance based on standard human color sensitivity:          TextLuminosity = Red(TextColor) * 0.299 + Green(TextColor) * 0.587 + Blue(TextColor) * 0.114          BackLuminosity = Red(BackColor) * 0.299 + Green(BackColor) * 0.587 + Blue(BackColor) * 0.114          ;          ; _________________________________________          ;          ; Paint the background if not already painted by DrawThemeBackground_:          ;          If BackGroundMustBePainted <> #S_OK            hBrush = CreateSolidBrush_(BackColor)            FillRect_(hDC, @rc, hBrush)            DeleteObject_(hBrush)          EndIf          ;          ; _________________________________________          ;          ; Shade the background (optional):          ;          If Selected And (SMI_ShowSelectionMethod & #SMI_SSW_ShadeBackground)            If BackLuminosity > 128              CoverColor = #Black              Opacity = 40              TextColor = #Black            Else              CoverColor = #White              Opacity = 60              TextColor = #White            EndIf            DrawTransparentRectangle(hDC, @rc, CoverColor, Opacity)          EndIf          ;          ; _________________________________________          ;          ; Draw selection borders (optional):          ;          If Selected And (SMI_ShowSelectionMethod & #SMI_SSW_Borders)            hBrush = CreateSolidBrush_(GetSysColor_(#COLOR_HIGHLIGHT))            FrameRect_(hDC, @rc, hBrush)            DeleteObject_(hBrush)          EndIf          ;          ; _________________________________________          ;          ; Draw the horizontal line if the item is a separator:          ;          If *MyMenuItemData\IsItemSeparator            If *MyMenuItemData\MenuItemTextColor <> #PB_Default              hBrush = CreateSolidBrush_(*MyMenuItemData\MenuItemTextColor)            ElseIf BackLuminosity > 128              hBrush = CreateSolidBrush_($A0A0A0)            Else              hBrush = CreateSolidBrush_($505050)            EndIf            rc2 = rc            rc2\top    = (rc2\top + rc2\bottom) / 2            rc2\bottom = rc2\top + 1            rc2\left   + DesktopScaledX(7)            rc2\right  - DesktopScaledX(7)            FillRect_(hDC, @rc2, hBrush)            DeleteObject_(hBrush)          EndIf          ;          ; _________________________________________          ;          ; Apply hot-highlight state when #SMI_SSW_SystemColor is active:          ;          If Selected And (SMI_ShowSelectionMethod & #SMI_SSW_SystemColor)            ApplySelectionEffect = 1            If hTheme And (*MyMenuItemData\MenuItemBackColor = #PB_Default Or BackLuminosity > 128)              ApplySelectionEffect = DrawThemeBackground_(hTheme, hDC, ItemThemePart, ItemHotState, @rc, 0)            EndIf            If ApplySelectionEffect <> #S_OK              If BackLuminosity < 128                Opacity = 150              ElseIf hMenu = MainMenuHandle                Opacity = 40              Else                Opacity = 100              EndIf              CoverColor = GetSysColor_(#COLOR_HIGHLIGHT)              DrawTransparentRectangle(hDC, @rc, CoverColor, Opacity)            EndIf          EndIf          ;          ; _________________________________________          ;          ; Draw a checkmark (optional):          ;          If *MyMenuItemData\MenuItemState & #MF_CHECKED            rc2 = rc            rc2\left  + DesktopScaledX(3)            rc2\right = rc2\left + DesktopScaledX(16)            DrawCheckmark(hDC, @rc2, DesktopScaledX(10), TextColor)          EndIf          If (*MyMenuItemData\MenuItemState & #MF_CHECKED) Or (hMenu <> MainMenuHandle And (ContentFlags & #SMI_Content_HasCheckmark))            rc\left + DesktopScaledX(18)          EndIf          ;          ; _________________________________________          ;          ; Draw a selection bullet (optional):          ;          If *MyMenuItemData\IsItemSeparator = #False            If SMI_ShowSelectionMethod & #SMI_SSW_Bullet              rc\left + DesktopScaledX(5)              If Selected                DrawRightPointingTriangle(hDC, @rc, DesktopScaledX(#SMI_MenuBulletSize), TextColor, BackColor)                rc\left + DesktopScaledX(#SMI_MenuBulletSize + 5)              Else                rc\left + DesktopScaledX(#SMI_MenuBulletSize + 5) / 2              EndIf            ElseIf hMenu = MainMenuHandle              rc\left + DesktopScaledX(8)            Else              rc\left + DesktopScaledX(6)            EndIf          EndIf          ;          ; _________________________________________          ;          ; Draw an icon (optional):          ;          If ImgAddress            icone = CreateIconFromImage(ImgAddress)            If icone              DrawIconEx_(hDC, rc\left, rc\top + ImgVerticalMargin, icone, 0, 0, 0, #Null, #DI_NORMAL)              DestroyIcon_(icone)            EndIf          EndIf          If ImgAddress Or (hMenu <> MainMenuHandle And (ContentFlags & #SMI_Content_HasImage))            rc\left + GetSystemMetrics_(#SM_CXSMICON) + DesktopScaledX(5)          EndIf          ;          ; _________________________________________          ;          ; Draw the item text:          ;          rc\left + DesktopScaledX(2)          PosTab = FindString(Text$, #TAB$)          If PosTab            AfterTab$ = Mid(Text$, PosTab + 1)            Text$ = Left(Text$, PosTab - 1)            rc\right - DesktopScaledX(7)          EndIf          ; Always synchronize hDC text color so Windows' native submenu arrow adopts TextColor:          SetTextColor_(hDC, TextColor)          SetBkMode_(hDC, #TRANSPARENT)          If hTheme And *MyMenuItemData\MenuItemTextColor = #PB_Default And KeepTextColorDefault            TextMustBePainted = DrawThemeText_(hTheme, hDC, ItemThemePart, ItemNormalState, @Text$, Len(Text$), #DT_LEFT | #DT_VCENTER | #DT_SINGLELINE, 0, @rc)            If TextMustBePainted = #S_OK And AfterTab$              DrawThemeText_(hTheme, hDC, ItemThemePart, ItemNormalState, @AfterTab$, Len(AfterTab$), #DT_RIGHT | #DT_VCENTER | #DT_SINGLELINE, 0, @rc)            EndIf          EndIf          If TextMustBePainted <> #S_OK            DrawText_(hDC, Text$, Len(Text$), @rc, #DT_LEFT | #DT_VCENTER | #DT_SINGLELINE)            If AfterTab$              DrawText_(hDC, AfterTab$, Len(AfterTab$), @rc, #DT_RIGHT | #DT_VCENTER | #DT_SINGLELINE)            EndIf          EndIf          ;          ; _________________________________________          ;          ; Dim the item if disabled or hosted on an inactive menu bar:          ;          If Disabled            If BackLuminosity > 128              CoverColor = #White            Else              CoverColor = #Black            EndIf            rc = *drawItem\rcItem            DrawTransparentRectangle(hDC, @rc, CoverColor, 128)          EndIf          ;          If oldFont            SelectObject_(hDC, oldFont)          EndIf          If hTheme            CloseThemeData_(hTheme)          EndIf        EndIf ; End of #ODT_MENU drawing      EndIf      ;    Case #WM_NCMOUSEMOVE      ; Owner-drawn menu bar items do not receive native modern hover tracking from Windows.      ; Track the screen cursor across the menu bar and trigger DrawMenuBar_() on item transitions:      If MainMenuHandle        ; Extract signed 16-bit screen coordinates safely on both x86 and x64 (including multi-monitor negative coords):        MouseX = PeekW(@lParam)        MouseY = PeekW(@lParam + 2)        mbi\cbSize = SizeOf(MENUBARINFO)        If GetMenuBarInfo_(hWnd, $FFFFFFFD, 0, @mbi) And MouseX >= mbi\rcBar\left And MouseX < mbi\rcBar\right And MouseY >= mbi\rcBar\top And MouseY < mbi\rcBar\bottom          ; Cursor is inside the menu bar rectangle (#OBJID_MENU = $FFFFFFFD):          Cont = 1          If ItemPosOver <> #PB_Default And GetMenuItemRect_(hWnd, MainMenuHandle, ItemPosOver, @menuItemRect)            If MouseX >= menuItemRect\left And MouseX < menuItemRect\right And MouseY >= menuItemRect\top And MouseY < menuItemRect\bottom              ; Cursor is still hovering over the same menu bar item:              Cont = 0            EndIf          EndIf          If Cont            LastMenuItem = SMI_GetLastMenuItem(MainMenuHandle)            Cont = 0            For ItemPos = 0 To LastMenuItem              If ItemPos <> ItemPosOver And GetMenuItemRect_(hWnd, MainMenuHandle, ItemPos, @menuItemRect)                If MouseX >= menuItemRect\left And MouseX < menuItemRect\right And MouseY >= menuItemRect\top And MouseY < menuItemRect\bottom                  ItemPosOver = ItemPos                  Cont = 1                  SMI_InitMenuItemInfoData(@MenuItemInfo)                  MenuItemInfo\fMask = #MIIM_FTYPE                  GetMenuItemInfo_(MainMenuHandle, ItemPos, #MF_BYPOSITION, @MenuItemInfo)                  If MenuItemInfo\fType & #MFT_OWNERDRAW                    ItemPosHOTLIGHT = ItemPos                    DrawMenuBar_(hWnd)                  ElseIf ItemPosHOTLIGHT > #PB_Default                    ItemPosHOTLIGHT = #PB_Default                    DrawMenuBar_(hWnd)                  EndIf                  Break                EndIf              EndIf            Next            If Cont = 0              ; Cursor is over the empty right-hand background of the menu bar beyond the last item:              ItemPosOver = #PB_Default              If ItemPosHOTLIGHT > #PB_Default                ItemPosHOTLIGHT = #PB_Default                DrawMenuBar_(hWnd)              EndIf            EndIf          EndIf        Else          ItemPosOver = #PB_Default          If ItemPosHOTLIGHT > #PB_Default            ItemPosHOTLIGHT = #PB_Default            DrawMenuBar_(hWnd)          EndIf        EndIf      EndIf ; End of #WM_NCMOUSEMOVE menu bar tracking      ;    Case #WM_MOUSEMOVE, #WM_NCLBUTTONDOWN      ; Clear any lingering menu bar hover highlight when the cursor enters the client area or clicks:      ItemPosOver = #PB_Default      If ItemPosHOTLIGHT > #PB_Default        ItemPosHOTLIGHT = #PB_Default        DrawMenuBar_(hWnd)      EndIf  EndSelect  ;  If SMI_OldCallBack    ProcedureReturn CallWindowProc_(SMI_OldCallBack, hWnd, uMsg, wParam, lParam)  EndIf  ProcedureReturn DefWindowProc_(hWnd, uMsg, wParam, lParam)EndProcedure;Procedure SMI_RedrawMenuIfMainMenu(hMenu)  ;  ; Role: Redraws the window menu bar if 'hMenu' is the main menu of its host window  ;       and the program has already entered its main event loop.  ;  Protected WindowID  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  If hMenu And IsWindow(EventWindow())    WindowID = SMI_RetrieveMenuWindow(hMenu)    If WindowID = 0      WindowID = WindowID(EventWindow())    EndIf    If WindowID And GetMenu_(WindowID) = hMenu      DrawMenuBar_(WindowID)      ProcedureReturn #True    EndIf  EndIf  ProcedureReturn #FalseEndProcedure;Procedure SMI_ResizeMenu(hMenu, RecursiveSearch = #False)  ;  ; Role: Forces Windows to resend #WM_MEASUREITEM to all owner-drawn items in 'hMenu'  ;       (and optionally its submenus) after an icon, font, text, or checkmark change.  ;       Setting fMask = #MIIM_BITMAP with hbmpItem = #HBMMENU_CALLBACK triggers a re-measure.  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed  Protected LastMenuItem, Counter, hSubMenu, IsOwnerDrawn  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  ;  If hMenu And IsWindow(EventWindow())    LastMenuItem = SMI_GetLastMenuItem(hMenu)    IsOwnerDrawn = SMI_HasMenuOwnerdrawnItems(hMenu)    If IsOwnerDrawn      SMI_InitMenuItemInfoData(@MenuItemInfo)      MenuItemInfo\fMask    = #MIIM_BITMAP      MenuItemInfo\hbmpItem = #HBMMENU_CALLBACK    EndIf    For Counter = 0 To LastMenuItem      If IsOwnerDrawn        SetMenuItemInfo_(hMenu, Counter, #MF_BYPOSITION, @MenuItemInfo)      EndIf      If RecursiveSearch        hSubMenu = GetSubMenu_(hMenu, Counter)        If hSubMenu          SMI_ResizeMenu(hSubMenu, #True)        EndIf      EndIf    Next    SMI_RedrawMenuIfMainMenu(hMenu)    ProcedureReturn #True  EndIf  ProcedureReturn #FalseEndProcedure;; *****************************************************************************;;-                         4. LIBRARY NEW FUNCTIONS;;          Functions added to the native set of PureBasic functions;; *****************************************************************************;Procedure ApplyThemesToMenu(hMenu, RecursiveSearch = #True)  ;  ; Role: Forces 'hMenu' (and optionally its submenus) into owner-drawn mode even if none  ;       of its items define a custom font or color, allowing external theme libraries  ;       ('ObjectTheme.pbi' or 'ApplyColorThemes.pbi') to style the menu.  ;  Protected LastMenuItem, Counter, hSubMenu  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  ;  If hMenu    LastMenuItem = SMI_GetLastMenuItem(hMenu)    For Counter = 0 To LastMenuItem      SMI_PrepareItemToBeOwnerDrawn(hMenu, Counter)      If RecursiveSearch        hSubMenu = GetSubMenu_(hMenu, Counter)        If hSubMenu          ApplyThemesToMenu(hSubMenu, #True)        EndIf      EndIf    Next    SMI_RedrawMenuIfMainMenu(hMenu)    ProcedureReturn #True  EndIf  ProcedureReturn #FalseEndProcedure;Procedure SetMenuItemImage(hMenu, ItemPosOrIdOrSubmenuHandle, ItemImage, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Assigns, replaces, or clears (when 'ItemImage' is 0) the icon of a menu item.  ; Parameters: ItemImage - PureBasic image number, OS HBITMAP handle, 0 to remove, or #PB_Default to ignore.  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed  Protected ItemPos, Result = #False  ;  If ItemImage <> #PB_Default    PushListPosition(MenuItemData())    ;    hMenu = SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)    If IsImage(ItemImage)      ItemImage = ImageID(ItemImage)    EndIf    ;    If hMenu      If IsImage(MenuItemData()\MenuItemImgNum)        FreeImage(MenuItemData()\MenuItemImgNum)      EndIf      MenuItemData()\MenuItemImgNum    = 0      MenuItemData()\MenuItemImgHandle = 0      ;      If ItemImage        MenuItemData()\MenuItemImgNum = ResizeImageToIconSize(ItemImage)        If MenuItemData()\MenuItemImgNum          MenuItemData()\MenuItemImgHandle = ImageID(MenuItemData()\MenuItemImgNum)        EndIf      EndIf      ;      If MenuItemData()\IsItemOwnerdrawn = #SMI_NOT_Ownerdrawn        ; Standard Windows item: register the bitmap via SetMenuItemInfo_ (redrawn automatically)        SMI_InitMenuItemInfoData(@MenuItemInfo)        MenuItemInfo\fMask    = #MIIM_BITMAP        MenuItemInfo\hbmpItem = MenuItemData()\MenuItemImgHandle        SetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)      ElseIf MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn        ; Owner-drawn item: force Windows to re-measure and redraw the menu        SMI_ResizeMenu(hMenu)      EndIf      Result = #True    EndIf    ;    PopListPosition(MenuItemData())  EndIf  ProcedureReturn ResultEndProcedure;Procedure SetMenuTitleImage(hMenu, ItemPosOrSubmenuHandle, ItemImage)  ;  ; Role: Assigns, replaces, or clears the icon of a menu title by 0-based position or submenu handle.  ;  ProcedureReturn SetMenuItemImage(hMenu, ItemPosOrSubmenuHandle, ItemImage, #MF_BYPOSITION)EndProcedure;Procedure GetMenuItemImage(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Returns the OS HBITMAP handle of the icon associated with a menu item, or 0 if none.  ;  Protected Result = 0  ;  PushListPosition(MenuItemData())  If SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)    Result = MenuItemData()\MenuItemImgHandle  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure GetMenuTitleImage(hMenu, ItemPosOrSubmenuHandle)  ;  ; Role: Returns the OS HBITMAP handle of the icon associated with a menu title, or 0 if none.  ;  ProcedureReturn GetMenuItemImage(hMenu, ItemPosOrSubmenuHandle, #MF_BYPOSITION)EndProcedure;Procedure SetMenuItemColor(hMenu, ItemPosOrIdOrSubmenuHandle, ColorType, ItemColor, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Sets the foreground (#PB_Gadget_FrontColor) or background (#PB_Gadget_BackColor) color  ;       of a menu item and switches its parent menu to owner-drawn mode.  ;  Protected ItemPos, Result = #False  ;  PushListPosition(MenuItemData())  hMenu = SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)  If hMenu    SMI_PrepareItemToBeOwnerDrawn()    If ColorType = #PB_Gadget_FrontColor      MenuItemData()\MenuItemTextColor = ItemColor    Else      MenuItemData()\MenuItemBackColor = ItemColor    EndIf    SMI_RedrawMenuIfMainMenu(hMenu)    Result = #True  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure SetMenuTitleColor(hMenu, ItemPosOrSubmenuHandle, ColorType, ItemColor)  ;  ; Role: Sets the foreground or background color of a menu title by 0-based position or submenu handle.  ;  ProcedureReturn SetMenuItemColor(hMenu, ItemPosOrSubmenuHandle, ColorType, ItemColor, #MF_BYPOSITION)EndProcedure;Procedure GetMenuItemColor(hMenu, ItemPosOrIdOrSubmenuHandle, ColorType, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Returns the foreground or background color assigned to a menu item, or #PB_Default if none.  ;  Protected Result = #PB_Default  ;  PushListPosition(MenuItemData())  If SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)    If ColorType = #PB_Gadget_FrontColor      Result = MenuItemData()\MenuItemTextColor    Else      Result = MenuItemData()\MenuItemBackColor    EndIf  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure GetMenuTitleColor(hMenu, ItemPosOrSubmenuHandle, ColorType)  ;  ; Role: Returns the foreground or background color assigned to a menu title, or #PB_Default if none.  ;  ProcedureReturn GetMenuItemColor(hMenu, ItemPosOrSubmenuHandle, ColorType, #MF_BYPOSITION)EndProcedure;Procedure SetMenuColor(hMenu, ColorType, ItemColor, RecursiveSearch = #True)  ;  ; Role: Applies a foreground or background color to all existing items in 'hMenu'  ;       (and recursively to its submenus when 'RecursiveSearch' is #True).  ;  Protected LastItem, Counter, hSubMenu  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  LastItem = SMI_GetLastMenuItem(hMenu)  For Counter = 0 To LastItem    SetMenuItemColor(hMenu, Counter, ColorType, ItemColor, #MF_BYPOSITION)    If RecursiveSearch      hSubMenu = GetSubMenu_(hMenu, Counter)      If hSubMenu        SetMenuColor(hSubMenu, ColorType, ItemColor, #True)      EndIf    EndIf  NextEndProcedure;Procedure SetMenuItemFont(hMenu, ItemPosOrIdOrSubmenuHandle, Font, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Assigns a PureBasic font number (or #PB_Default) to a menu item, switches its parent  ;       menu to owner-drawn mode, and triggers a menu re-measure.  ;  Protected ItemPos, Result = #False  ;  PushListPosition(MenuItemData())  hMenu = SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)  If hMenu    SMI_PrepareItemToBeOwnerDrawn()    MenuItemData()\MenuItemFont = Font    SMI_ResizeMenu(hMenu)    Result = #True  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure SetMenuTitleFont(hMenu, ItemPosOrSubmenuHandle, Font)  ;  ; Role: Assigns a PureBasic font number (or #PB_Default) to a menu title by 0-based position or submenu handle.  ;  ProcedureReturn SetMenuItemFont(hMenu, ItemPosOrSubmenuHandle, Font, #MF_BYPOSITION)EndProcedure;Procedure GetMenuItemFont(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Returns the PureBasic font number assigned to a menu item, or #PB_Default if none.  ;  Protected Result = #PB_Default  ;  PushListPosition(MenuItemData())  If SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)    Result = MenuItemData()\MenuItemFont  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure GetMenuTitleFont(hMenu, ItemPosOrSubmenuHandle)  ;  ; Role: Returns the PureBasic font number assigned to a menu title, or #PB_Default if none.  ;  ProcedureReturn GetMenuItemFont(hMenu, ItemPosOrSubmenuHandle, #MF_BYPOSITION)EndProcedure;Procedure SetMenuFont(hMenu, Font, RecursiveSearch = #True)  ;  ; Role: Applies a PureBasic font to all existing items in 'hMenu'  ;       (and recursively to its submenus when 'RecursiveSearch' is #True).  ;  Protected LastItem, Counter, hSubMenu  ;  If IsMenu(hMenu)    hMenu = MenuID(hMenu)  EndIf  LastItem = SMI_GetLastMenuItem(hMenu)  For Counter = 0 To LastItem    SetMenuItemFont(hMenu, Counter, Font, #MF_BYPOSITION)    If RecursiveSearch      hSubMenu = GetSubMenu_(hMenu, Counter)      If hSubMenu        SetMenuFont(hSubMenu, Font, #True)      EndIf    EndIf  NextEndProcedure;Procedure CheckMenuItem(hMenu, ItemPosOrIdOrSubmenuHandle, State = #True, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Sets or clears the checkmark state of a menu item and resizes owner-drawn menus accordingly.  ;  Protected ItemPos, Result = #False  ;  PushListPosition(MenuItemData())  hMenu = SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)  If hMenu    If State      MenuItemData()\MenuItemState | #MF_CHECKED      CheckMenuItem_(hMenu, ItemPos, #MF_BYPOSITION | #MF_CHECKED)    Else      MenuItemData()\MenuItemState & ~#MF_CHECKED      CheckMenuItem_(hMenu, ItemPos, #MF_BYPOSITION | #MF_UNCHECKED)    EndIf    SMI_ResizeMenu(hMenu)    Result = #True  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure IsMenuItemChecked(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Returns #True if the specified menu item is currently checked, or #False otherwise.  ;  Protected Result = #False  ;  PushListPosition(MenuItemData())  If SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)    Result = Bool(MenuItemData()\MenuItemState & #MF_CHECKED)  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;;; *****************************************************************************;;-         5. FUNCTIONS THAT WILL OVERRIDE PUREBASIC NATIVE FUNCTIONS;; *****************************************************************************;Procedure SMI_AccessCurrentMenu(*MenuNum.Integer, *MenuHandle.Integer, SetValues = #False)  ;  ; Role: Reads or updates the PureBasic menu number and current HMENU container tracked  ;       implicitly across CreateMenu(), MenuTitle(), OpenSubMenu(), MenuItem(), and CloseSubMenu().  ; Parameters: *MenuNum    - Optional integer pointer to read or write the active PureBasic menu number.  ;             *MenuHandle - Optional integer pointer to read or write the active menu/submenu HMENU.  ;             SetValues   - Updates stored state when #True; reads current state when #False.  ;  Static CurrentMenuNum = #PB_Default, CurrentMenuHandle = 0  ;  If SetValues    If *MenuNum      CurrentMenuNum = *MenuNum\i    EndIf    If *MenuHandle      CurrentMenuHandle = *MenuHandle\i    EndIf  Else    If *MenuNum      *MenuNum\i = CurrentMenuNum    EndIf    If *MenuHandle      *MenuHandle\i = CurrentMenuHandle    EndIf  EndIfEndProcedure;Procedure.s SMI_GetMenuItemText(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Retrieves the text of any standard or owner-drawn menu item (replacement for GetMenuItemText()).  ;  Protected Result$  ;  PushListPosition(MenuItemData())  If SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle)    If MenuItemData()\MenuItemTextPtr      Result$ = PeekS(MenuItemData()\MenuItemTextPtr)    EndIf  EndIf  PopListPosition(MenuItemData())  ProcedureReturn Result$EndProcedure;Procedure.s SMI_GetMenuTitleText(hMenu, ItemPosOrSubmenuHandle)  ;  ; Role: Retrieves the text of a menu title by 0-based position or submenu handle (replacement for GetMenuTitleText()).  ;  ProcedureReturn SMI_GetMenuItemText(hMenu, ItemPosOrSubmenuHandle, #MF_BYPOSITION)EndProcedure;Procedure SMI_SetMenuItemText(hMenu, ItemPosOrIdOrSubmenuHandle, ItemText$, ByPosOrIdOrSubMenuHandle = #MF_BYCOMMAND)  ;  ; Role: Updates the text of any standard or owner-drawn menu item without losing its icon,  ;       and resizes owner-drawn menus accordingly (replacement for SetMenuItemText()).  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed  Protected ItemPos, Result = #False  ;  PushListPosition(MenuItemData())  hMenu = SMI_RetrieveOrCreateMenuItemDataListElement(hMenu, ItemPosOrIdOrSubmenuHandle, ByPosOrIdOrSubMenuHandle, @ItemPos)  If hMenu    SysFreeString_(MenuItemData()\MenuItemTextPtr)    MenuItemData()\MenuItemTextPtr = SysAllocString_(ItemText$)    ;    If MenuItemData()\IsItemOwnerdrawn = #SMI_NOT_Ownerdrawn      ; Standard Windows item: update text via SetMenuItemInfo_ (redrawn automatically)      SMI_InitMenuItemInfoData(@MenuItemInfo)      MenuItemInfo\fMask      = #MIIM_STRING      MenuItemInfo\dwTypeData = @ItemText$      SetMenuItemInfo_(hMenu, ItemPos, #MF_BYPOSITION, @MenuItemInfo)    ElseIf MenuItemData()\MustBeOwnerdrawn = #SMI_Ownerdrawn      ; Owner-drawn item: force Windows to re-measure and redraw the menu      SMI_ResizeMenu(hMenu)    EndIf    Result = #True  EndIf  PopListPosition(MenuItemData())  ProcedureReturn ResultEndProcedure;Procedure SMI_SetMenuTitleText(hMenu, ItemPosOrSubmenuHandle, ItemText$)  ;  ; Role: Updates the text of a menu title by 0-based position or submenu handle (replacement for SetMenuTitleText()).  ;  ProcedureReturn SMI_SetMenuItemText(hMenu, ItemPosOrSubmenuHandle, ItemText$, #MF_BYPOSITION)EndProcedure;Procedure SMI_CloseSubMenu()  ;  ; Role: Closes the currently open submenu level and restores the parent HMENU as current container  ;       (replacement for CloseSubMenu()).  ; Output: Returns #True if an open submenu level was closed, or #False if already at the root menu.  ;  Protected CurrentMenuNum, CurrentMenuHandle, ParentMenu, ItemPos  ;  SMI_AccessCurrentMenu(@CurrentMenuNum, @CurrentMenuHandle)  If IsMenu(CurrentMenuNum)    If CurrentMenuHandle And MenuID(CurrentMenuNum) <> CurrentMenuHandle      ParentMenu = SMI_GetMenuItemPos(CurrentMenuNum, CurrentMenuHandle, #SMI_SubItemSearch, @ItemPos)      If ParentMenu        CloseSubMenu()        SMI_AccessCurrentMenu(0, @ParentMenu, #True)        ProcedureReturn #True      EndIf    EndIf    ; Already at root (or submenu handle is no longer attached): synchronize handle to root menu    ParentMenu = MenuID(CurrentMenuNum)    SMI_AccessCurrentMenu(0, @ParentMenu, #True)  EndIf  ProcedureReturn #FalseEndProcedure;Procedure SMI_OpenSubMenu(ItemText$, ItemImage)  ;  ; Role: Opens a new submenu level, optionally assigns an icon to its entry, propagates the host  ;       window reference, and inherits owner-drawn mode if active on the parent menu  ;       (replacement for OpenSubMenu()).  ;  Protected CurrentMenuHandle, WindowID, Result  ;  SMI_AccessCurrentMenu(0, @CurrentMenuHandle)  Result = OpenSubMenu(ItemText$)  If Result And CurrentMenuHandle    ; Propagate host WindowID to the newly created submenu so nested items can locate the window:    WindowID = SMI_RetrieveMenuWindow(CurrentMenuHandle)    If WindowID      SMI_SaveMenuWindow(Result, WindowID)    EndIf    If ItemImage <> #PB_Default      SetMenuItemImage(CurrentMenuHandle, Result, ItemImage)    Else      SMI_RetrieveOrCreateMenuItemDataListElement(CurrentMenuHandle, Result)    EndIf    If SMI_HasMenuOwnerdrawnItems(CurrentMenuHandle)      SMI_PrepareItemToBeOwnerDrawn(CurrentMenuHandle, SMI_GetLastMenuItem(CurrentMenuHandle))    EndIf    SMI_AccessCurrentMenu(0, @Result, #True)  EndIf  ProcedureReturn ResultEndProcedure;Procedure SMI_MenuTitle(ItemText$, ItemImage)  ;  ; Role: Closes any open submenu levels and creates a top-level menu title that supports an  ;       optional icon, works in PopupMenus as well, and returns the created submenu HMENU  ;       (replacement for MenuTitle()).  ;  While SMI_CloseSubMenu() : Wend  ProcedureReturn SMI_OpenSubMenu(ItemText$, ItemImage)EndProcedure;Procedure SMI_CreateMenu(MenuNum, WindowID)  ;  ; Role: Intercepts CreateMenu() and CreateImageMenu() to unify both under standard native menus,  ;       close any unclosed submenus, record the active menu handle, and associate 'WindowID'.  ;  Protected Result, CurrentMenuHandle  ;  While SMI_CloseSubMenu() : Wend  ;  If MenuNum = #PB_Any    Result = CreateMenu(#PB_Any, WindowID)    MenuNum = Result  Else    Result = CreateMenu(MenuNum, WindowID)  EndIf  ;  If Result And IsMenu(MenuNum)    CurrentMenuHandle = MenuID(MenuNum)    SMI_AccessCurrentMenu(@MenuNum, @CurrentMenuHandle, #True)    SMI_SaveMenuWindow(CurrentMenuHandle, WindowID)  EndIf  ProcedureReturn ResultEndProcedure;Procedure SMI_CreatePopupMenu(MenuNum)  ;  ; Role: Intercepts CreatePopupMenu() and CreatePopupImageMenu() to unify both under standard  ;       native popup menus, close any unclosed submenus, and record the active menu handle.  ;  Protected Result, CurrentMenuHandle  ;  While SMI_CloseSubMenu() : Wend  ;  If MenuNum = #PB_Any    Result = CreatePopupMenu(#PB_Any)    MenuNum = Result  Else    Result = CreatePopupMenu(MenuNum)  EndIf  ;  If Result And IsMenu(MenuNum)    CurrentMenuHandle = MenuID(MenuNum)    SMI_AccessCurrentMenu(@MenuNum, @CurrentMenuHandle, #True)  EndIf  ProcedureReturn ResultEndProcedure;Procedure SMI_MenuItem(ItemID, ItemText$, ItemImage)  ;  ; Role: Creates a menu item supporting #PB_Any dynamic ID allocation and an optional icon,  ;       inheriting owner-drawn mode if its parent menu is already owner-drawn  ;       (replacement for MenuItem()).  ; Output: Assigned item ID.  ;  Protected CurrentMenuHandle  ;  SMI_AccessCurrentMenu(0, @CurrentMenuHandle)  SMI_CheckID(@ItemID)  MenuItem(ItemID, ItemText$)  ;  If CurrentMenuHandle    If ItemImage <> #PB_Default      SetMenuItemImage(CurrentMenuHandle, ItemID, ItemImage)    Else      SMI_RetrieveOrCreateMenuItemDataListElement(CurrentMenuHandle, ItemID)    EndIf    ; Switch the new item to owner-drawn if its parent menu is already owner-drawn:    If SMI_HasMenuOwnerdrawnItems(CurrentMenuHandle)      SMI_PrepareItemToBeOwnerDrawn(CurrentMenuHandle, SMI_GetLastMenuItem(CurrentMenuHandle))    EndIf  EndIf  ProcedureReturn ItemIDEndProcedure;Procedure SMI_MenuBar(ItemID)  ;  ; Role: Appends a menu separator line with an assigned non-zero ID (required by Windows to send  ;       #WM_DRAWITEM on owner-drawn separators) and registers it in MenuItemData() so it can be  ;       styled by ID or #PB_Default (replacement for MenuBar()).  ; Output: Assigned separator ID.  ;  Protected MenuItemInfo.MENUITEMINFO_Fixed  Protected CurrentMenuHandle, ItemPos  ;  SMI_AccessCurrentMenu(0, @CurrentMenuHandle)  MenuBar()  SMI_CheckID(@ItemID)  ;  If CurrentMenuHandle    ItemPos = SMI_GetLastMenuItem(CurrentMenuHandle)    If ItemPos >= 0      ; A non-zero wID is required by Windows for owner-drawn separator items to receive #WM_DRAWITEM:      SMI_InitMenuItemInfoData(@MenuItemInfo)      MenuItemInfo\fMask = #MIIM_ID      MenuItemInfo\wID   = ItemID      SetMenuItemInfo_(CurrentMenuHandle, ItemPos, #MF_BYPOSITION, @MenuItemInfo)      ;      SMI_RetrieveOrCreateMenuItemDataListElement(CurrentMenuHandle, ItemPos, #MF_BYPOSITION, 0, #False)      MenuItemData()\MenuItemID = ItemID      ; Switch the separator to owner-drawn if its parent menu is already owner-drawn:      If SMI_HasMenuOwnerdrawnItems(CurrentMenuHandle)        SMI_PrepareItemToBeOwnerDrawn(CurrentMenuHandle, ItemPos)      EndIf    EndIf  EndIf  ProcedureReturn ItemIDEndProcedure;Procedure SMI_FreeMenu(hMenu)  ;  ; Role: Recursively frees all custom allocations (resized icons, BSTR strings, background brushes,  ;       and MenuItemData() entries) associated with 'hMenu' and its submenus before freeing the  ;       PureBasic menu object (replacement for FreeMenu()).  ;  #MIM_BACKGROUND = $2  Protected menuInfo.MENUINFO  Protected MenuNum, CurrentMenuNum, CurrentMenuHandle, LastItem, Counter, hSubMenu  ;  If IsMenu(hMenu)    MenuNum = hMenu    hMenu = MenuID(hMenu)  Else    MenuNum = #PB_Default  EndIf  If hMenu = 0    ProcedureReturn  EndIf  ;  ; If freeing the currently active build menu, close open submenus and clear tracked state first:  SMI_AccessCurrentMenu(@CurrentMenuNum, @CurrentMenuHandle)  If IsMenu(CurrentMenuNum) And (MenuNum = CurrentMenuNum Or hMenu = MenuID(CurrentMenuNum))    While SMI_CloseSubMenu() : Wend    CurrentMenuNum    = #PB_Default    CurrentMenuHandle = 0    SMI_AccessCurrentMenu(@CurrentMenuNum, @CurrentMenuHandle, #True)  EndIf  ;  ; Clean all nested submenus first while HMENU handles are still valid:  LastItem = SMI_GetLastMenuItem(hMenu)  For Counter = 0 To LastItem    hSubMenu = GetSubMenu_(hMenu, Counter)    If hSubMenu      SMI_FreeMenu(hSubMenu)    EndIf  Next  ;  ; Delete any custom background brush assigned to hMenu:  menuInfo\cbSize = SizeOf(MENUINFO)  menuInfo\fMask  = #MIM_BACKGROUND  If GetMenuInfo_(hMenu, @menuInfo) And menuInfo\hbrBack    DeleteObject_(menuInfo\hbrBack)    menuInfo\hbrBack = 0    SetMenuInfo_(hMenu, @menuInfo)  EndIf  ;  ; Release all MenuItemData() elements belonging directly to hMenu:  ForEach MenuItemData()    If MenuItemData()\ParentMenuHandle = hMenu      If IsImage(MenuItemData()\MenuItemImgNum)        FreeImage(MenuItemData()\MenuItemImgNum)      EndIf      SysFreeString_(MenuItemData()\MenuItemTextPtr)      DeleteElement(MenuItemData())    EndIf  Next  ;  If MenuNum <> #PB_Default    FreeMenu(MenuNum)  EndIfEndProcedure;Procedure SMI_DisplayPopupMenu(MenuNum, WindowID, X, Y)  ;  ; Role: Associates 'WindowID' with the popup menu, attaches the owner-drawn window callback  ;       if any item in the popup hierarchy is owner-drawn, and displays the popup menu  ;       (replacement for DisplayPopupMenu()).  ;  If IsMenu(MenuNum)    SMI_SaveMenuWindow(MenuID(MenuNum), WindowID)    If SMI_HasMenuOwnerdrawnItems(MenuNum, #True)      SMI_AttachCallbackToWindow(WindowID)    EndIf  EndIf  ;  If X = #PB_Ignore Or Y = #PB_Ignore    ProcedureReturn DisplayPopupMenu(MenuNum, WindowID)  Else    ProcedureReturn DisplayPopupMenu(MenuNum, WindowID, X, Y)  EndIfEndProcedure;; *****************************************************************************;;-                   6. OVERRIDE PUREBASIC NATIVE FUNCTIONS;; The native PureBasic functions dedicated to menu management are not designed; to work in a context where not all menu items are handled the same way; (some being owner-drawn and others not).; They also encounter several issues when an image is assigned to a menu bar item:; â€¢ GetMenuItemText() and GetMenuTitleText() are then unable to retrieve the;   item's text, while SetMenuItemText() and SetMenuTitleText() erase the image;   assigned to the item.; â€¢ Simply displaying a popup menu created with CreatePopupImageMenu() can;   disrupt the main menu's data.;; Consequently, to allow using these functions in the usual way while benefiting; from the additional features of this library, the following native functions; are transparently overridden by the library's implementations.; For example, calling GetMenuItemText() actually invokes SMI_GetMenuItemText().;; *****************************************************************************;Macro GetMenuItemText(MenuNum, Item)  ; Role: Transparently redirects GetMenuItemText() to SMI_GetMenuItemText().  SMI_GetMenuItemText(MenuNum, Item)EndMacro;Macro SetMenuItemText(MenuNum, Item, MenuItemText)  ; Role: Transparently redirects SetMenuItemText() to SMI_SetMenuItemText().  SMI_SetMenuItemText(MenuNum, Item, MenuItemText)EndMacro;Macro GetMenuTitleText(MenuNum, TitlePosOrHandle)  ; Role: Transparently redirects GetMenuTitleText() to SMI_GetMenuTitleText().  SMI_GetMenuTitleText(MenuNum, TitlePosOrHandle)EndMacro;Macro SetMenuTitleText(MenuNum, TitlePosOrHandle, MenuTitleText)  ; Role: Transparently redirects SetMenuTitleText() to SMI_SetMenuTitleText().  SMI_SetMenuTitleText(MenuNum, TitlePosOrHandle, MenuTitleText)EndMacro;Macro OpenSubMenu(ItemText, MenuItemImage = #PB_Default)  ; Role: Transparently redirects OpenSubMenu() to SMI_OpenSubMenu() with optional icon support.  SMI_OpenSubMenu(ItemText, MenuItemImage)EndMacro;Macro CloseSubMenu()  ; Role: Transparently redirects CloseSubMenu() to SMI_CloseSubMenu().  SMI_CloseSubMenu()EndMacro;Macro MenuTitle(TitleText, MenuItemImage = #PB_Default)  ; Role: Transparently redirects MenuTitle() to SMI_MenuTitle() with optional icon and handle return.  SMI_MenuTitle(TitleText, MenuItemImage)EndMacro;Macro MenuItem(MenuItemID, MenuItemText, MenuItemImage = #PB_Default)  ; Role: Transparently redirects MenuItem() to SMI_MenuItem() with #PB_Any support.  SMI_MenuItem(MenuItemID, MenuItemText, MenuItemImage)EndMacro;Macro MenuBar(MenuItemID = #PB_Any)  ; Role: Transparently redirects MenuBar() to SMI_MenuBar() with separator ID support.  SMI_MenuBar(MenuItemID)EndMacro;Macro CreateMenu(MenuNum, WindowID)  ; Role: Transparently redirects CreateMenu() to SMI_CreateMenu().  SMI_CreateMenu(MenuNum, WindowID)EndMacro;Macro CreateImageMenu(MenuNum, WindowID, Options = 0)  ; Role: Transparently redirects CreateImageMenu() to SMI_CreateMenu().  SMI_CreateMenu(MenuNum, WindowID)EndMacro;Macro CreatePopupMenu(MenuNum)  ; Role: Transparently redirects CreatePopupMenu() to SMI_CreatePopupMenu().  SMI_CreatePopupMenu(MenuNum)EndMacro;Macro CreatePopupImageMenu(MenuNum, Options = 0)  ; Role: Transparently redirects CreatePopupImageMenu() to SMI_CreatePopupMenu().  SMI_CreatePopupMenu(MenuNum)EndMacro;Macro FreeMenu(MenuNum)  ; Role: Transparently redirects FreeMenu() to SMI_FreeMenu().  SMI_FreeMenu(MenuNum)EndMacro;Macro DisplayPopupMenu(MenuNum, WindowID, X = #PB_Ignore, Y = #PB_Ignore)  ; Role: Transparently redirects DisplayPopupMenu() to SMI_DisplayPopupMenu().  SMI_DisplayPopupMenu(MenuNum, WindowID, X, Y)EndMacro;; ********************************************************************************;;-                                   7- DEMO;; ********************************************************************************;CompilerIf #PB_Compiler_IsMainFile  Define MainWindowNum = OpenWindow(#PB_Any, 100, 100, 500, 350, "SetMenuItemEx library demo", #PB_Window_SystemMenu | #PB_Window_ScreenCentered)  If MainWindowNum    ApplyDarkModeToWindow(MainWindowNum)    ;    Define ArialFont    = LoadFont(#PB_Any, "Arial", 9)    Define CourierFont  = LoadFont(#PB_Any, "Courier New", 9)    Define SegoeFont    = LoadFont(#PB_Any, "Segoe UI", 9)    Define ComicFont    = LoadFont(#PB_Any, "Comic Sans MS", 9)    Define ImpactFont   = LoadFont(#PB_Any, "Impact", 10)    Define JokermanFont = LoadFont(#PB_Any, "Jokerman", 9)    Define CurlzMTFont  = LoadFont(#PB_Any, "Curlz MT", 9)    Define GabriolaFont = LoadFont(#PB_Any, "Gabriola", 12)    ;    Define VioletColor        = $FF00FF    Define DarkBlueColor      = $B00000    Define DarkRedColor       = $0000D0    Define DarkTurquoise      = $807000    Define PaleOrangeColor    = $60A0FF    Define PaleRedColor       = $8080FF    Define PaleVioletColor    = $F685FF    Define PaleBlueColor      = $FF9090    Define PaleTurquoiseColor = $FFFF80    Define PaleGreenColor     = $80FF80    Define PaleYellowColor    = $80FFFF    ;    Define img1 = GetImageFromShell32(13, 32, 32)    Define img2 = GetImageFromShell32(43, 32, 32)    Define img3 = GetImageFromShell32(22, 32, 32)    Define img4 = GetImageFromShell32(259, 32, 32)    Define img5 = GetImageFromShell32(134, 32, 32)    ;    Define MainMenu = CreateMenu(#PB_Any, WindowID(MainWindowNum))    ;    ; You can now get a handle for a title and assign an image to it:    Define Menu1 = MenuTitle("Menu1", ImageID(img1))    ; Previously, you had to select the title item by its position (still functional):    ;     SetMenuTitleColor(MainMenu, 0, #PB_Gadget_FrontColor, #White)    ;     SetMenuTitleColor(MainMenu, 0, #PB_Gadget_BackColor, 0)    ; Now, you can use its handle directly (simpler):    SetMenuTitleColor(MainMenu, Menu1, #PB_Gadget_FrontColor, #White)    SetMenuTitleColor(MainMenu, Menu1, #PB_Gadget_BackColor, DarkTurquoise)    ;    ; Now, you can allocate a dynamic ID to an item with #PB_Any:    Define Menu1_Command1 = MenuItem(#PB_Any, "Menu1_Command1", ImageID(img2))    SetMenuItemColor(MainMenu, Menu1_Command1, #PB_Gadget_BackColor, DarkTurquoise)    SetMenuItemColor(MainMenu, Menu1_Command1, #PB_Gadget_FrontColor, #White)    ; Now, you can get an ID for a MenuBar separator and assign colors to it:    Define Menu1_MenuBar = MenuBar()    SetMenuItemColor(MainMenu, Menu1_MenuBar, #PB_Gadget_BackColor, DarkTurquoise)    SetMenuItemColor(MainMenu, Menu1_MenuBar, #PB_Gadget_FrontColor, #Red)    ;    Define Menu1_Submenu = OpenSubMenu("Non-ownerdrawn Submenu", ImageID(img3))    SetMenuItemColor(MainMenu, Menu1_Submenu, #PB_Gadget_BackColor, DarkTurquoise)    SetMenuItemColor(MainMenu, Menu1_Submenu, #PB_Gadget_FrontColor, #White)      Define Menu1_Submenu_Command1 = MenuItem(#PB_Any, "Menu1_Submenu_Command1")      Define Menu1_SubSubmenu = OpenSubMenu("Ownerdrawn Sub-Submenu", ImageID(img3))        Define Menu1_SubSubmenu_Command1 = MenuItem(#PB_Any, "Menu1_SubSubmenu_Command1")        Define Menu1_SubSubmenu_Command2 = MenuItem(#PB_Any, "Menu1_SubSubmenu_Command2")        ;        ; You can omit the menu number by passing #PB_Default when using SetMenuItem...()        ; and GetMenuItem...() commands; the unique item ID is sufficient to locate it:        SetMenuItemColor(#PB_Default, Menu1_SubSubmenu_Command2, #PB_Gadget_FrontColor, VioletColor)      CloseSubMenu()      Define Menu1_Submenu_Command2 = MenuItem(#PB_Any, "Menu1_Submenu_Command2")    CloseSubMenu()    ;    Define Menu1_Command2 = MenuItem(#PB_Any, "Menu1_Command2")    SetMenuItemImage(MainMenu, Menu1_Command2, ImageID(img5))    SetMenuItemColor(MainMenu, Menu1_Command2, #PB_Gadget_BackColor, DarkTurquoise)    SetMenuItemColor(MainMenu, Menu1_Command2, #PB_Gadget_FrontColor, #White)    ;    Define Colors = MenuTitle("Color")    SetMenuTitleImage(MainMenu, Colors, ImageID(img4))    SetMenuTitleColor(MainMenu, Colors, #PB_Gadget_FrontColor, DarkRedColor)    SetMenuTitleColor(MainMenu, Colors, #PB_Gadget_BackColor, PaleYellowColor)    Define Orange = MenuItem(#PB_Any, "Orange")    SetMenuItemColor(MainMenu, Orange, #PB_Gadget_BackColor, PaleOrangeColor)    Define Red = MenuItem(#PB_Any, "Red")    SetMenuItemColor(MainMenu, Red, #PB_Gadget_BackColor, PaleRedColor)    Define Violet = MenuItem(#PB_Any, "Violet")    SetMenuItemColor(MainMenu, Violet, #PB_Gadget_BackColor, PaleVioletColor)    Define Blue = MenuItem(#PB_Any, "Blue")    SetMenuItemColor(MainMenu, Blue, #PB_Gadget_BackColor, PaleBlueColor)    Define Turquoise = MenuItem(#PB_Any, "Turquoise")    SetMenuItemColor(MainMenu, Turquoise, #PB_Gadget_BackColor, PaleTurquoiseColor)    Define Green = MenuItem(#PB_Any, "Green")    SetMenuItemColor(MainMenu, Green, #PB_Gadget_BackColor, PaleGreenColor)    Define Yellow = MenuItem(#PB_Any, "Yellow")    SetMenuItemColor(MainMenu, Yellow, #PB_Gadget_BackColor, PaleYellowColor)    CheckMenuItem(MainMenu, Yellow, #True)    Define OldCheckedColor = Yellow    ;    Define Fonts = MenuTitle("Choose your font")    SetMenuTitleFont(MainMenu, Fonts, ImpactFont)    Define Arial = MenuItem(#PB_Any, "Arial")    SetMenuItemFont(MainMenu, Arial, ArialFont)    Define Courier = MenuItem(#PB_Any, "Courier New")    SetMenuItemFont(MainMenu, Courier, CourierFont)    Define Segoe = MenuItem(#PB_Any, "Segoe UI")    SetMenuItemFont(MainMenu, Segoe, SegoeFont)    Define Comic = MenuItem(#PB_Any, "Comic Sans MS")    SetMenuItemFont(MainMenu, Comic, ComicFont)    Define Jokerman = MenuItem(#PB_Any, "Jokerman")    SetMenuItemFont(MainMenu, Jokerman, JokermanFont)    Define CurlzMT = MenuItem(#PB_Any, "Curlz MT")    SetMenuItemFont(MainMenu, CurlzMT, CurlzMTFont)    Define Gabriola = MenuItem(#PB_Any, "Gabriola")    SetMenuItemFont(MainMenu, Gabriola, GabriolaFont)    ;    ; You can check or uncheck an item:    MenuTitle("Check/Uncheck my item")    Define CheckMe = MenuItem(#PB_Any, "Click on me")    CheckMenuItem(MainMenu, CheckMe)    SetMenuItemColor(MainMenu, CheckMe, #PB_Gadget_FrontColor, 0)    SetMenuItemImage(MainMenu, CheckMe, ImageID(img5))    MenuItem(#PB_Any, "Alignment witness")    ;    ; Styled PopupMenu: you can do the exact same thing for PopupMenu items    Define StyledPopUpMenu = CreatePopupMenu(#PB_Any)    MenuItem(#PB_Any, "PopUpMenu", ImageID(img5))    Define PopupSubMenu = OpenSubMenu("PopupSubMenu", ImageID(img1))    SetMenuItemColor(StyledPopUpMenu, PopupSubMenu, #PB_Gadget_BackColor, PaleOrangeColor)      Define PopupSubMenu_Command1 = MenuItem(#PB_Any, "PopupSubMenu_Command1")      Define PopupSubMenu_Command2 = MenuItem(#PB_Any, "PopupSubMenu_Command2")      SetMenuItemColor(StyledPopUpMenu, PopupSubMenu_Command2, #PB_Gadget_FrontColor, PaleOrangeColor)      SetMenuItemColor(StyledPopUpMenu, PopupSubMenu_Command2, #PB_Gadget_BackColor, DarkRedColor)      SetMenuItemImage(StyledPopUpMenu, PopupSubMenu_Command2, ImageID(img5))    CloseSubMenu()    ;    Define PUCourier = MenuItem(#PB_Any, "PopUpMenu Courier New")    SetMenuItemFont(StyledPopUpMenu, PUCourier, CourierFont)    Define PUImpact = MenuItem(#PB_Any, "PopUpMenu Impact")    SetMenuItemFont(StyledPopUpMenu, PUImpact, ImpactFont)    ;    ;* ----------------------------- Buttons -----------------------------    ;    Define Msg$ = "By changing the value of SMI_ShowSelectionMethod, you change how the menu"    Msg$ + " indicates that the mouse cursor is hovering over an item. Usually, simple "    Msg$ + "background shading is enough, but it can lack contrast in a "    Msg$ + "dark mode environment or when each item has its own custom color (or both). "    Msg$ + "Four different methods are available (see the SMI_ShowSelectionMethod enumeration)."    Msg$ + " Try each of them to decide. Note that you can optionally combine different methods:"    ;    TextGadget(#PB_Any, 10, 25, WindowWidth(MainWindowNum) - 20, 100, Msg$, #PB_Text_Center)    Define VPos = 120    Define HPos = 40    Define BulletButton = CheckBoxGadget(#PB_Any, HPos, VPos, 60, 25, "Bullet")    HPos + 85    Define BordersButton = CheckBoxGadget(#PB_Any, HPos, VPos, 60, 25, "Framing")    HPos + 100    Define SystemColorButton = CheckBoxGadget(#PB_Any, HPos, VPos, 90, 25, "SystemColor")    HPos + 120    SetGadgetState(SystemColorButton, #True)    SMI_ShowSelectionMethod = #SMI_SSW_SystemColor    Define ShadeButton = CheckBoxGadget(#PB_Any, HPos, VPos, 120, 25, "Shade background")    ;    Msg$ = "This library requires no special setup. No initialization is needed. "    Msg$ + "You don't need to install a callback procedure (this is done automatically "    Msg$ + "whenever necessary)." + #CR$    Msg$ + "The only thing you need to do is include the library file in your program's code"    Msg$ + " using 'XIncludeFile (path)/SetMenuItemEx.pbi'." + #CR$ + "From then on, you can call"    Msg$ + " functions such as 'SetMenuItemColor()', 'SetMenuItemFont()', etc."    ;    TextGadget(#PB_Any, 10, 180, WindowWidth(MainWindowNum) - 20, 100, Msg$, #PB_Text_Center)    ;    VPos = WindowHeight(MainWindowNum) - 55    Define PopUpMenuButton = ButtonGadget(#PB_Any, 10, VPos, 115, 25, "Open Styled PopUp")    Define DisableButton = CheckBoxGadget(#PB_Any, 140, VPos, 165, 25, "Disable Menu1_Command2")    Define HideMenu = CheckBoxGadget(#PB_Any, 320, VPos, 135, 25, "Hide menu")    ;    ; Main event loop:    Repeat      Select WaitWindowEvent()        Case #PB_Event_Gadget          Select EventGadget()            Case PopUpMenuButton              DisplayPopupMenu(StyledPopUpMenu, WindowID(MainWindowNum))            Case DisableButton              DisableMenuItem(MainMenu, Menu1_Command2, GetGadgetState(DisableButton))            Case HideMenu              HideMenu(MainMenu, GetGadgetState(HideMenu))            Case BulletButton              If GetGadgetState(BulletButton)                SMI_ShowSelectionMethod | #SMI_SSW_Bullet              Else                SMI_ShowSelectionMethod & ~(#SMI_SSW_Bullet)              EndIf              ; CAUTION: If you modify SMI_ShowSelectionMethod on the fly,              ; you need to resize existing menus when #SMI_SSW_Bullet changes:              SMI_ResizeMenu(MainMenu, #True)              SMI_ResizeMenu(StyledPopUpMenu, #True)            Case BordersButton              If GetGadgetState(BordersButton)                SMI_ShowSelectionMethod | #SMI_SSW_Borders              Else                SMI_ShowSelectionMethod & ~(#SMI_SSW_Borders)              EndIf            Case SystemColorButton              If GetGadgetState(SystemColorButton)                SMI_ShowSelectionMethod | #SMI_SSW_SystemColor              Else                SMI_ShowSelectionMethod & ~(#SMI_SSW_SystemColor)              EndIf            Case ShadeButton              If GetGadgetState(ShadeButton)                SMI_ShowSelectionMethod | #SMI_SSW_ShadeBackground              Else                SMI_ShowSelectionMethod & ~(#SMI_SSW_ShadeBackground)              EndIf          EndSelect          ;        Case #PB_Event_Menu          ; Retrieve an item from its ID alone, without specifying the menu to which it belongs:          Define ItemText$ = GetMenuItemText(#PB_Default, EventMenu())          Msg$ = "The user chose: " + ItemText$          Select EventMenu()            Case CheckMe              If IsMenuItemChecked(#PB_Default, CheckMe)                CheckMenuItem(#PB_Default, CheckMe, #False)                Msg$ + #CR$ + "The item is now unchecked"              Else                CheckMenuItem(#PB_Default, CheckMe, #True)                Msg$ + #CR$ + "The item is now checked"              EndIf            Case Orange, Red, Violet, Blue, Turquoise, Green, Yellow              CheckMenuItem(#PB_Default, OldCheckedColor, #False)              CheckMenuItem(#PB_Default, EventMenu(), #True)              OldCheckedColor = EventMenu()              Define TitleColor = GetMenuItemColor(#PB_Default, EventMenu(), #PB_Gadget_BackColor)              SetMenuTitleColor(#PB_Default, Colors, #PB_Gadget_BackColor, TitleColor)          EndSelect          MessageRequester("Info", Msg$, 0)          ;        Case #PB_Event_CloseWindow          Break      EndSelect    ForEver    FreeMenu(StyledPopUpMenu)    CloseWindow(MainWindowNum)  EndIf  ;CompilerEndIf; IDE Options = PureBasic 6.41 (Windows - x64); CursorPosition = 238; FirstLine = 234; Folding = AAAwBAAAAAw-----; EnableXP; DPIAware
