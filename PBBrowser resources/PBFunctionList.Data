@@ -249,7 +249,7 @@ CopyArray (SourceArray(), DestinationArray())	Copy all the elements from the arr
 CopyDebugOutput ()	Copy the content of the debug output window into the clipboard.	Debugger/CopyDebugOutput.html
 CopyDirectory (SourceDirectory$, DestinationDirectory$, Pattern$ [, Flags])	Copy the source file to the destination.	FileSystem/CopyDirectory.html
 CopyEntity (#Entity, #NewEntity)	Copy the specified #Entity on the #NewEntity.	Entity/CopyEntity.html
-CopyFile (SourceFilename$, DestinationFilename$)	Copy the source file to the destination.	FileSystem/CopyFile.html
+CopyFile (SourceFileName$, DestinationFileName$)	Copy the source file to the destination.	FileSystem/CopyFile.html
 CopyImage (#Image1, #Image2)	Create a new #Image2 identical to the source #Image1.	Image/CopyImage.html
 CopyLight (#Light, #NewLight)	Copy the specified #Light on the #NewLight.	Light/CopyLight.html
 CopyList (List(), DestinationList())	Copy all the elements from the list to the destination list to have two identical lists.	List/CopyList.html
@@ -292,7 +292,7 @@ CreateDialog (#Dialog)	Creates a new dialog.	Dialog/CreateDialog.html
 CreateDirectory (DirectoryName$)	Create a new directory.	FileSystem/CreateDirectory.html
 CreateEntity (#Entity [, MeshID, MaterialID [, x, y, z [, PickMask [, VisibilityMask]]]])	Create a new #Entity based on the specified Mesh and Material at the given position.	Entity/CreateEntity.html
 CreateEntityBody (#Entity, Type [, Mass [, Restitution, Friction [, Axis [, SizeX, SizeY, SizeZ]]]])	Create a new body for the #Entity.	Entity/CreateEntityBody.html
-CreateFile (#File, Filename$ [, Flags])	Create an empty file.	File/CreateFile.html
+CreateFile (#File, FileName$ [, Flags])	Create an empty file.	File/CreateFile.html
 CreateFTPDirectory (#Ftp, Directory$)	Create a new directory on the FTP server.	Ftp/CreateFTPDirectory.html
 CreateIcoSphere (#Mesh, Radius.f [, Iterations])	Create a new icosphere mesh.	Mesh/CreateIcoSphere.html
 CreateImage (#Image, Width, Height [, Depth [, BackColor]])	Create an empty #Image which can be used to do rendering on it.	Image/CreateImage.html
@@ -377,7 +377,7 @@ Degree (Angle)	Converts the given angle from radian to degree.	Math/Degree.html
 Delay (Time)	Waits the specified time (in milliseconds).	System/Delay.html
 DeleteDirectory (SourceDirectory$, Pattern$ [, Flags])	Delete the directory.	FileSystem/DeleteDirectory.html
 DeleteElement (List() [, Flags])	Remove the current element from the list.	List/DeleteElement.html
-DeleteFile (Filename$ [, Flags])	Delete the specified file.	FileSystem/DeleteFile.html
+DeleteFile (FileName$ [, Flags])	Delete the specified file.	FileSystem/DeleteFile.html
 DeleteFTPDirectory (#Ftp, Directory$)	Delete a directory on the FTP server.	Ftp/DeleteFTPDirectory.html
 DeleteFTPFile (#Ftp, Filename$)	Delete a file on the FTP server.	Ftp/DeleteFTPFile.html
 DeleteMapElement (Map() [, Key$])	Remove the current element from the map.	Map/DeleteMapElement.html
@@ -566,7 +566,7 @@ FileBuffersSize (#File, Size)	Change the size of the buffers for the specified f
 FileFingerprint (Filename$ , Plugin [, Bits [, Offset [, Length [, Key$ [, KeyFormat]]]]])	Returns the fingerprint of the file.	Cipher/FileFingerprint.html
 FileID (#File)	Returns the unique ID which identifies the file in the operating system.	File/FileID.html
 FileSeek (#File, NewPosition [, Mode])	Change the read/write pointer position of the specified file.	File/FileSeek.html
-FileSize (Filename$)	Return the size of the specified file.	FileSystem/FileSize.html
+FileSize (FileName$)	Return the size of the specified file.	FileSystem/FileSize.html
 FillArea (x, y, OutlineColor [, FillColor])	Fill a shape with the specified color.	2DDrawing/FillArea.html
 FillMemory (Memory, Size [, Value [, Type]])	Fill a memory area with the specified value.	Memory/FillMemory.html
 FillPath ([Flags])	Fill the area defined by the vector drawing path	VectorDrawing/FillPath.html
@@ -679,8 +679,8 @@ GetEntityCollisionMask (#Entity)	Get the entity collision mask.	Entity/GetEntity
 GetEntityMesh (#Entity)	Return the #Mesh associated with the #Entity.	Entity/GetEntityMesh.html
 GetEnvironmentVariable (Name$)	Return the content of the environment variable	Process/GetEnvironmentVariable.html
 GetExtensionPart (FullPathName$)	Retrieves the extension part of a full path.	FileSystem/GetExtensionPart.html
-GetFileAttributes (Filename$)	Returns the attributes of the specified file.	FileSystem/GetFileAttributes.html
-GetFileDate (Filename$, DateType)	Returns the modified/created/accessed date of the specified file.	FileSystem/GetFileDate.html
+GetFileAttributes (FileName$)	Returns the attributes of the specified file.	FileSystem/GetFileAttributes.html
+GetFileDate (FileName$, DateType)	Returns the modified/created/accessed date of the specified file.	FileSystem/GetFileDate.html
 GetFilePart (FullPathName$ [, Flags])	Retrieves the file part of a full path.	FileSystem/GetFilePart.html
 GetFTPDirectory (#Ftp)	Return the current directory.	Ftp/GetFTPDirectory.html
 GetFunction (#Library, FunctionName$)	Checks if a function exists in the #Library.	Library/GetFunction.html
@@ -865,7 +865,7 @@ IsMenu (#Menu)	Tests if the given '#Menu' is an initialized menu object.	Menu/Is
 IsMesh (#Mesh)	Tests if the given '#Mesh' is an initialized mesh object.	Mesh/IsMesh.html
 IsMovie (#Movie)	Tests if the given '#Movie' is an initialized movie object.	Movie/IsMovie.html
 IsMusic (#Music)	Tests if the given '#Music' is an initialized module object.	Music/IsMusic.html
-IsNaN (Number)	Returns nonzero if the given Number is the special "Not a Number" value.	Math/IsNaN.html
+IsNAN (Number)	Returns nonzero if the given Number is the special "Not a Number" value.	Math/IsNaN.html
 IsNode (#Node)	Tests if the given '#Node' is an initialized node object.	Node/IsNode.html
 IsPack (#Pack)	Tests if the given '#Pack' is an initialized pack object.	Packer/IsPack.html
 IsParticleEmitter (#ParticleEmitter)	Tests if the given '#ParticleEmitter' is an initialized ParticleEmitter object.	Particle/IsParticleEmitter.html
@@ -1044,7 +1044,7 @@ NextPreferenceGroup ()	Go to the next group after a call to ExaminePreferenceGro
 NextPreferenceKey ()	Go to the next key after a call to ExaminePreferenceKeys().	Preference/NextPreferenceKey.html
 NextRegularExpressionMatch (#RegularExpression)	Move to the next match of the regular expression	RegularExpression/NextRegularExpressionMatch.html
 NextScreenMode ()	Get the next screen mode information.	Screen/NextScreenMode.html
-NextSelectedFilename ()	Get the next selected filename.	Requester/NextSelectedFileName.html
+NextSelectedFileName ()	Get the next selected filename.	Requester/NextSelectedFileName.html
 NextWorldCollision ()	The next world collision	Engine3D/NextWorldCollision.html
 NextXMLAttribute (Node)	Get the next attribute in the examined XML node	XML/NextXMLAttribute.html
 NextXMLNode (Node)	Get the next XML node on the same level as the given node	XML/NextXMLNode.html
@@ -1070,7 +1070,7 @@ OpenConsole ([Title$ [, Mode]])	Open a console window.	Console/OpenConsole.html
 OpenCryptRandom ()	Open the cryptographic random number generator.	Cipher/OpenCryptRandom.html
 OpenDatabase (#Database, DatabaseName$, User$, Password$ [, Plugin])	Opens the specified database.	Database/OpenDatabase.html
 OpenDatabaseRequester (#Database [, Plugin])	Opens the standard Windows ODBC requester to choose which database to open.	Database/OpenDatabaseRequester.html
-OpenFile (#File, Filename$ [, Flags])	Open the designed file or create it if it doesn't exists.	File/OpenFile.html
+OpenFile (#File, FileName$ [, Flags])	Open the designed file or create it if it doesn't exists.	File/OpenFile.html
 OpenFileRequester (Title$, DefaultFile$, Pattern$, PatternPosition [, Flags [, ParentID]])	Open the standard requester which allow to choose a file.	Requester/OpenFileRequester.html
 OpenFTP (#Ftp, ServerName$, User$, Password$ [, Flags [, Port]])	Try to open a connection on the specified server.	Ftp/OpenFTP.html
 OpenGadgetList (#Gadget [, GadgetItem])	Makes the Gadget the current gadget list.	Gadget/OpenGadgetList.html
@@ -1222,7 +1222,7 @@ ReadCharacter (#File [, Format])	Read a character from the specified file.	File/
 ReadConsoleData (*Buffer, Size)	Read data from the console input	Console/ReadConsoleData.html
 ReadData (#File, *Buffer, Size)	Read content from the file in the buffer.	File/ReadData.html
 ReadDouble (#File)	Read a double (8 bytes) from the specified file.	File/ReadDouble.html
-ReadFile (#File, Filename$ [, Flags])	Open an existing file for read only operations.	File/ReadFile.html
+ReadFile (#File, FileName$ [, Flags])	Open an existing file for read only operations.	File/ReadFile.html
 ReadFloat (#File)	Read a float (4 bytes) from the specified file.	File/ReadFloat.html
 ReadHIDData (#HID, Buffer, Size [, Timeout])	Read data from the specified HID.	HID/ReadHIDData.html
 ReadInteger (#File)	Read an integer from the specified file.	File/ReadInteger.html
@@ -1281,7 +1281,7 @@ RemoveString (String$, RemoveString$ [, Mode [, StartPosition [, NbOccurrences]]
 RemoveSysTrayIcon (#SysTrayIcon)	Remove the icon from the Systray area.	SysTray/RemoveSysTrayIcon.html
 RemoveWindowTimer (#Window, Timer)	Removes the timer event from the window.	Window/RemoveWindowTimer.html
 RemoveXMLAttribute (Node, Attribute$)	Remove the attribute entry from the XML node	XML/RemoveXMLAttribute.html
-RenameFile (OldFilename$, NewFilename$)	Rename the old file to the new file.	FileSystem/RenameFile.html
+RenameFile (OldFileName$, NewFileName$)	Rename the old file to the new file.	FileSystem/RenameFile.html
 RenameFTPFile (#Ftp, Filename$, NewFilename$)	Rename or move a file on the FTP server.	Ftp/RenameFTPFile.html
 RenderScreenGadgets ()	Renders the screen window and gadgets on the current screen.	ScreenGadget/RenderScreenGadgets.html
 RenderWorld ([ElapsedPhysicTime])	Renders the 3D world on the screen.	Engine3D/RenderWorld.html
@@ -1354,7 +1354,6 @@ ScreenDepth ()	Get the screen depth.	Screen/ScreenDepth.html
 ScreenEventType ()	After ScreenWindowEvent(), use this function to determine of which type the event is.	ScreenGadget/ScreenEventType.html
 ScreenGadgetHeight (#ScreenGadget)	Returns the height of the #ScreenGadget, in pixels.	ScreenGadget/ScreenGadgetHeight.html
 ScreenGadgetSkin (SkinPart, #Image [, FreePrevious])	Set an image for a specific skin part.	ScreenGadget/ScreenGadgetSkin.html
-ScreenGadgetsOption (Option, Value)	Set screen gadget options.	
 ScreenGadgetToolTip (#ScreenGadget, Text$)	Associate the specified Text$ to the #ScreenGadget.	ScreenGadget/ScreenGadgetToolTip.html
 ScreenGadgetType (#ScreenGadget)	Returns the type of the specified #ScreenGadget.	ScreenGadget/ScreenGadgetType.html
 ScreenGadgetWidth (#ScreenGadget)	Returns the width of the #ScreenGadget, in pixels.	ScreenGadget/ScreenGadgetWidth.html
@@ -1415,8 +1414,8 @@ SetEntityAttribute (#Entity, Attribute, Value)	Set an #Entity attribute value.	E
 SetEntityCollisionFilter (#Entity, Group, Mask)	Set the entity collision group and mask.	Entity/SetEntityCollisionFilter.html
 SetEntityMaterial (#Entity, MaterialID [, SubEntity])	Set the #Entity material.	Entity/SetEntityMaterial.html
 SetEnvironmentVariable (Name$, Value$)	Assign the given Value$ to the environment variable	Process/SetEnvironmentVariable.html
-SetFileAttributes (Filename$, Attributes)	Changes the attributes of the specified file.	FileSystem/SetFileAttributes.html
-SetFileDate (Filename$, Type, Date)	Changes the modified/created/accessed date of the specified file.	FileSystem/SetFileDate.html
+SetFileAttributes (FileName$, Attributes)	Changes the attributes of the specified file.	FileSystem/SetFileAttributes.html
+SetFileDate (FileName$, Type, Date)	Changes the modified/created/accessed date of the specified file.	FileSystem/SetFileDate.html
 SetFrameRate (FrameRate)	Set the frame rate (in frames per second) for the current screen.	Screen/SetFrameRate.html
 SetFTPDirectory (#Ftp, Directory$)	Change the current directory.	Ftp/SetFTPDirectory.html
 SetGadgetAttribute (#Gadget, Attribute, Value)	Change the specified #Gadget attribute.	Gadget/SetGadgetAttribute.html

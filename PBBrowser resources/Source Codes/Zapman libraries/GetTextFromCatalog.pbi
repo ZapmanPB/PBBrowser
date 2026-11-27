@@ -74,6 +74,8 @@ Procedure.s GetTextFromCatalog(SName$, FileName$ = "", DontPanic = 0)
       If fsize > 0
         FString$ = Space(fsize)
         ReadData(0, @FString$, fsize)
+        ; Null-terminate the raw ASCII byte stream inside the over-allocated Unicode buffer
+        PokeA(@FString$ + fsize, 0)
       EndIf
       CloseFile(0)
       ProcedureReturn FString$
@@ -131,6 +133,8 @@ Procedure.s GetTextFromCatalog(SName$, FileName$ = "", DontPanic = 0)
               If fsize > 0
                 FString$ = Space(fsize)
                 ReadData(0, @FString$, fsize)
+                ; Null-terminate the raw ASCII byte stream inside the over-allocated Unicode buffer
+                PokeA(@FString$ + fsize, 0)
               EndIf
               CloseFile(0)
             Else
@@ -156,8 +160,9 @@ Procedure.s GetTextFromCatalog(SName$, FileName$ = "", DontPanic = 0)
   EndIf
 EndProcedure
 ;
-; IDE Options = PureBasic 6.20 Beta 4 (Windows - x64)
-; CursorPosition = 19
+; IDE Options = PureBasic 6.40 (Windows - x64)
+; CursorPosition = 138
+; FirstLine = 121
 ; Folding = -
 ; EnableXP
 ; DPIAware

@@ -1,0 +1,505 @@
+;
+; PB Browser Language File
+;
+
+
+[LanguageInfo]
+
+Application = PBBrowser
+Language    = Deutsch
+Creator     = Zapman Softwares - CatalogMaker
+Email       = luc.deborde@gmail.com
+
+
+; ==============================================================================
+; 1. GENERIC ENTRIES & CROSS-CUTTING DIALOGS
+; ==============================================================================
+
+[Common]
+
+; --- Standard action buttons ---
+OK       = OK
+Cancel   = Abbrechen
+Yes      = Ja
+No       = Nein
+Save     = Speichern
+SaveAs   = Speichern unter...
+Open     = Öffnen
+Change   = Ändern
+Choose   = Wählen
+Modify   = Ändern
+Standard = Standard
+Search   = Suchen
+Copy     = Kopieren
+CopyAll  = Alles kopieren
+Erase    = Löschen
+Assign   = Zuweisen
+Quit     = Beenden
+
+; --- Utility words, units, and generic file filters ---
+Attention = Achtung
+All       = Alle
+in        = in
+of        = von
+AtLine    = in Zeile
+Lines     = Zeilen
+TextFile  = Textdateien|*.txt
+RTFFile   = RTF-Dateien|*.rtf
+
+; --- Project backup & shared tool messages ---
+ErrorWithFile   = Dateizugriffsfehler:
+NotForTempFile  = Entschuldigung! Diese Funktion kann nicht auf eine ungespeicherte Datei angewendet werden.%newline%Bitte speichern Sie Ihre Codedatei zuerst, bevor Sie diese Funktion ausführen.
+MakeACopy       = Es wird empfohlen, vor dem Ausführen dieser Funktion eine Sicherheitskopie aller betroffenen Dateien zu erstellen.%newline%Klicken Sie auf %quote%JA%quote%, um eine Kopie anzulegen, oder auf %quote%NEIN%quote%, um direkt mit den aktuellen Dateien zu arbeiten.%newline%%newline%Bei einer Kopie bleibt das aktuelle Projekt unangetastet und die geänderten Dateien werden in einem neuen Ordner gespeichert.
+SelectFolder    = Name des Kopie-Ordners:
+CopyFailed      = Das Kopieren ist fehlgeschlagen.
+FilesAreUpdated = Der Vorgang ist abgeschlossen. Laden Sie die Datei(en) in der PureBasic-IDE neu, um das Ergebnis zu sehen.
+
+
+; ==============================================================================
+; 2. STARTUP, PUREBASIC DETECTION & MAIN WINDOW
+; ==============================================================================
+
+[Initialization]
+
+UnableToFindPB          = Das Programm 'PureBasic.exe' konnte auf Ihrem Computer nicht gefunden werden.%newline%Bitte wählen Sie seinen Speicherort im nächsten Schritt aus...
+ShowPBPath              = Speicherort von 'PureBasic.exe' auswählen:
+ManyVersionsOfPB        = Auf Ihrem Computer wurden mehrere Versionen von PureBasic gefunden.%newline%%newline%Welche verwenden Sie am häufigsten?
+UpdatePBExeTitle        = Version von PureBasic.exe auswählen
+FirstLaunch             = Installation in den PureBasic-Werkzeugen
+ShouldInstall           = Möchten Sie PBBrowser in den Werkzeugen von PureBasic installieren?
+DoLater                 = Nein, vielleicht später
+InstallInPortablePB     = PBBrowser in einer portablen Version von PureBasic installieren
+ConfigurePBBAsPortable  = PBBrowser als portable Version konfigurieren
+ToolInstallationAborted = PBBrowser konnte nicht installiert werden. Sie können die Installation später über die Schaltfläche 'Hilfe und Werkzeuge' erneut starten.
+WantToSeeHelp           = Möchten Sie die Anleitung zu PBBrowser ansehen?
+FunctionsUpdateDone     = Die Aktualisierung ist abgeschlossen.
+ConstantsUpdateDone     = Die Aktualisierung der Konstanten ist abgeschlossen.
+
+
+[MainWindow]
+
+; --- Top bar (Source & Search) ---
+MainFileLabel      = Quelle/Projekt: 
+SelectMainFile     = Zu untersuchende PureBasic-Hauptdatei auswählen:
+SaveFilePrompt     = Sie müssen die Datei speichern, damit PBBrowser darin navigieren kann.
+Expression         = Ausdruck: 
+LookUp             = Anzeigen
+SearchInstructions = Sie können nach Namen von Variablen, Prozeduren, Funktionen, Konstanten, Feldern oder Strukturen in allen im Reiter %quote%Dateien%quote% aufgeführten Dateien suchen (verwenden Sie %quote%…%quote% am Wortanfang oder Wortende für eine Teilsuche).%newline%Auch die Suche nach komplexen Ausdrücken (mehrere Wörter) ist möglich. Klicken Sie auf %quote%+%quote%, um Suchoptionen zu verfeinern oder Suchen/Ersetzen zu öffnen.
+ToolTip+           = Hier klicken, um das Fenster %quote%Suchen / Ersetzen%quote% zu öffnen.
+Exploration        = Analyse
+RefreshEx          = Tiefenanalyse für die aktuelle Projektversion neu starten.
+
+; --- Main tabs ---
+Files   = Dateien
+Lists   = Listen
+Details = Details
+FoundIn = Gefunden in...
+
+; --- Bottom bar & Main menu ---
+AlwaysOnTop    = Immer im Vordergrund
+About          = Hilfe und Werkzeuge
+OpenTHATWindow = Hilfe anzeigen und Werkzeuge konfigurieren
+Preferences    = Einstellungen
+
+
+[ElementTypes]
+
+; --- Element type names (singular) ---
+Procedure        = Prozedur
+Macro            = Makro
+Enumeration      = Enumeration
+Structure        = Struktur
+Interface        = Interface
+Module           = Modul
+Label            = Sprungmarke
+Constant         = Konstante
+Variable         = Variable
+Import           = Import
+Imported         = Importiert
+Field            = Feld
+PBNativeFunction = Native PureBasic-Funktion
+PBNativeKeyword  = Natives PureBasic-Schlüsselwort
+PBBasicKeyword   = BASIC-Schlüsselwort
+
+; --- 'Lists' panel sub-tabs (plural) ---
+Procedures   = Prozeduren
+Macros       = Makros
+Structures   = Strukturen
+Enumerations = Enumerationen
+Constants    = Konstanten
+Variables    = Variablen
+Labels       = Sprungmarken
+Interfaces   = Interfaces
+Modules      = Module
+
+; --- Synthetic scopes & special contexts ---
+AllProcedures        = allen Prozeduren
+AllMacros            = allen Makros
+AllStructures        = allen Strukturen
+AllEnumerations      = allen Enumerationen
+AllInterfaces        = allen Interfaces
+AllModules           = allen Modulen
+OutOfElements        = Hauptprogrammcode
+inactiveCompilerZone = {Inaktiver CompilerIf-Block}
+
+
+[BurgerMenu]
+
+ZoomIn       = Zoom +
+ZoomOut      = Zoom -
+ZoomReset    = Zoom %equal%
+FindInPannel = Im Bereich suchen
+SaveAsText   = Als TXT speichern
+SaveAsRTF    = Als RTF speichern
+
+
+; ==============================================================================
+; 3. DISPLAY PANELS & FIND / REPLACE WINDOW
+; ==============================================================================
+
+[FilesPanel]
+
+IncludedFilesIntro = Eingebundene Dateien (XIncludeFile und IncludeFile):
+IncludedBinaries   = Weitere eingebundene Dateien (IncludeBinary):
+mainFile           = Hauptdatei
+project            = Projekt
+includedBy         = eingebunden von
+
+
+[DetailsPanel]
+
+definedIn             = definiert in
+declaredIn            = deklariert in
+usedBy                = verwendet von
+Unused                = Nicht verwendet
+citedInUnused         = auch in ungenutztem Code erwähnt
+citedOnlyInUnused     = nur in ungenutztem Code erwähnt
+CalledProcedures      = Im Code aufgerufene Prozedur(en):
+CalledMacros          = Im Code aufgerufene(s) Makro(s):
+UnusedVariables:      = Deklarierte, aber ungenutzte Variablen:
+UnprotectedVariables: = Ungeschützte lokale Variablen:
+MissingElements:      = Erwähnte, aber im Projekt fehlende Elemente:
+SeeVariablesList      = Vollständige Variablenliste anzeigen
+AboutNativeFunction   = ist eine native PureBasic-Funktion.%newline%Klicken Sie auf ihren Namen, um die Hilfe zu öffnen.
+AboutBasicKeyword     = ist ein PureBasic-Schlüsselwort.%newline%Klicken Sie auf seinen Namen, um die Hilfe zu öffnen.
+NoDetailFound         = Leider sind für %SExpression$% keine Details verfügbar.%newline%Falls es sich um einen Parameter oder eine implizite (nicht deklarierte) Variable handelt, zeigt der Bereich 'Gefunden in...' alle Fundstellen an.%newline%Hinweis: Für Inhalte außerhalb des aktiven Codes (in %quote%Zeichenketten%quote% oder Kommentaren) sind keine Details verfügbar.
+NoDetailChooseScope   = Für %SExpression$% existieren mehrere Gültigkeitsbereiche.%newline%Wählen Sie über die Schaltfläche '%LookUp%' einen genauen Bereich aus, um dessen Details anzuzeigen.
+NoDetailNoExpression  = Suchen Sie nach einem Ausdruck oder Element, um dessen Details anzuzeigen.
+
+
+[FoundInPanel]
+
+ShouldSearchForSomething = Suchen Sie nach einem Ausdruck (Prozedur-, Struktur-, Variablen- oder Funktionsname), um zu sehen, in welchen Dateien er vorkommt.
+NoElementFound           = Kein Element gefunden.
+FoundListIntro           = Die Zahlen in eckigen Klammern geben die Zeilennummern an, in denen der Ausdruck gefunden wurde.
+OneResultFound           = Ein Treffer gefunden
+ResultsFound             = Treffer gefunden
+ResultsTruncated         = ... Ergebnisse gekürzt (mehr als %1 Treffer)
+MoreInfo                 = Mehr erfahren...
+HelpClickInstruction     = Klicken Sie auf die Zahlen in eckigen Klammern, damit der PureBasic-Editor die Datei öffnet und direkt zur entsprechenden Zeile springt.%newline%Hinweis: Bei gerade bearbeiteten und noch nicht gespeicherten Dateien kann die angezeigte Zeilennummer von der tatsächlichen Zeilennummer abweichen.%newline%%newline%•%nonbreakingspace%Der Hinweis %quote%Set%quote% gibt an, dass einer Variablen oder einem Speicherbereich an dieser Stelle ein Wert zugewiesen wird.%newline%•%nonbreakingspace%%quote%Param%quote% zeigt an, dass das Element als Parameter einer Prozedur oder eines Makros deklariert ist.%newline%•%nonbreakingspace%%quote%Test%quote% bedeutet, dass es in einer Bedingung ausgewertet wird (z. B. If, While oder Bool).%newline%•%nonbreakingspace%%quote%Arg%quote% bedeutet, dass es als Argument in einem Funktions- oder Prozeduraufruf übergeben wird.%newline%•%nonbreakingspace%%quote%Return%quote%, %quote%Read%quote%, %quote%Peek...%quote% / %quote%Poke...%quote%, %quote%Clear%quote% und %quote%FreeMemory%quote% kennzeichnen die jeweilige Operation.%newline%•%nonbreakingspace%Die Angaben %quote%Global%quote%, %quote%Threaded%quote%, %quote%Shared%quote%, %quote%Define%quote%, %quote%Static%quote% und %quote%Protected%quote% zeigen eine entsprechende Variablendeklaration an.%newline%•%nonbreakingspace%Der Hinweis %quote%{Inaktiver CompilerIf-Block}%quote% kennzeichnet eine Fundstelle in einem von der Kompilierung ausgeschlossenen Zweig.%newline%%newline%Die Liste ist wie folgt aufgebaut:%newline%- Unterstrichener Dateiname, in dem der gesuchte Ausdruck gefunden wurde.%newline%- •%nonbreakingspace%Procedure ▷, •%nonbreakingspace%Structure ▷ oder •%nonbreakingspace%Macro ▷ kennzeichnet die jeweilige Deklaration bzw. Definition.%newline%- •%nonbreakingspace%In ElementName: 'ElementName' gibt den übergeordneten Container (Modul, Prozedur, Struktur...) an. %quote%OutOfElements%quote% steht für Code außerhalb von Prozeduren.%newline%%newline%    Ist der Name eines Elements hellgrau dargestellt, wird dieses Element von der Hauptdatei nicht verwendet. Diese farbliche Unterscheidung erfolgt erst nach vollständigem Abschluss der Dateianalyse.%newline%- [xxx], [xxx], [xxx]... Zeilennummern der Fundstellen.
+TargetedResultOn         = Ergebnis gefiltert auf
+SeeOneOtherScope         = Den anderen Gültigkeitsbereich im Projekt anzeigen...
+SeeOtherScopes           = Die %1 weiteren Gültigkeitsbereiche im Projekt anzeigen...
+
+
+[FindReplace]
+
+FindReplaceTitle     = Suchen / Ersetzen
+ReplaceWith          = Ersetzen durch
+MatchExact           = Exakte Übereinstimmung
+MatchStartsWith      = Beginnt mit...
+MatchContains        = Enthält...
+IgnoreComments       = Kommentare ignorieren
+IgnoreStrings        = Zeichenketten ignorieren
+ToolTipSearchAction  = Hier klicken oder %quote%Enter%quote% drücken, um die Suche zu starten.
+ToolTipReplaceAction = Hier klicken, um das Ersetzen zu starten.
+ReplaceNote          = Das Ersetzen berücksichtigt die oben gewählten Suchkriterien.%newline%Wählen Sie %quote%Alle%quote%, um den Ausdruck in sämtlichen Gültigkeitsbereichen zu ersetzen.
+
+
+; ==============================================================================
+; 4. STATISTICS, PARAMETERS & ANALYSIS ERRORS
+; ==============================================================================
+
+[StatReport]
+
+Statistics         = Statistiken
+ExploringDuration  = Zeitaufwand für die Codeanalyse
+EventManagement    = Zeitaufwand für die Fensterverwaltung
+TotalExploringTime = Gesamtdauer der Analysephase
+TFileLength        = Gesamtlänge des Codes
+ElementUsedOrNot   = Gefundene Elemente / Verwendete Elemente:
+
+
+[ParametersWindow]
+
+PBBrowserParameters       = PBBrowser-Einstellungen
+PBBrowserWindows          = PBBrowser-Fenster:
+PBBrowserColorTheme       = Farbschema von PBBrowser:
+PBBAllGadgetsFont         = Standardschriftart von PBBrowser *:
+PBBTitleFont              = Schriftart für Fenstertitel *:
+PBBTitleColor             = Farbe für Fenstertitel:
+PBBUnusedElementColor     = Farbe für ungenutzte Elemente:
+NotRecommendedToModify    = * Es wird nicht empfohlen, diese Parameter zu ändern.
+DetailsFoundInPannels     = Bereiche 'Details' und 'Gefunden in...':
+PBBElementNameColor       = Farbe für Elementtypen und -namen:
+PBBPanelsDefaultFontStyle = Schriftart:
+PBB_Bullet                = Aufzählungszeichen:
+DetailsPannel             = Bereich 'Details':
+PBBElementDetailsColor    = Farbe für Elementdetails:
+PBBCodeFontStyle          = Schriftart für den Code:
+FoundInPannel             = Bereich 'Gefunden in...':
+PBBSetValueColor          = Farbe für Hinweise wie 'Set', 'Read', 'Param',...:
+
+
+[Errors]
+
+CodeMismatchAlert     = Fehlerhafte Codestruktur!!%newline%Es wurde %quote%%EndString$%%quote% ohne passendes %quote%%StartString$%%quote% in %nFile$% gefunden.%newline%Zeile: 
+ErrorWhileReadingFile = Eine oder mehrere als 'Include' oder 'XInclude' angegebene Dateien sind leer oder unter dem angegebenen Pfad nicht vorhanden. PBBrowser kann die Analyse nicht abschließen.%newline%%newline%Leere oder fehlende Datei(en):
+IncludedFileError     = Fehler in eingebundenen Dateien
+UnfoundGadgetNumber   = In der Prozedur %quote%FillElementREGadget()%quote% wurde die Gadget-Nummer nicht gefunden!%newline%PBBTypeNames$(TypeOfElement): 
+
+
+; ==============================================================================
+; 5. HELP, IDE INSTALLATION & BUILT-IN TOOLS
+; ==============================================================================
+
+[TipsHelpAndTools]
+
+; --- 'Help and Tools' window interface ---
+ToolsWindowTitle = PBBrowser – Hilfe und Werkzeuge
+TipsListTitle    = Tipps
+HelpListTitle    = Hilfethemen
+ToolsListTitle   = Werkzeuge
+Shortcut         = Tastenkürzel
+DontShowInMenu   = Nicht im Menü anzeigen
+Execute          = Ausführen
+AboutTHATTitle   = Über 'Hilfe und Werkzeuge'
+AboutTHATEx      = Dieses Fenster enthält nützliche Tipps zur Bedienung von PBBrowser sowie Erläuterungen zu seinen wichtigsten Funktionen.%newline%Die Liste %quote%Werkzeuge%quote% bietet spezialisierte Zusatzfunktionen, von denen sich einige möglicherweise noch im Beta-Stadium befinden.%newline%Über die Schaltfläche %quote%Tastenkürzel%quote% können Sie häufig genutzten Werkzeugen eine Tastenkombination zuweisen, um sie direkt aus dem Hauptfenster von PBBrowser heraus zu starten.%newline%%newline%Klicken Sie links auf einen Listeneintrag, um weitere Erklärungen anzuzeigen.
+
+; --- 'Tips' topics ---
+PBShortCutsTitle  = Tastenkürzel in PBBrowser
+PBShortCutsEx     = Solange das PBBrowser-Fenster aktiv ist, stehen folgende Tastenkürzel zur Verfügung:%newline%•%nonbreakingspace%'Escape': Schließt PBBrowser.%newline%•%nonbreakingspace%'Return': Entspricht einem Klick auf 'Suchen' (bzw. 'Anzeigen').%newline%•%nonbreakingspace%'CTRL' + 'Q': Ist ein Ausdruck markiert (insbesondere im Bereich %quote%Details%quote% oder %quote%Gefunden in...%quote%), wird sofort nach diesem Ausdruck gesucht, auch wenn er nicht unterstrichen ist (Doppelklick auf den Ausdruck, dann 'CTRL' + 'Q'). Ist kein Text markiert, wird das Eingabefeld 'Ausdruck' fokussiert.%newline%•%nonbreakingspace%'CTRL' + 'V': Fügt den Inhalt der Zwischenablage in das Feld 'Ausdruck' ein und startet sofort die Suche.%newline%•%nonbreakingspace%'CTRL' + 'I': Öffnet das Fenster 'Hilfe und Werkzeuge'.%newline%•%nonbreakingspace%'CTRL' + 'F': Öffnet eine lokale Textsuche innerhalb des aktuell angezeigten Bereichs.%newline%•%nonbreakingspace%'CTRL' + '+', 'CTRL' + '-' und 'CTRL' + '0': Vergrößern, verkleinern oder setzen den Textzoom im aktiven Bereich zurück.%newline%•%nonbreakingspace%'CTRL' + 'S' und 'CTRL' + 'R': Speichern den Inhalt des aktiven Bereichs als TXT- oder RTF-Datei.%newline%•%nonbreakingspace%'TAB' und 'SHIFT' + 'TAB': Wechseln zwischen den verschiedenen Reitern in der unteren Fensterhälfte.%newline%•%nonbreakingspace%'Up', 'Down', 'PageUp' und 'PageDown': Scrollen den Inhalt des aktiven Bereichs.%newline%•%nonbreakingspace%'<-' und '->': Navigieren im Suchverlauf der Bereiche 'Details' und 'Gefunden in...' vor und zurück (entspricht den Pfeilschaltflächen oben in diesen beiden Bereichen). In den übrigen Bereichen wirken sie wie 'TAB' und 'SHIFT' + 'TAB'.
+SearchLimitsTitle = Suchmöglichkeiten
+SearchLimitsEx    = Seit Version 2.0 von PBBrowser wurden die Suchfunktionen erheblich erweitert. Sie können nun nach komplexen Ausdrücken suchen (z. B. %quote%MyVar = 10%quote%), selbst wenn sich diese über mehrere Zeilen erstrecken (was die Suche der PureBasic-IDE nicht unterstützt). Zudem ignoriert die Suche nach komplexen Ausdrücken zusätzliche Leerzeichen: Eine Suche nach %quote%MyVar = 10%quote% findet beispielsweise auch %quote%MyVar     = 10%quote%.%newline%Die Suchfunktion erkennt automatisch, ob es sich um einen komplexen Ausdruck (mehrere Wörter) oder um den Namen eines Code-Elements (z. B. eine Prozedur oder Variable) handelt. Wird eine lokale Variable in mehreren Prozeduren oder ein Prozedurname in mehreren Modulen verwendet, lassen sich die Ergebnisse gezielt auf eine bestimmte Prozedur oder ein bestimmtes Modul eingrenzen. Bei gleichnamigen Elementen (z. B. Struktur und Variable mit identischem Namen) können Sie den gewünschten Elementtyp auswählen.%newline%Über die Schaltfläche %quote%+%quote% lässt sich die Suche außerdem auf Kommentare und Zeichenketten ausweiten sowie das projektweite Suchen/Ersetzen (einschließlich aller Include- und XInclude-Dateien) öffnen — selbst ohne Projektdatei (.pbp).
+CreateToolsTitle  = Eigene Werkzeuge in PBBrowser erstellen
+CreateToolsEx     = Da PBBrowser für Programmierer entwickelt wurde, möchten Sie vielleicht selbst einen Blick in den frei verfügbaren Quellcode werfen. Bei über zweihundert Prozeduren kann dies zunächst aufwendig wirken, obwohl der gesamte Code ausführlich auf Englisch kommentiert ist.%newline%Wenn Sie mit der bestehenden Funktionsweise zufrieden sind und lediglich eigene Werkzeuge hinzufügen möchten, die auf den vorhandenen Analyseprozeduren aufbauen, gelingt dies ohne Eingriff in den bestehenden Kerncode:%newline%•%nonbreakingspace%1- Führen Sie unten links in der Werkzeugliste den Befehl %quote%PBBrowser-Quellcode herunterladen%quote% aus.%newline%•%nonbreakingspace%2- Öffnen Sie die Datei %quote%PBB_CustomTools.pb%quote% im Ordner %quote%PBBrowser resources/Source Codes%quote%. Dort finden Sie alle nötigen Hinweise, um Ihre eigene Prozedur in die Liste %quote%Werkzeuge%quote% einzubinden.%newline%•%nonbreakingspace%3- Kompilieren Sie die Anwendung mit PureBasic neu.
+
+; --- 'Help' topics ---
+AboutPBBrowserTitle = Allgemeine Vorstellung
+AboutPBBrowserEx    = file:IntroPBBrowser.rtf
+MainFileTitle       = Hauptdatei und eingebundene Dateien
+MainFileEx          = PBBrowser ist in erster Linie für den Aufruf direkt aus dem PureBasic-Editor konzipiert. Dabei untersucht PBBrowser nicht nur die aktuell geöffnete Datei, sondern bezieht automatisch alle zugehörigen Dateien des Projekts mit ein:%newline%•%nonbreakingspace%Enthält eine geöffnete Hauptdatei 'IncludeFile'- oder 'XIncludeFile'-Anweisungen, werden sämtliche eingebundenen Dateien zur Dateiliste hinzugefügt.%newline%•%nonbreakingspace%Ist für die untersuchte Datei im PureBasic-Editor unter 'Compiler-Optionen' eine %quote%Hauptdatei%quote% (UseMainFile) eingetragen, übernimmt PBBrowser diese als Hauptdatei und erfasst alle dort per 'IncludeFile' oder 'XIncludeFile' eingebundenen Dateien.%newline%•%nonbreakingspace%Kurz gesagt: Die Dateiliste wird anhand der gefundenen Verweise automatisch nach oben wie nach unten vervollständigt.
+ChangeMainFileTitle = Hauptdatei wechseln
+ChangeMainFileEx    = Über die Schaltfläche 'Ändern' im Hauptfenster können Sie eine andere Hauptdatei auswählen. PBBrowser verwirft daraufhin alle zuvor gesammelten Daten und startet eine vollständige Neuanalyse für die neue Hauptdatei und ihre eingebundenen Dateien.%newline%War die %quote%neue%quote% Datei jedoch bereits Bestandteil der bisherigen Dateiliste, bleibt der aktuelle Zustand unverändert erhalten.
+SearchLaunchTitle   = Eine Suche in PBBrowser starten
+SearchLaunchEx      = Es gibt vier Möglichkeiten, eine Suche im Code Ihrer Dateien zu starten:%newline%•%nonbreakingspace%1- Direkt aus dem PureBasic-Editor (sofern PBBrowser in den Werkzeugen installiert ist): Klicken oder doppelklicken Sie auf ein beliebiges Wort und wählen Sie das Menü %quote%Werkzeuge / PB Browser%quote% oder drücken Sie das Tastenkürzel (standardmäßig CTRL + Q). PBBrowser startet automatisch (bzw. wird aktiviert) und führt sofort die Suche nach dem gewählten Wort aus.%newline%•%nonbreakingspace%2- Geben Sie bei geöffnetem PBBrowser einen Ausdruck in das Feld 'Ausdruck' ein und klicken Sie auf 'Suchen' oder drücken Sie 'Return'.%newline%•%nonbreakingspace%3- Klicken Sie auf einen beliebigen unterstrichenen Ausdruck in einem der Bereiche, um sofort danach zu suchen.%newline%•%nonbreakingspace%4- Möchten Sie nach einem Ausdruck suchen, der in einem PBBrowser-Bereich steht, aber nicht unterstrichen ist, doppelklicken Sie darauf und drücken Sie CTRL + Q.
+SearchModTitle      = Such- und Analysemodi von PBBrowser
+SearchModEx         = PBBrowser untersucht den Code Ihrer Dateien auf zwei einander ergänzende Arten:%newline%•%nonbreakingspace%1- Der Bereich %quote%Gefunden in...%quote% zeigt die Ergebnisse einer direkten Codesuche in exakter Kompilierungsreihenfolge an und analysiert den jeweiligen Kontext jeder Fundstelle (Modul, Prozedur, Makro usw.). Dadurch stehen Ergebnisse nahezu verzögerungsfrei bereit.%newline%•%nonbreakingspace%2- Gleichzeitig startet PBBrowser beim Öffnen eine systematische Analyse aller mit der Hauptdatei verknüpften Dateien, um sämtliche Code-Elemente (Prozeduren, Makros, Strukturen, Konstanten, Variablen, Module, Imports usw.) vollständig zu erfassen. Diese sehr schnelle Analyse ermittelt auch, welche Elemente tatsächlich genutzt werden: Ausgehend vom Code außerhalb von Prozeduren und Makros werden alle dort aufgerufenen Elemente als 'verwendet' markiert und dieser Status über den gesamten Aufrufgraphen weitergegeben. Ungenutzte Elemente erscheinen in allen Fenstern grau.
+NavigationTitle     = Navigation in PBBrowser
+NavigationEx        = Ein Klick auf einen unterstrichenen Ausdruck in PBBrowser löst je nach Bereich unterschiedliche Aktionen aus:%newline%•%nonbreakingspace%Im Bereich %quote%Dateien%quote% öffnet ein Klick die gewählte Datei im PureBasic-Editor.%newline%•%nonbreakingspace%Im Bereich %quote%Listen%quote% öffnet ein Linksklick auf einen Elementnamen das Element im Bereich %quote%Details%quote%, ein Rechtsklick im Bereich %quote%Gefunden in...%quote%.%newline%•%nonbreakingspace%Im Bereich %quote%Details%quote% öffnet ein Klick auf einen Dateinamen die Datei im PureBasic-Editor; ein Linksklick auf einen Elementnamen zeigt dessen %quote%Details%quote%, ein Rechtsklick öffnet %quote%Gefunden in...%quote%; ein Klick auf ein PureBasic-Schlüsselwort (z. B. 'If' oder 'EndIf') oder eine native Funktion (z. B. 'FindString' oder 'MessageRequester') öffnet direkt die passende Seite der PureBasic-Hilfedatei (oder startet eine Websuche, falls keine Hilfedatei vorhanden ist).%newline%•%nonbreakingspace%Im Bereich %quote%Gefunden in...%quote% springt ein Klick auf eine Zeilennummer in eckigen Klammern im PureBasic-Editor direkt zu dieser Zeile; ein Klick auf einen Dateinamen öffnet die Datei im Editor; ein Linksklick auf einen Elementnamen öffnet %quote%Details%quote%, ein Rechtsklick %quote%Gefunden in...%quote%.%newline%%newline%Mit 'Tab' und 'SHIFT' + 'TAB' wechseln Sie außerdem zwischen den Bereichen, und mit den Pfeiltasten '<-' und '->' blättern Sie im Seitenverlauf oder zwischen den Reitern.
+
+
+[AddToolToPB]
+
+; --- Keyboard shortcut capture ---
+CaptureShortCutsTitle    = Tastenkürzel
+CaptureShortCutsTitleFor = Tastenkürzel für
+PBCaptureTitle           = Tastenkürzel für PBBrowser
+UsedShortCutsTitle       = Bereits vergebene Tastenkürzel:
+AT_Explanations          = Drücken Sie die gewünschte Tastenkombination auf Ihrer Tastatur, um sie dem Befehl zuzuweisen:
+PBSC_Explanations        = Drücken Sie die gewünschte Tastenkombination, mit der PBBrowser%newline%aus dem PureBasic-Editor gestartet werden soll:
+IsAllreadyUsed           = ist bereits vergeben
+AT_DontInstall           = Nicht installieren
+
+; --- Native install / uninstall tools ---
+InstallPBBrowserTitle   = PBBrowser in den PureBasic-Werkzeugen installieren
+InstallPBBrowserEx      = Mit einem Klick auf 'Ausführen' wird PBBrowser im Menü 'Werkzeuge' Ihres PureBasic-Editors eingetragen.%newline%Ist PBBrowser dort bereits vorhanden, können Sie hiermit seinen Dateipfad aktualisieren oder sein Tastenkürzel ändern.%newline%Bitte denken Sie daran, den PureBasic-Editor neu zu starten, damit die Änderungen wirksam werden.%newline%%newline%Falls die automatische Installation fehlschlägt, können Sie PBBrowser manuell in den PureBasic-Werkzeugen einrichten:%newline%Erstellen Sie im PureBasic-Editor ein neues benutzerdefiniertes Werkzeug mit folgenden Angaben:%newline%•%nonbreakingspace%Befehlszeile: Kompilierte Datei PBBrowser.exe auf Ihrer Festplatte auswählen%newline%•%nonbreakingspace%Argumente: %quote%%HOME%quote% %quote%%WORD%quote% %quote%%SELECTION%quote% %quote%%CURSOR%quote% %quote%%FILE%quote% %quote%%TEMPFILE%quote%%newline%•%nonbreakingspace%Name: PB Browser%newline%•%nonbreakingspace%Ereignis zum Auslösen: Menü oder Tastenkürzel%newline%•%nonbreakingspace%Tastenkürzel: CTRL + Q%newline%%newline%Um PBBrowser im portablen Modus zu betreiben, fügen Sie %quote%\PORTABLE %quote% vor dem Parameter %quote%%HOME%quote% ein.
+UninstallPBBrowserTitle = PBBrowser aus den PureBasic-Werkzeugen entfernen
+UninstallPBBrowserEx    = Mit einem Klick auf 'Ausführen' wird PBBrowser aus dem Werkzeuge-Menü Ihres PureBasic-Editors entfernt.%newline%Die Programmdateien selbst werden dabei nicht von Ihrer Festplatte gelöscht.%newline%Bitte starten Sie den PureBasic-Editor anschließend neu, damit die Änderung wirksam wird.
+
+; --- Installation result and error messages ---
+ToolInstalledSuccessfully     = PBBrowser wurde erfolgreich in den Werkzeugen des Editors installiert.%newline%Bitte schließen Sie den Editor und starten Sie ihn neu, um die Installation abzuschließen.
+ToolRemovedSuccessfully       = PBBrowser wurde aus den Werkzeugen des Editors entfernt.%newline%Bitte schließen Sie den Editor und starten Sie ihn neu, um den Vorgang abzuschließen.
+ToolAllreadyInstalled         = PBBrowser ist bereits in den Werkzeugen installiert.%newline%Um das Tastenkürzel zu ändern, öffnen Sie das Menü 'Werkzeuge' im PureBasic-Editor oder führen Sie eine Neuinstallation durch.%newline%Denken Sie daran, den PureBasic-Editor anschließend neu zu starten.
+ToolNotInstalled              = PBBrowser wurde nicht in der Werkzeugliste gefunden.%newline%Denken Sie daran, den PureBasic-Editor neu zu starten, damit Änderungen wirksam werden.
+UnableToFindPBBrowser         = PBBrowser.exe wurde in Ihren Ordnern nicht gefunden.%newline%Falls Sie bereits eine ausführbare Datei ('.exe') erstellt haben, geben Sie bitte deren Speicherort an.%newline%Für die Installation in den Werkzeugen muss die ausführbare Datei vorhanden sein.
+ShowPBBrowserPath             = Speicherort von 'PBBrowser.exe' auswählen.
+ToolExeNotFound               = Die ausführbare Version von PBBrowser (PBBrowser.exe) wurde nicht gefunden.%newline%Für die Installation in den Werkzeugen muss die ausführbare Datei vorhanden sein.
+UnableToFindPBPref            = Die Einstellungsdatei von PureBasic wurde nicht gefunden.
+UnableToOpenPBPref            = Die Einstellungsdatei von PureBasic konnte nicht gelesen werden.
+UnableToCreateToolsConfigFile = Die Konfigurationsdatei der PureBasic-Werkzeuge konnte nicht erstellt werden.
+UnableToReadToolsConfigFile   = Die Konfigurationsdatei der PureBasic-Werkzeuge konnte nicht gelesen werden.
+UnableToBackUpToolsConfigFile = Die Konfigurationsdatei der PureBasic-Werkzeuge konnte nicht gesichert werden.
+UnableToModifyToolsConfigFile = Die Konfigurationsdatei der PureBasic-Werkzeuge konnte nicht geändert werden.
+
+
+[BuiltInTools]
+
+; --- Tool 1: Cosmetic Enhancer (PBB_CustomTools.pb) ---
+CosmeticFileTransformerTitle = Kosmetischer Formatierer
+CosmeticFileTransformerEx    = Formatiert sämtliche Projektdateien in einem einzigen ultraschnellen Durchgang neu, um Darstellung und Lesbarkeit des Codes zu vereinheitlichen.%newline%Das Werkzeug normiert automatisch die Leerzeichen rund um mathematische, logische und vergleichende Operatoren (+, -, *, /, <, >, =, &, |...), Kommas, Klammern, Befehlstrenner (':') und PureBasic-Schlüsselwörter. Kommentare, Zeichenketten (klassisch %quote%...%quote% sowie mit Escape-Sequenzen ~%quote%...%quote%), Zeichenliterale, Inline-Assembler ('!'), Moduloperatoren ('::'), Zeiger ('*Ptr') und Sprungmarken bleiben dabei streng geschützt.%newline%%newline%Beispiel:%newline%•%nonbreakingspace%Mid (CodeContent\s,dTest,PosInCode-dTest)%newline%  wird umgewandelt in:%newline%•%nonbreakingspace%Mid(CodeContent\s, dTest, PosInCode - dTest)%newline%%newline%Vor jeder Änderung wird Ihnen eine Sicherheitskopie des Projekts in einem separaten Ordner angeboten.
+
+; --- Tool 2: Create or Update a PureBasic Project (.pbp) (PBB_CustomTools.pb) ---
+CreateUpdateProjectTitle = PureBasic-'Projekt' erstellen oder aktualisieren
+CreateUpdateProjectEx    = Genau wie manuell über das Menü 'Projekt' des PureBasic-Editors erstellt oder synchronisiert diese Funktion eine PureBasic-Projektdatei (.pbp) anhand des von PBBrowser ermittelten Einbindungsbaums. PureBasic-Projekte bieten unter anderem folgende Vorteile:%newline%•%nonbreakingspace%Pflege einer vollständigen Liste aller benötigten Quell- und Binärdateien;%newline%•%nonbreakingspace%Automatische Code-Vervollständigung in der IDE auch für Prozeduren, Strukturen, Variablen und Konstanten aus eingebundenen Dateien;%newline%•%nonbreakingspace%Zentrale Verwaltung von Compiler-Optionen, Icons und Versionsinformationen;%newline%•%nonbreakingspace%Gemeinsames Laden aller relevanten Codedateien für eine bestimmte Entwicklungsphase.%newline%%newline%Existiert das Projekt bereits, schlägt PBBrowser vor, neu im Code gefundene Dateien ('IncludeFile', 'XIncludeFile' und 'IncludeBinary') hinzuzufügen sowie veraltete, nicht mehr referenzierte Dateieinträge zu entfernen.%newline%%newline%Existiert noch kein Projekt, wird es automatisch anhand der Compiler-Optionen der Hauptdatei angelegt.
+DefaultTarget            = Standardziel
+NoProjectFound           = Für den untersuchten Code wurde kein Projekt gefunden.%newline%Was möchten Sie tun?
+LookForProjectManually   = Projekt manuell auswählen
+CreateNewProject         = Neues Projekt erstellen
+ProjectAllreadyOpen      = Dieses Projekt ist derzeit in PureBasic geöffnet und kann nicht geändert werden.%newline%Schließen Sie es dort, wenn Sie es prüfen und aktualisieren möchten, und klicken Sie anschließend auf OK.
+WouldYouAdd              = Die folgenden Dateien werden im Programmcode verwendet, fehlen aber noch im Projekt.%newline%Möchten Sie sie zum Projekt hinzufügen?
+WouldYouDel              = Die folgenden Dateien stehen im Projekt, werden aber nirgendwo im Programmcode referenziert.%newline%Möchten Sie sie aus dem Projekt entfernen?
+FilesToDelete            = Dateien, die aus dem Projekt entfernt werden könnten:
+ProjectNotModified       = Das Projekt war bereits aktuell. Es wurden keine Änderungen vorgenommen.
+WouldYouOpenProject      = Möchten Sie das Projekt im PureBasic-Editor öffnen?
+
+; --- Tool 3: Retrieve PBBrowser Source Code (PBB_CustomTools.pb) ---
+ExportSourceCodeTitle = PBBrowser-Quellcode herunterladen
+ExportSourceCodeEx    = Da PBBrowser für Programmierer entwickelt wurde, möchten Sie vielleicht selbst einen Blick in den frei verfügbaren Open-Source-Code werfen. Klicken Sie auf %quote%Ausführen%quote%, um die Download-Webseite zu öffnen.
+
+; --- Tool 4: Erase Comments from the Code (PBB_CustomTools.pb) ---
+EraseCommentsTitle  = Kommentare aus dem Code entfernen
+EraseCommentsEx     = Öffnet einen Dialog, mit dem alle Quelldateien des Projekts (Hauptdatei und eingebundene Dateien) in einem Durchgang bereinigt werden können, um die Codegröße zu verringern oder eine Weitergabe vorzubereiten.%newline%Sie können sämtliche Kommentare löschen (wobei Zeichenketten und der abschließende Compiler-Optionsblock der PureBasic-IDE erhalten bleiben) und optional auch Einrückungen, überflüssige Leerzeichen sowie Leerzeilen entfernen.%newline%Sicherheitshalber ist standardmäßig die Option aktiviert, mit einer Projektkopie in einem neuen Ordner zu arbeiten, sodass Ihre Originaldateien unangetastet bleiben.
+EC_EraseAllComments = Alle Kommentare aus dem Code löschen
+EC_EraseExtraSpaces = Überflüssige Leerzeichen und Leerzeilen entfernen
+EC_WorkOnCopy       = Mit einer Kopie des Projekts arbeiten im Ordner:
+
+; --- Tool 5: Generate Procedure Declarations (PBB_SignatureTool.pb) ---
+SignatureToolTitle   = Prozedur-Deklarationen generieren
+SignatureToolEx      = Erzeugt mit einem Klick eine Liste von Prozedur-Deklarationen ('Declare') oder Signaturen ('Procedure') für eine einzelne Datei oder das gesamte Projekt — sortiert in exakter Kompilierungsreihenfolge oder alphabetisch. Ihre Originaldateien werden niemals verändert.%newline%%newline%Je nach gewählten Optionen deckt dieses Werkzeug drei Anwendungsfälle ab:%newline%%newline%•%nonbreakingspace%Kompilierbare .pb-Header-Datei erstellen: Löst sofort Reihenfolgeprobleme und wechselseitige Aufrufe zwischen Prozeduren (unter sauberer Trennung öffentlicher 'DeclareModule'-Blöcke und privater Modulprozeduren).%newline%•%nonbreakingspace%Projektarchitektur und Aufrufgraphen dokumentieren: Durch Übernahme der Kopfkommentare ('; Role:...') und Aktivieren der Analyse-Anmerkungen wird jede Signatur um aufgerufene und aufrufende Prozeduren (%quote%wer ruft wen auf?%quote%), verwendete Global-, Threaded- und Shared-Variablen sowie ungeschützte oder ungenutzte lokale Variablen ergänzt.%newline%•%nonbreakingspace%Kompakten Bauplan für Teamkollegen oder eine KI bereitstellen: Kopieren Sie das gesamte Architektur-Grundgerüst samt Funktionsschnittstellen direkt in die Zwischenablage, ohne den Kontext mit Prozedurrümpfen zu überladen.
+ST_SecScope          = Umfang und Sortierung
+ST_TargetFiles       = Zieldateien:
+ST_AllProjectFiles   = Alle Projektdateien
+ST_SortSource        = Quellcode-Reihenfolge (nach Datei gruppiert)
+ST_SortAlpha         = Alphabetische Reihenfolge
+ST_ExcludeModules    = Prozeduren innerhalb von Modulen ausschließen
+ST_SecFormat         = Signatur und Kommentare
+ST_UseDeclare        = Schlüsselwort 'Declare' verwenden
+ST_KeepProcedure     = Schlüsselwort 'Procedure' beibehalten
+ST_KeepHeaderCom     = Kopfkommentare unter der Signatur beibehalten (; Role:...)
+ST_KeepStandaloneCom = Eigenständige Kommentarblöcke außerhalb von Prozeduren beibehalten
+ST_SecMeta           = Analyse-Anmerkungen (als ';'-Kommentare eingefügt)
+ST_AnnotateCalls     = Aufgerufene und aufrufende Prozeduren auflisten
+ST_AnnotateGlobals   = Verwendete Global-, Threaded- und Shared-Variablen auflisten
+ST_AnnotateVarIssues = Ungeschützte und ungenutzte lokale Variablen melden
+ST_SecOutput         = Ausgabeziel
+ST_CopyClipboard     = Generierte Liste in die Zwischenablage kopieren
+ST_SaveToFile        = Generierte Liste in Datei speichern:
+ST_OpenAfterSave     = Datei nach dem Speichern öffnen
+ST_FileFilter        = PureBasic (*.pb, *.pbi)|*.pb;*.pbi|Text (*.txt)|*.txt|Alle Dateien (*.*)|*.*
+ST_DoneClipboard     = Die Deklarationsliste wurde in die Zwischenablage kopiert.
+ST_DoneSaved         = Die Deklarationsliste wurde gespeichert unter: %1
+ST_DoneBoth          = Die Deklarationsliste wurde in die Zwischenablage kopiert und gespeichert unter: %1
+
+; --- Tool 6: Check Procedure Declarations (PBB_SignatureTool.pb) ---
+ProcVariablesTitle = Prozedur-Deklarationen prüfen
+ProcVariablesEx    = Untersucht den Rumpf aller Prozeduren in der Hauptdatei und ihren eingebundenen Dateien (unter Berücksichtigung von Makro-Erweiterungen und Modul-Isolation), um lokale Variablendeklarationen abzusichern und zu bereinigen:%newline%•%nonbreakingspace%Ungeschützte Variablen: Wird eine implizite lokale Variable weder als 'Global', 'Threaded' oder 'Shared' noch als 'Protected' oder 'Static' deklariert, fügt das Werkzeug automatisch am Prozeduranfang (direkt unter eventuellen Kopfkommentaren unter Wahrung von Einrückung und Zeilenenden) eine 'Protected'-Zeile ein. Dies macht Ihren Code kompatibel mit 'EnableExplicit' und verhindert versehentliche Namenskonflikte mit globalen Variablen.%newline%•%nonbreakingspace%Ungenutzte Variablen: Wird ein Parameter oder eine deklarierte lokale Variable in der Prozedur nirgends verwendet, fügt das Werkzeug einen entsprechenden Hinweiskommentar ein, damit Sie Altlasten gezielt entfernen können.%newline%%newline%Vor jeder Änderung wird eine Sicherheitskopie des Projekts angeboten; anschließend erhalten Sie einen zusammenfassenden Bericht aller aktualisierten Prozeduren.
+
+; --- Tool 7: Export Standalone Single-File .pb (PBB_CodeFlattener.pb) ---
+FlattenToolTitle   = Als eigenständige .pb-Datei exportieren
+FlattenToolEx      = Verwandelt jedes PureBasic-Programm mit einem einzigen Klick — vom einfachen Skript bis zum großen Projekt mit Dutzenden IncludeFile-Anweisungen und externen .pbi-Bibliotheken — in eine einzige, vollständig eigenständige .pb-Datei, exakt in der Lesereihenfolge des Compilers zusammengesetzt und sofort kompilierbar. Ihre Originaldateien werden niemals verändert.%newline%%newline%Mit seinen flexiblen Bereinigungsoptionen erfüllt dieses Werkzeug fünf Aufgaben:%newline%%newline%•%nonbreakingspace%Toten Code in einem einzigen Durchgang aus einem Projekt (auch aus einer Einzeldatei!) entfernen: Selbst bei einer einzelnen .pb-Datei entfernt das Werkzeug präzise alle ungenutzten Prozeduren, Makros, Strukturen, Interfaces, Konstanten, Global-/Define-Variablen und Declare-Zeilen und liefert sofort eine schlanke, saubere Quellcodeversion.%newline%•%nonbreakingspace%Code mühelos in Foren oder mit Kollegen teilen: Schluss mit unvollständigen Archiven, fehlenden XIncludeFile-Pfaden beim Empfänger und Größenlimits im PureBasic-Forum! Durch Entfernen ungenutzter Elemente, inaktiver CompilerIf-Zonen, Kommentare oder überflüssiger Leerzeichen behalten Sie nur den tatsächlich ausgeführten Kern Ihres Programms (während IncludeBinary- und Icon-Pfade automatisch angepasst werden).%newline%•%nonbreakingspace%Einen %quote%eingefrorenen Schnappschuss%quote% komplexer Projekte samt Bibliotheken archivieren: Wenn mehrere Projekte gemeinsame .pbi-Bibliotheken nutzen, kann ein Bibliotheks-Update ältere Programme beeinträchtigen. Der Einzeldatei-Export friert den exakten Gesamtzustand Ihres Codes zu einem bestimmten Zeitpunkt ein — ideal, um später per Ctrl+F jederzeit eine frühere Prozedurversion wiederzufinden!%newline%•%nonbreakingspace%Fehler für Bug-Reports isolieren: Extrahieren Sie in Sekunden eine minimale, eigenständige und reproduzierbare Version eines großen Projekts, ohne Ihre übrigen privaten Bibliotheken offenzulegen.%newline%•%nonbreakingspace%Code optimal an eine KI übergeben: Kopieren Sie das bereinigte Ergebnis direkt in die Zwischenablage, um einem KI-Assistenten den gesamten relevanten Programmkontext in einem Block ohne unnötigen Ballast bereitzustellen.
+FT_SecContent      = Code-Inhalt und Bereinigung
+FT_AddFileBanners  = Trennbanner zwischen zusammengeführten Dateien einfügen
+FT_PruneDeadZones  = Inaktive CompilerIf- / CompilerSelect-Zonen entfernen
+FT_PruneUnused     = Ungenutzte Prozeduren, Strukturen, Makros, Konstanten und Globals entfernen
+FT_EraseComments   = Alle Kommentare aus dem Code löschen
+FT_CleanSpaces     = Leerzeichen komprimieren und Leerzeilen entfernen
+FT_RewriteBinPaths = IncludeBinary- und UseIcon-Pfade relativ zum Zielordner anpassen
+FT_SecOutput       = Ausgabeziel
+FT_OpenInIDE       = Generierte Datei in der PureBasic-IDE öffnen
+FT_FileFilter      = PureBasic-Quellcode (*.pb)|*.pb|Alle Dateien (*.*)|*.*
+
+
+; ==============================================================================
+; 6. EXTERNAL ZAPMAN LIBRARIES (Alert, ApplyColorThemes, Color & Font)
+; ==============================================================================
+
+[SearchWindow]
+; Used by RE_FindReplace() in Alert.pbi (local RichEdit panel search)
+
+SWTitle           = Suchen
+SWSearch          = Suchen:
+SWReplaceTitle    = Ersetzen durch:
+SWReplace         = Ersetzen
+SWReplaceAll      = Alle ersetzen
+SWCaseSensitive   = Groß-/Kleinschreibung beachten
+SWWholeWord       = Ganzes Wort
+SWInAllDocument   = Im gesamten Dokument
+SWUnableToFind    = Keine Treffer für
+SWReplacementMade = Ersetzung(en) vorgenommen.
+SWSearchFromStart = Von Anfang an suchen?
+SWSearchFromEnd   = Vom Ende her suchen?
+
+
+[ZapmanColorRequester]
+; Used by ApplyColorThemes.pbi and ZapmanColorRequester.pbi
+
+ThemeColors         = Themenfarben
+Presets             = Voreinstellungen:
+BackgroundColor     = Hintergrundfarbe
+TextColor           = Textfarbe
+ResetToDefaultColor = Ursprungsfarbe
+EditColor           = Farbeditor
+Red                 = Rot:
+Green               = Grün:
+Blue                = Blau:
+Hue                 = Farbton:
+Saturation          = Sättigung:
+Lightness           = Helligkeit:
+HexValue            = Hex-Wert:
+ClickToAdjustColor  = Klicken Sie, um eine Farbe auszuwählen. Verwenden Sie das Mausrad, um die Sättigung einzustellen.
+
+
+[ZapmanFontRequester]
+; Used by ZapmanFontRequester.pbi
+
+ChooseAFont  = Schriftart wählen
+Variants:    = Varianten:
+Size:        = Größe:
+DetailsDwn   = Details ⏷
+DetailsUp    = Details ⏶
+fancyFont    = Schmuckschrift
+unspecified  = nicht angegeben
+monospace    = Festbreitenschrift
+withSerif    = mit Serifen
+handwriting  = Handschrift
+withoutSerif = serifenlos
+Unknown      = Unbekannt
+Name:        = Name:
+Type:        = Typ:
+Family:      = Familie:
+Script(s):   = Schriftsystem(e):
+Metrics:     = Metriken:
+Style:       = Stil:
+Color:       = Farbe:
+Sample       = Beispiel
+Normal       = Normal
+Bold         = Fett
+Italic       = Kursiv
+Underline    = Unterstrichen
+StrikeOut    = Durchgestrichen
+CAFDemoText  = Wer reitet so spät durch Nacht und Wind?%newline%Es ist der Vater mit seinem Kind;%newline%Er hat den Knaben wohl in dem Arm,%newline%Er fasst ihn sicher, er hält ihn warm.
+
+
+; ==============================================================================
+; 7. UNUSED OR LEGACY ENTRIES
+; ==============================================================================
+
+[UnusedOrLegacy]
+
+; --- Commented-out tools in PBB_NativeTools.pb ---
+UpdateFunctionsTitle = Native Funktionen aktualisieren
+UpdateFunctionsEx    = Zur farblichen Hervorhebung ermittelt PBBrowser die nativen PureBasic-Funktionen aus der Hilfedatei %quote%PureBasic.chm%quote%. Mit einem Klick auf %quote%Ausführen%quote% wird diese Liste anhand der neuesten auf Ihrem Computer installierten PureBasic-Version aktualisiert.
+UpdatePBExeEx        = Beim Klick auf einen Datei- oder Prozedurnamen öffnet PBBrowser diesen im PureBasic-Editor.%newline%Falls Sie mehrere Versionen von PureBasic installiert haben, können Sie über 'Ausführen' Ihre bevorzugte Version festlegen.
+
+; --- Reserved keys ---
+Introduction        = Einführung
+SearchInProgress    = Suche läuft...
+CreateFolderError   = Ordner kann nicht erstellt werden: 
+ElementMissingError = 'Element' ohne 'EndElement'!%newline%Datei: 
+UnclosedQuoteError  = Öffnendes Anführungszeichen nicht geschlossen.
+ConstantNameError   = Analysefehler in einer 'Include'-Anweisung (Konstante nicht gefunden):
+Fields              = Felder
+Imports             = Import
+used                = verwendet
+Close               = Schließen

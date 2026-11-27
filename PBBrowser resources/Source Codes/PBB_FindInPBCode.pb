@@ -10,7 +10,7 @@
 ;
 CompilerIf #PB_Compiler_IsMainFile
   EnableExplicit
-  XIncludeFile "../../Zapman libraries/FastStringFunctions.pbi"
+  XIncludeFile "Zapman libraries\FastStringFunctions.pbi"
 CompilerEndIf
 ;
 CompilerIf Not Defined(DOUBLEQUOTE, #PB_Constant)

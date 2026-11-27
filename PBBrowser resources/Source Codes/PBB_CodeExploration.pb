@@ -1436,7 +1436,7 @@ Procedure.s EE_UnknownResolver(IdentifierName$, Arguments$ = "")
   ProcedureReturn Result$
 EndProcedure
 ;
-XIncludeFile "../../Zapman libraries/ExpressionEvaluator.pbi"
+XIncludeFile "Zapman libraries\ExpressionEvaluator.pbi"
 ;
 Procedure.s EvalConstExpr(RawExpr$, FileName$ = "", PosInCode = 0, ModuleContainer = -1, Stage1Only = #False, IsCompilerGuard = #True)
   ;
